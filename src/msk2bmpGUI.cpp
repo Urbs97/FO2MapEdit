@@ -446,11 +446,18 @@ int main(int argc, char** argv)
                 {
                     bool is_directory = handle_directory_drop_POPUP(path, images_arr);
                     if (!is_directory) {
-                        LF* F_Prop = &My_Variables.F_Prop[counter];
+                        int existing = find_open_file(My_Variables.F_Prop, counter, path);
+                        if (existing >= 0) {
+                            focus_file_window(existing);
+                            add_recent_file(&usr_info, path);
+                        } else {
+                            LF* F_Prop = &My_Variables.F_Prop[counter];
 
-                        F_Prop->file_open_window = File_Type_Check(F_Prop, &My_Variables.shaders, &F_Prop->img_data, path);
-                        if (F_Prop->file_open_window) {
-                            counter++;
+                            F_Prop->file_open_window = File_Type_Check(F_Prop, &My_Variables.shaders, &F_Prop->img_data, path);
+                            if (F_Prop->file_open_window) {
+                                add_recent_file(&usr_info, path);
+                                counter++;
+                            }
                         }
                     }
                     path += strlen(path)+1;
@@ -1155,7 +1162,7 @@ void Open_Files(struct user_info* usr_info, int* counter, Palette* pxlFMT, struc
     // TODO: image needs to be less than 1 million pixels (1000x1000)
     // to be viewable in Titanium FRM viewer, what's the limit in the game?
     // (limit is greater than 1600x1200 for Hi-Res mod - tested on MR f2_res.dat)
-    F_Prop->file_open_window = ImDialog_load_files(F_Prop, &F_Prop->img_data, usr_info, &My_Variables->shaders);
+    F_Prop->file_open_window = ImDialog_load_files(F_Prop, &F_Prop->img_data, usr_info, &My_Variables->shaders, My_Variables->F_Prop, *counter);
 
     if (My_Variables->F_Prop[*counter].c_name) {
         (*counter)++;
@@ -1307,11 +1314,40 @@ void main_window_bttns(variables* My_Variables, int* counter)
     LF* F_Prop     = &My_Variables->F_Prop[*counter];
     image_data* img_data = &F_Prop->img_data;
 
-    bool success = ImDialog_load_files(F_Prop, img_data, &usr_info, &My_Variables->shaders);
+    bool success = ImDialog_load_files(F_Prop, img_data, &usr_info, &My_Variables->shaders, My_Variables->F_Prop, *counter);
     if (success) {
         (*counter)++;
     }
     ImGui::Separator();
+
+    if (usr_info.recent_files_count > 0) {
+        ImGui::Text("Recent Files:");
+        for (int i = 0; i < usr_info.recent_files_count; i++) {
+            ImGui::PushID(i);
+            const char* full_path = usr_info.recent_files[i];
+            const char* filename = strrchr(full_path, PLATFORM_SLASH);
+            filename = filename ? filename + 1 : full_path;
+
+            if (ImGui::Selectable(filename)) {
+                int existing = find_open_file(My_Variables->F_Prop, *counter, full_path);
+                if (existing >= 0) {
+                    focus_file_window(existing);
+                    add_recent_file(&usr_info, full_path);
+                } else {
+                    F_Prop = &My_Variables->F_Prop[*counter];
+                    F_Prop->file_open_window = File_Type_Check(F_Prop, &My_Variables->shaders, &F_Prop->img_data, full_path);
+                    if (F_Prop->file_open_window) {
+                        add_recent_file(&usr_info, full_path);
+                        (*counter)++;
+                    }
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", full_path);
+            }
+            ImGui::PopID();
+        }
+    }
 }
 
 #ifdef QFO2_WINDOWS

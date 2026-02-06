@@ -687,7 +687,26 @@ bool ImDialog_load_MSK(LF* F_Prop, image_data* img_data, user_info* usr_info, sh
 }
 
 
-bool ImDialog_load_files(LF* F_Prop, image_data *img_data, user_info *usr_info, shader_info *shaders)
+int find_open_file(LF* all_F_Prop, int open_count, const char* path)
+{
+    for (int i = 0; i < open_count; i++) {
+        if (all_F_Prop[i].file_open_window
+            && strncmp(all_F_Prop[i].Opened_File, path, MAX_PATH) == 0)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void focus_file_window(int index)
+{
+    char window_id[16];
+    snprintf(window_id, sizeof(window_id), "###preview%02d", index);
+    ImGui::SetWindowFocus(window_id);
+}
+
+bool ImDialog_load_files(LF* F_Prop, image_data *img_data, user_info *usr_info, shader_info *shaders, LF* all_F_Prop, int open_count)
 {
     //TODO: move this to some initializing function
     ifd::FileDialog::Instance().CreateTexture = [](uint8_t* data, int w, int h, char fmt) -> void* {
@@ -742,10 +761,19 @@ bool ImDialog_load_files(LF* F_Prop, image_data *img_data, user_info *usr_info, 
 
     bool success = false;
     if (load_file && strlen(load_name) > 1) {
+        int existing = find_open_file(all_F_Prop, open_count, load_name);
+        if (existing >= 0) {
+            focus_file_window(existing);
+            add_recent_file(usr_info, load_name);
+            load_name[0] = '\0';
+            load_file    = false;
+            return false;
+        }
         success = File_Type_Check(F_Prop, shaders, img_data, load_name);
     }
 
     if (success) {
+        add_recent_file(usr_info, load_name);
         load_name[0] = '\0';
         success      = false;
         load_file    = false;

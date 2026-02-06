@@ -66,7 +66,7 @@ struct variables;
 char* Program_Directory();
 void dropped_files_callback(GLFWwindow* window, int count, const char** paths);
 
-bool ImDialog_load_files(LF* F_Prop, image_data *img_data, user_info *usr_info, shader_info *shader);
+bool ImDialog_load_files(LF* F_Prop, image_data *img_data, user_info *usr_info, shader_info *shader, LF* all_F_Prop, int open_count);
 bool ImDialog_load_MSK(LF* F_Prop, image_data* img_data, user_info* usr_info, shader_info* shaders);
 
 bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data, const char* file_name);
@@ -76,6 +76,9 @@ void load_tile_texture(GLuint* texture, char* file_name);
 
 bool drag_drop_POPUP(variables* My_Variables, LF* F_Prop, image_paths* images_arr, int* counter);
 bool handle_directory_drop_POPUP(char* dir_name, image_paths* image_arr);
+
+int  find_open_file(LF* all_F_Prop, int open_count, const char* path);
+void focus_file_window(int index);
 
 void game_path_set_POPUP(user_info* usr_nfo);
 void set_game_path_POPUP(user_info* usr_nfo);

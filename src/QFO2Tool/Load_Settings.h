@@ -3,6 +3,7 @@
 #include "platform_io.h"
 
 #define MAX_KEY  32
+#define MAX_RECENT_FILES 10
 
 enum export_auto {
     not_set  = 0,
@@ -37,6 +38,9 @@ struct user_info {
     bool show_image_stats;          //TODO: remove, replace with window specific bool
     bool create_new_LST;
     size_t length;
+
+    int  recent_files_count = 0;
+    char recent_files[MAX_RECENT_FILES][MAX_PATH];
 };
 
 enum img_type {
@@ -57,3 +61,5 @@ void parse_key      (char *file_data, size_t size, struct config_data *config_da
 void parse_comment  (char *file_data, size_t size, struct config_data *config_data);
 void parse_value    (char *file_data, size_t size, struct config_data *config_data, struct user_info *user_info);
 void store_config_info(struct config_data *config_data, struct user_info *user_info);
+
+void add_recent_file(struct user_info *usr_info, const char* file_path);

@@ -305,6 +305,17 @@ void store_config_info(struct config_data *config, struct user_info *usr_info)
     {   //handle boolean
         usr_info->show_image_stats = (config->val_buffer[0] == '1');
     }
+    if (strncmp(config->key_buffer, "Recent_File_", 12) == 0)
+    {
+        int index = config->key_buffer[12] - '0';
+        if (index >= 0 && index < MAX_RECENT_FILES && strlen(config->val_buffer) > 0)
+        {
+            snprintf(usr_info->recent_files[index], MAX_PATH, "%s", config->val_buffer);
+            if (index >= usr_info->recent_files_count) {
+                usr_info->recent_files_count = index + 1;
+            }
+        }
+    }
 }
 
 //TODO: change to add all lines to a buffer then fwrite entire buffer
@@ -354,7 +365,61 @@ void write_cfg_file(struct user_info* usr_info, char* exe_path)
     snprintf(buffer, 2, "%d", usr_info->show_image_stats);
     fwrite(buffer, strlen(buffer), 1, config_file_ptr);
 
-
+    for (int i = 0; i < usr_info->recent_files_count; i++)
+    {
+        char key_buf[32];
+        snprintf(key_buf, sizeof(key_buf), "\r\nRecent_File_%d=", i);
+        fwrite(key_buf, strlen(key_buf), 1, config_file_ptr);
+        fwrite(usr_info->recent_files[i], strlen(usr_info->recent_files[i]), 1, config_file_ptr);
+    }
 
     fclose(config_file_ptr);
+}
+
+void add_recent_file(struct user_info *usr_info, const char* file_path)
+{
+    if (!file_path || file_path[0] == '\0') {
+        return;
+    }
+
+    // Local copy so shifting the array doesn't corrupt the input
+    // (file_path may point into usr_info->recent_files[])
+    char path_copy[MAX_PATH];
+    snprintf(path_copy, MAX_PATH, "%s", file_path);
+
+    // Check if file already exists in the list
+    int existing_index = -1;
+    for (int i = 0; i < usr_info->recent_files_count; i++) {
+        if (strncmp(usr_info->recent_files[i], path_copy, MAX_PATH) == 0) {
+            existing_index = i;
+            break;
+        }
+    }
+
+    if (existing_index == 0) {
+        // Already at the top, nothing to do
+        return;
+    }
+
+    // Shift entries down to make room at index 0
+    int shift_count;
+    if (existing_index > 0) {
+        // Move existing entry to top: shift entries 0..existing_index-1 down by one
+        shift_count = existing_index;
+    } else {
+        // New entry: shift all entries down, cap at MAX_RECENT_FILES-1
+        shift_count = (usr_info->recent_files_count < MAX_RECENT_FILES)
+                    ? usr_info->recent_files_count
+                    : MAX_RECENT_FILES - 1;
+    }
+
+    for (int i = shift_count; i > 0; i--) {
+        memcpy(usr_info->recent_files[i], usr_info->recent_files[i - 1], MAX_PATH);
+    }
+
+    memcpy(usr_info->recent_files[0], path_copy, MAX_PATH);
+
+    if (existing_index < 0 && usr_info->recent_files_count < MAX_RECENT_FILES) {
+        usr_info->recent_files_count++;
+    }
 }
