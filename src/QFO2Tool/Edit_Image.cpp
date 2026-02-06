@@ -236,12 +236,12 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos,
     bool image_edited = false;
 
     // On mouse button press: begin stroke
-    if (ImGui::GetIO().MouseClicked[0] && ImGui::IsWindowFocused() && cursor_in_bounds) {
+    if (ImGui::GetIO().MouseClicked[0] && ImGui::IsWindowHovered() && cursor_in_bounds) {
         stroke_begin(stroke_state, srfc_ptr);
     }
 
     // While mouse held and stroke is active: paint
-    if (ImGui::GetIO().MouseDown[0] && ImGui::IsWindowFocused() && stroke_state->stroke_active) {
+    if (ImGui::GetIO().MouseDown[0] && ImGui::IsWindowHovered() && stroke_state->stroke_active) {
         if (cursor_in_bounds) {
             image_edited = true;
             surface_paint(My_Variables, srfc_ptr, x, y);
