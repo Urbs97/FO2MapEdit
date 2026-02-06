@@ -68,7 +68,7 @@ struct image_data {
     int height;
     int display_frame_num;
     int display_orient_num;
-    int playback_speed;
+    int playback_speed = 3;
     int alpha_threshold = 5;
     int FRM_size = 0;
 

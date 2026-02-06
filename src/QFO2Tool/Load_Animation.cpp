@@ -233,69 +233,6 @@ void Clear_img_data(image_data* img_data)
     img_data->type = UNK;
 }
 
-void Next_Prev_Buttons(LF* F_Prop, image_data* img_data, shader_info* shaders)
-{
-    ImVec2 origin = ImGui::GetCursorPos();
-    // position buttons based on bottom right edge of window
-    ImVec2 wind_pos = ImGui::GetWindowSize();
-    ImVec2 button_size = { 50, 70 };
-    ImVec2 button_pos;
-    ImVec2 scrl_pos;
-    scrl_pos.x = ImGui::GetScrollX();
-    scrl_pos.y = ImGui::GetScrollY();
-
-    button_pos.x = wind_pos.x + scrl_pos.x - button_size.x - 20;
-    button_pos.y = wind_pos.y + scrl_pos.y - button_size.y - 20;
-
-    ImGui::SetCursorPosX(button_pos.x);
-    ImGui::SetCursorPosY(button_pos.y);
-
-    char* current_file = NULL;
-
-    bool check_file_type = false;
-    if (ImGui::Button("next", button_size) || ImGui::IsKeyPressed(ImGuiKey_Period)) {
-        if (strlen(F_Prop->Next_File)) {
-            Clear_img_data(img_data);
-            current_file    = F_Prop->Next_File;
-            check_file_type = true;
-        } else {
-            //TODO: log to file
-            set_popup_warning(
-                "Found a file type that stb_image can load,\n"
-                "but is not in Supported_Format().\n"
-                "Please report this bug so I can fix it. :)"
-            );
-            printf("File type not officially supported yet, %s : L%d\n", current_file, __LINE__);
-        }
-    }
-
-    ImGui::SetCursorPosX(button_pos.x - button_size.x - 2);
-    ImGui::SetCursorPosY(button_pos.y);
-
-    if (ImGui::Button("prev", button_size) || ImGui::IsKeyPressed(ImGuiKey_Comma)) {
-        if (strlen(F_Prop->Next_File)) {
-            Clear_img_data(img_data);
-            current_file    = F_Prop->Prev_File;
-            check_file_type = true;
-        } else {
-            //TODO: log to file
-            set_popup_warning(
-                "Found a file type that stb_image can load,\n"
-                "but is not in Supported_Format().\n"
-                "Please report this bug so I can fix it. :)"
-            );
-            printf("File type not officially supported yet, %s : L%d\n", current_file, __LINE__);
-        }
-    }
-
-
-
-    ImGui::SetCursorPos(origin);
-
-    if (check_file_type) {
-        File_Type_Check(F_Prop, shaders, img_data, current_file);
-    }
-}
 
 void Gui_Video_Controls(image_data* img_data, img_type type)
 {
@@ -309,14 +246,14 @@ void Gui_Video_Controls(image_data* img_data, img_type type)
 
     //gui video controls
     ImGui::SetCursorPosY(wind_pos.y + scrl_pos.y - 80);
-    const char* speeds[] = { "Pause", "1/4x", "1/2x", "Play", "2x" };
-    ImGui::Combo("Playback Speed", &img_data->playback_speed, speeds, IM_ARRAYSIZE(speeds));
+    const char* speeds[] = { "Pause", "1/4x", "1/2x", "1x", "2x" };
+    ImGui::SliderInt("Playback Speed", &img_data->playback_speed, 0, 4, speeds[img_data->playback_speed]);
 
     if (!type == MSK) { //TODO: this shouldn't be necessary for MSK files (or others)
         //populate directions[] only with existing directions
         const char* directions[6];
         set_directions(directions, img_data);
-        ImGui::Combo("Direction", &img_data->display_orient_num, directions, IM_ARRAYSIZE(directions));
+        ImGui::SliderInt("Direction", &img_data->display_orient_num, 0, 5, directions[img_data->display_orient_num]);
     }
 
     int max_frame = 0;

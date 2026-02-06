@@ -643,7 +643,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
 
             Gui_Video_Controls(img_data, F_Prop->img_data.type);
         }
-        Next_Prev_Buttons(F_Prop, img_data, shaders);
 
     }
     show_popup_warnings();
