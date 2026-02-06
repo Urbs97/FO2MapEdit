@@ -974,6 +974,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                             &My_Variables->Color_Pick,
                             &stroke_state);
 
+                draw_frame_boundary(edit_data, img_pos, F_Prop->edit_MSK);
                 draw_brush_cursor(&stroke_state);
 
                 Gui_Video_Controls(&F_Prop->edit_data, F_Prop->edit_data.type);

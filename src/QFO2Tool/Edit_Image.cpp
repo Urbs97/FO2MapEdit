@@ -327,3 +327,55 @@ void brush_size_handler(variables* My_Variables)
     }
     ImGui::DragFloat("###height", &My_Variables->brush_size.y, 1.0f, 1.0f, FLT_MAX, "Brush Height: %.0f pixels");
 }
+
+void draw_frame_boundary(image_data* edit_data, ImVec2 img_pos, bool edit_MSK)
+{
+    // MSK files: frame == canvas, nothing to dim
+    if (edit_data->type == MSK) return;
+    // Editing MSK layer: covers full canvas
+    if (edit_MSK) return;
+
+    int dir = edit_data->display_orient_num;
+    int num = edit_data->display_frame_num;
+    ANM_Dir* anm_dir = edit_data->ANM_dir;
+    if (!anm_dir) return;
+    if (!anm_dir[dir].frame_box) return;
+    if (num < 0 || num >= anm_dir[dir].num_frames) return;
+
+    rectangle* frame_box = anm_dir[dir].frame_box;
+    rectangle* bbox      = &edit_data->ANM_bounding_box[dir];
+
+    int fx = frame_box[num].x1 - bbox->x1;
+    int fy = frame_box[num].y1 - bbox->y1;
+    int fw = frame_box[num].x2 - frame_box[num].x1;
+    int fh = frame_box[num].y2 - frame_box[num].y1;
+    int cw = bbox->x2 - bbox->x1;
+    int ch = bbox->y2 - bbox->y1;
+
+    // Frame fills entire bounding box — nothing to dim
+    if (fx == 0 && fy == 0 && fw == cw && fh == ch) return;
+
+    float scale = edit_data->scale;
+    // Frame rect in screen space
+    ImVec2 f_min = { img_pos.x + fx * scale, img_pos.y + fy * scale };
+    ImVec2 f_max = { img_pos.x + (fx + fw) * scale, img_pos.y + (fy + fh) * scale };
+    // Canvas rect in screen space
+    ImVec2 c_min = img_pos;
+    ImVec2 c_max = { img_pos.x + cw * scale, img_pos.y + ch * scale };
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImU32 dim_col = IM_COL32(0, 0, 0, 100);
+
+    // Top strip
+    draw_list->AddRectFilled({ c_min.x, c_min.y }, { c_max.x, f_min.y }, dim_col);
+    // Bottom strip
+    draw_list->AddRectFilled({ c_min.x, f_max.y }, { c_max.x, c_max.y }, dim_col);
+    // Left strip (between top and bottom)
+    draw_list->AddRectFilled({ c_min.x, f_min.y }, { f_min.x, f_max.y }, dim_col);
+    // Right strip (between top and bottom)
+    draw_list->AddRectFilled({ f_max.x, f_min.y }, { c_max.x, f_max.y }, dim_col);
+
+    // Outline: black 2px outer, white 1px inner
+    draw_list->AddRect(f_min, f_max, IM_COL32(0, 0, 0, 255), 0.0f, 0, 2.0f);
+    draw_list->AddRect(f_min, f_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, 1.0f);
+}
