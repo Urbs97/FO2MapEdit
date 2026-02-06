@@ -800,7 +800,7 @@ uint8_t* tile_grid(Surface* src, uint8_t* selected, int* e)
 
 
 //called 1st
-bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info)
+bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info, Surface* msk_srfc)
 {
     //TODO: move this to initialize at program start?
     init_IFD();
@@ -832,12 +832,17 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     //don't move this below the image render
     //  thing will overlap weirdly if moved
     static int e;
+    static bool export_msk_tiles = false;
     ImGui::RadioButton("All Tiles",   &e, 0);
     // ImGui::RadioButton("Tile Range",  &e, 1);
     ImGui::RadioButton("Single Tile", &e, 2);
     // if (e == 0) {}
     // else if (e == 1) {}
     // else if (e == 2) {}
+
+    if (msk_srfc) {
+        ImGui::Checkbox("Also export MSK tiles", &export_msk_tiles);
+    }
 
     int num_tiles_x = src->w / MAP_TILE_W;
     int num_tiles_y = src->h / MAP_TILE_H;
@@ -908,11 +913,12 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
         if (ImGui::Button("Cancel")) {
             ImGui::CloseCurrentPopup();
             free(selected);
-            selected       = NULL;
-            save_folder[0] = '\0';
-            save_path[0]   = '\0';
-            overwrite      = false;
-            success        = false;
+            selected         = NULL;
+            save_folder[0]   = '\0';
+            save_path[0]     = '\0';
+            overwrite        = false;
+            success          = false;
+            export_msk_tiles = false;
             ImGui::EndPopup();
             return false;
         }
@@ -934,14 +940,19 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     if (strlen(save_folder) > 0 && success) {
         success = save_tiles_SURFACE(save_folder, save_name, save_path,
                     selected, src, type, usr_info, sv_info, overwrite);
+        if (success && export_msk_tiles && msk_srfc) {
+            success = save_tiles_SURFACE(save_folder, save_name, save_path,
+                        selected, msk_srfc, MSK, usr_info, sv_info, overwrite);
+        }
     }
     if (success) {
         free(selected);
-        selected       = NULL;
-        save_folder[0] = '\0';
-        save_path[0]   = '\0';
-        overwrite      = false;
-        success        = false;
+        selected        = NULL;
+        save_folder[0]  = '\0';
+        save_path[0]    = '\0';
+        overwrite       = false;
+        success         = false;
+        export_msk_tiles = false;
         return false;
     }
 

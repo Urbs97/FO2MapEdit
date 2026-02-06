@@ -669,6 +669,14 @@ void init_MSK_surface(Surface* edit_MSK_srfc, int w, int h)
     edit_MSK_srfc->pitch    = w;
 }
 
+void commit_MSK_edits(Surface* edit_MSK_srfc, image_data* edit_data)
+{
+    if (!edit_MSK_srfc || !edit_MSK_srfc->pxls) return;
+    if (!edit_data->MSK_srfc) return;
+    memcpy(edit_data->MSK_srfc->pxls, edit_MSK_srfc->pxls,
+           edit_MSK_srfc->w * edit_MSK_srfc->h);
+}
+
 //TODO: store image/editing info in the window itself
 void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter)
 {
@@ -749,6 +757,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                         shaders->render_PAL_shader,
                         &shaders->giant_triangle,
                         ed);
+                    commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
                     open_wmap_export = true;
                 }
                 if (open_wmap_export) {
@@ -854,6 +863,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                     }
                 } else {
                     if (ImGui::Button("Disable Editing")) {
+                        commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
                         F_Prop->editing_enabled = false;
                         F_Prop->edit_MSK = false;
                         My_Variables->edit_image_focused = false;
@@ -895,6 +905,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                         }
                     } else {
                         if (ImGui::Button("Cancel Editing Mask...")) {
+                            commit_MSK_edits(&edit_MSK_srfc, ed);
                             F_Prop->edit_MSK = false;
                             ed->type = F_Prop->pre_MSK_type;
                         }
@@ -1335,7 +1346,8 @@ bool save_TILE_popup(LF* F_Prop)
     //TODO: replace ImGui::Begin() with BeginPopupModal()?
     ImGui::Begin("Export FRM Tile", &open_window);
         if (open_window) {
-            open_window = ImDialog_save_TILE_SURFACE(img_data, &usr_info, sv_info);
+            Surface* msk = img_data->MSK_srfc;
+            open_window = ImDialog_save_TILE_SURFACE(img_data, &usr_info, sv_info, msk);
         }
     ImGui::End();
 
