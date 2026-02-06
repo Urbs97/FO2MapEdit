@@ -41,6 +41,8 @@ add_library(QFO2ToolLib
   shader_class.h
   Zoom_Pan.cpp
   Zoom_Pan.h
+  Stroke_State.h
+  Stroke_State.cpp
   platform_io.h
   platform_io.cpp
   timer_functions.h

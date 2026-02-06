@@ -24,5 +24,6 @@
 #include "src/QFO2Tool/timer_functions.cpp"
 #include "src/QFO2Tool/town_map_tiles.cpp"
 #include "src/QFO2Tool/Zoom_Pan.cpp"
+#include "src/QFO2Tool/Stroke_State.cpp"
 #include "src/QFO2Tool/tiles_pattern.cpp"
 #include "src/QFO2Tool/Proto_Files.cpp"

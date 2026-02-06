@@ -43,37 +43,46 @@ ImVec2 display_img_ImGUI(variables* My_Variables, image_data* edit_data)
     return img_pos;
 }
 
+//helper: recomposite the edit image after undo/cancel
+static void recomposite(shader_info* shaders, image_data* edit_data, ANM_Dir* edit_struct,
+                        Surface* edit_srfc, GLuint texture, int dir, int num, uint64_t time_ms)
+{
+    SURFACE_to_texture(edit_srfc, texture, edit_srfc->w, edit_srfc->h, 1);
+    if (edit_data->ANM_dir[dir].frame_data) {
+        animate_SURFACE_to_sub_texture(
+            edit_data, edit_struct[dir].frame_data[num], time_ms
+        );
+    }
+    draw_PAL_to_framebuffer(shaders->FO_pal,
+                            shaders->render_PAL_shader,
+                            &shaders->giant_triangle,
+                            edit_data);
+}
+
 //TODO: maybe pass the dithering choice through?
 void Edit_Image(variables* My_Variables, ImVec2 img_pos,
                 image_data* edit_data, ANM_Dir* edit_struct,
                 Surface* edit_MSK_srfc, bool edit_MSK,
-                bool Palette_Update, uint8_t* Color_Pick) {
+                bool Palette_Update, uint8_t* Color_Pick,
+                StrokeState* stroke_state) {
     shader_info* shaders  = &My_Variables->shaders;
-    //handle zoom and panning for the image, plus update image position every frame
-    zoom_pan(edit_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
 
-
-
-
-
-    ////TODO: use a menu bar for the editor/previewer?
-    //if (ImGui::BeginMenuBar()) {
-    //    if (ImGui::BeginMenu("label")) {
-    //        if (ImGui::MenuItem("Clear All Changes...")) {
-    //            int texture_size = width * height;
-    //            uint8_t* clear = (uint8_t*)malloc(texture_size);
-    //            memset(clear, 0, texture_size);
-    //            glBindTexture(GL_TEXTURE_2D, edit_data->PAL_texture);
-    //            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    //            glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
-    //                width, height,
-    //                0, GL_RED, GL_UNSIGNED_BYTE, clear);
-    //            free(clear);
-    //        }
-    //        ImGui::EndMenu();
-    //    }
-    //    ImGui::EndMenuBar();
-    //}
+    //handle zoom and panning for the image
+    //skip right-click panning during active stroke (right-click cancels instead)
+    if (!stroke_state->stroke_active) {
+        zoom_pan(edit_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
+    } else {
+        //still allow scroll-wheel zoom during stroke
+        float mouse_wheel = ImGui::GetIO().MouseWheel;
+        if (mouse_wheel > 0 && ImGui::GetIO().KeyCtrl && ImGui::IsWindowHovered()) {
+            zoom(1.05, My_Variables->new_mouse_pos, edit_data);
+        } else if (mouse_wheel < 0 && ImGui::GetIO().KeyCtrl && ImGui::IsWindowHovered()) {
+            zoom(0.95, My_Variables->new_mouse_pos, edit_data);
+        }
+        ImVec2 size = ImVec2(edit_data->width * edit_data->scale,
+                             edit_data->height * edit_data->scale);
+        viewport_boundary(edit_data, size);
+    }
 
     //handle frame display by orientation and number
     int num = edit_data->display_frame_num;
@@ -92,8 +101,6 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos,
         edit_srfc = edit_MSK_srfc;
     }
 
-
-
     if (!edit_data->ANM_dir) {
         ImGui::Text("No ANM_dir");
         return;
@@ -103,68 +110,140 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos,
         return;
     }
 
+    // Determine which surface and texture we're editing
+    Surface* srfc_ptr = edit_srfc;
+    GLuint texture    = edit_data->FRM_texture;
+    if (edit_MSK) {
+        srfc_ptr = edit_MSK_srfc;
+        texture  = edit_data->MSK_texture;
+    }
 
+    // --- Compute brush cursor position (always when window is hovered) ---
+    stroke_state->cursor_visible = false;
+
+    // Coordinate calculation (shared by cursor preview and painting)
+    ImVec2 mouse_pos = My_Variables->new_mouse_pos;
+    int x_offset;
+    int y_offset;
+    if (edit_data->type == MSK) {
+        x_offset = 0;
+        y_offset = 0;
+    } else {
+        x_offset = edit_data->ANM_dir[dir].frame_box[num].x1 - edit_data->ANM_bounding_box[dir].x1;
+        y_offset = edit_data->ANM_dir[dir].frame_box[num].y1 - edit_data->ANM_bounding_box[dir].y1;
+    }
+
+    float scale = edit_data->scale;
+    ImVec2 img_offset = {
+        (mouse_pos.x - img_pos.x)/scale,
+        (mouse_pos.y - img_pos.y)/scale,
+    };
+
+    ImVec2 sub_image_offset = {
+        (img_offset.x - x_offset),
+        (img_offset.y - y_offset),
+    };
+
+    float x, y;
+    if (edit_MSK) {
+        x = img_offset.x;
+        y = img_offset.y;
+    } else {
+        x = sub_image_offset.x;
+        y = sub_image_offset.y;
+    }
+
+    bool cursor_in_bounds = (0 <= x && x < edit_srfc->w) && (0 <= y && y < edit_srfc->h);
+
+    // Update brush cursor when hovering over the image
+    if (ImGui::IsWindowHovered() && cursor_in_bounds) {
+        float brush_w = My_Variables->brush_size.x;
+        float brush_h = My_Variables->brush_size.y;
+
+        // Clamp brush size to surface
+        if (brush_w > edit_srfc->w) brush_w = edit_srfc->w;
+        if (brush_h > edit_srfc->h) brush_h = edit_srfc->h;
+
+        // Compute brush center in image space (same clamping as surface_paint)
+        float bx = x;
+        float by = y;
+        if ((bx + brush_w / 2) > edit_srfc->w) bx = edit_srfc->w - brush_w / 2;
+        if ((bx - brush_w / 2) < 0)            bx = brush_w / 2;
+        if ((by + brush_h / 2) > edit_srfc->h) by = edit_srfc->h - brush_h / 2;
+        if ((by - brush_h / 2) < 0)            by = brush_h / 2;
+
+        // Brush top-left in image space
+        float brush_x0 = bx - brush_w / 2;
+        float brush_y0 = by - brush_h / 2;
+
+        // Convert from image space back to screen space
+        // image_x = (screen_x - img_pos.x)/scale - x_offset  (for non-MSK)
+        // screen_x = (image_x + x_offset) * scale + img_pos.x
+        float off_x = edit_MSK ? 0 : (float)x_offset;
+        float off_y = edit_MSK ? 0 : (float)y_offset;
+
+        stroke_state->cursor_min.x = (brush_x0 + off_x) * scale + img_pos.x;
+        stroke_state->cursor_min.y = (brush_y0 + off_y) * scale + img_pos.y;
+        stroke_state->cursor_max.x = (brush_x0 + brush_w + off_x) * scale + img_pos.x;
+        stroke_state->cursor_max.y = (brush_y0 + brush_h + off_y) * scale + img_pos.y;
+        stroke_state->cursor_visible = true;
+    }
+
+    // --- Handle stroke cancel (right-click or Escape during active stroke) ---
+    if (stroke_state->stroke_active) {
+        bool cancel = false;
+        if (ImGui::GetIO().MouseClicked[1]) {
+            cancel = true;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+            cancel = true;
+        }
+        if (cancel) {
+            stroke_cancel(stroke_state);
+            recomposite(shaders, edit_data, edit_struct, srfc_ptr, texture, dir, num, My_Variables->CurrentTime_ms);
+            return;
+        }
+    }
+
+    // --- Handle Ctrl+Z undo (only when no active stroke) ---
+    if (!stroke_state->stroke_active && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z) && ImGui::IsWindowFocused()) {
+        if (stroke_undo(stroke_state)) {
+            recomposite(shaders, edit_data, edit_struct, srfc_ptr, texture, dir, num, My_Variables->CurrentTime_ms);
+            return;
+        }
+    }
+
+    // --- Handle Ctrl+Y redo (only when no active stroke) ---
+    if (!stroke_state->stroke_active && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y) && ImGui::IsWindowFocused()) {
+        if (stroke_redo(stroke_state)) {
+            recomposite(shaders, edit_data, edit_struct, srfc_ptr, texture, dir, num, My_Variables->CurrentTime_ms);
+            return;
+        }
+    }
+
+    // --- Stroke lifecycle + painting ---
     bool image_edited = false;
-    if (ImGui::GetIO().MouseDown[0] && ImGui::IsWindowFocused()) {
 
+    // On mouse button press: begin stroke
+    if (ImGui::GetIO().MouseClicked[0] && ImGui::IsWindowFocused() && cursor_in_bounds) {
+        stroke_begin(stroke_state, srfc_ptr);
+    }
 
-
-        ImVec2 mouse_pos  = My_Variables->new_mouse_pos;
-        int x_offset;
-        int y_offset;
-        if (edit_data->type == MSK) {
-            x_offset = 0;
-            y_offset = 0;
-        } else {
-            x_offset = edit_data->ANM_dir[dir].frame_box[num].x1 - edit_data->ANM_bounding_box[dir].x1;
-            y_offset = edit_data->ANM_dir[dir].frame_box[num].y1 - edit_data->ANM_bounding_box[dir].y1;
-        }
-
-        float scale = edit_data->scale;
-        ImVec2 img_offset = {
-            (mouse_pos.x - img_pos.x)/scale,
-            (mouse_pos.y - img_pos.y)/scale,
-        };
-
-        ImVec2 sub_image_offset = {
-            (img_offset.x - x_offset),
-            (img_offset.y - y_offset),
-        };
-
-        float x, y;
-        if (edit_MSK) {
-            x = img_offset.x;
-            y = img_offset.y;
-        } else {
-            x = (sub_image_offset.x);
-            y = (sub_image_offset.y);
-        }
-
-        if ((0 <= x && x < edit_srfc->w) && (0 <= y && y < edit_srfc->h)) {
-
+    // While mouse held and stroke is active: paint
+    if (ImGui::GetIO().MouseDown[0] && ImGui::IsWindowFocused() && stroke_state->stroke_active) {
+        if (cursor_in_bounds) {
             image_edited = true;
-
-            Surface* srfc_ptr = edit_srfc;
-            GLuint texture    = edit_data->FRM_texture;
-            if (edit_MSK) {
-                srfc_ptr = edit_MSK_srfc;
-                texture  = edit_data->MSK_texture;
-            }
-            //paint MSK surface
             surface_paint(My_Variables, srfc_ptr, x, y);
-            //MSK & FRM are aligned to 1-byte
             SURFACE_to_texture(srfc_ptr, texture, srfc_ptr->w, srfc_ptr->h, 1);
         }
     }
 
+    // On mouse release: commit stroke
+    if (ImGui::GetIO().MouseReleased[0] && stroke_state->stroke_active) {
+        stroke_commit(stroke_state);
+    }
 
     //Converts unpalettized image to texture for display
-    //TODO:
-    //***this no longer works as described above
-    //      now it takes 3 textures (MSK, PAL, FRM)
-    //      and draws them all onto edit_data.framebuffer
-    //      also it only does this in draw_PAL_to_framebuffer()
-    //      which also needs to be renamed
     if (Palette_Update || image_edited) {
         if (edit_data->ANM_dir[dir].frame_data) {
             animate_SURFACE_to_sub_texture(
@@ -173,8 +252,6 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos,
             );
         }
 
-        //TODO: rename?
-        //      this takes 3 textures and draws them into 1 framebuffer
         draw_PAL_to_framebuffer(shaders->FO_pal,
                                 shaders->render_PAL_shader,
                                 &shaders->giant_triangle,
@@ -183,8 +260,19 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos,
 
 }
 
+void draw_brush_cursor(StrokeState* stroke_state)
+{
+    if (!stroke_state->cursor_visible) {
+        return;
+    }
+    ImDrawList* draw_list = ImGui::GetForegroundDrawList();
+    draw_list->AddRect(stroke_state->cursor_min, stroke_state->cursor_max,
+                       IM_COL32(0, 0, 0, 255), 0.0f, 0, 2.0f);
+    draw_list->AddRect(stroke_state->cursor_min, stroke_state->cursor_max,
+                       IM_COL32(255, 255, 255, 255), 0.0f, 0, 1.0f);
+}
+
 //paint surfaces for both MSK and FRM items (possibly also PAL? or other 32bit surfaces?)
-//TODO: need to have a brush shape in place of (or on top of) the mouse cursor when painting
 //TODO: repack all the x&y variables into vectors of appropriate type (int/float)
 void surface_paint(variables* My_Variables, Surface* dst, float x, float y)
 {
@@ -217,7 +305,6 @@ void surface_paint(variables* My_Variables, Surface* dst, float x, float y)
         y = brush_h / 2;
     }
 
-    //TODO: implement undo tree
     //further clamp the brush to prevent overflow
     //TODO: this is a lazy implementation that doesn't allow
     //      the brush to shrink in size as it goes over the edge

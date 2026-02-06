@@ -60,6 +60,7 @@ bool show_demo_window = false;
 #include "Preview_Tiles.h"
 #include "MSK_Convert.h"
 #include "Edit_Animation.h"
+#include "Stroke_State.h"
 
 #include "timer_functions.h"
 #include "ImGui_Warning.h"
@@ -99,9 +100,12 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
+// Set to true when edit mode is active — prevents Escape from closing the app
+static bool g_edit_mode_active = false;
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS && !g_edit_mode_active) {
         glfwSetWindowShouldClose(window, true);
     }
 }
@@ -490,6 +494,9 @@ int main(int argc, char** argv)
             }
         }
 
+        // Update global edit mode flag so Escape key doesn't close app during editing
+        g_edit_mode_active = My_Variables.edit_image_focused;
+
         // Rendering
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -673,6 +680,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
     static ANM_Dir edit_struct[6];
     static Surface edit_MSK_srfc;
     static bool edit_msk_copied = false;
+    static StrokeState stroke_state;
 
     std::string a = F_Prop->c_name;
     char b[3];
@@ -865,6 +873,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                 }
 
                 if (ImGui::Button("Reset Image")) {
+                    stroke_state_cleanup(&stroke_state);
                     int num = ed->display_frame_num;
                     int dir = ed->display_orient_num;
                     Surface* edit_srfc;
@@ -962,7 +971,10 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                             &F_Prop->edit_data, edit_struct,
                             &edit_MSK_srfc, F_Prop->edit_MSK,
                             My_Variables->Palette_Update,
-                            &My_Variables->Color_Pick);
+                            &My_Variables->Color_Pick,
+                            &stroke_state);
+
+                draw_brush_cursor(&stroke_state);
 
                 Gui_Video_Controls(&F_Prop->edit_data, F_Prop->edit_data.type);
             }
@@ -997,6 +1009,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
 
     // Cleanup when editing is disabled
     if (!F_Prop->editing_enabled) {
+        stroke_state_cleanup(&stroke_state);
         free(edit_MSK_srfc.pxls);
         edit_MSK_srfc.pxls = NULL;
         for (int i = 0; i < 6; i++)
