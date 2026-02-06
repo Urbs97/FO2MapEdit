@@ -18,6 +18,7 @@ struct variables {
     ImVec2 uv_max     = ImVec2(1.0f, 1.0f);                 // Bottom-right
     bool link_brush_sizes = true;
     ImVec2 brush_size{ 10, 10 };
+    bool pixel_perfect = false;
     uint8_t Color_Pick = 230;
 
     int color_match_algo = 0;   //0 used to be SDL, is now Euclidian_Distance

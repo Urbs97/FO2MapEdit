@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "Edit_Image.h"
 #include "display_FRM_OpenGL.h"
@@ -153,28 +154,38 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos,
         y = sub_image_offset.y;
     }
 
+    if (My_Variables->pixel_perfect) {
+        x = floorf(x);
+        y = floorf(y);
+    }
+
     bool cursor_in_bounds = (0 <= x && x < edit_srfc->w) && (0 <= y && y < edit_srfc->h);
 
     // Update brush cursor when hovering over the image
     if (ImGui::IsWindowHovered() && cursor_in_bounds) {
-        float brush_w = My_Variables->brush_size.x;
-        float brush_h = My_Variables->brush_size.y;
+        float brush_w = My_Variables->pixel_perfect ? 1.0f : My_Variables->brush_size.x;
+        float brush_h = My_Variables->pixel_perfect ? 1.0f : My_Variables->brush_size.y;
 
         // Clamp brush size to surface
         if (brush_w > edit_srfc->w) brush_w = edit_srfc->w;
         if (brush_h > edit_srfc->h) brush_h = edit_srfc->h;
 
-        // Compute brush center in image space (same clamping as surface_paint)
-        float bx = x;
-        float by = y;
-        if ((bx + brush_w / 2) > edit_srfc->w) bx = edit_srfc->w - brush_w / 2;
-        if ((bx - brush_w / 2) < 0)            bx = brush_w / 2;
-        if ((by + brush_h / 2) > edit_srfc->h) by = edit_srfc->h - brush_h / 2;
-        if ((by - brush_h / 2) < 0)            by = brush_h / 2;
-
-        // Brush top-left in image space
-        float brush_x0 = bx - brush_w / 2;
-        float brush_y0 = by - brush_h / 2;
+        float brush_x0, brush_y0;
+        if (My_Variables->pixel_perfect) {
+            // Pixel perfect: snapped coordinate is the top-left of the pixel cell
+            brush_x0 = x;
+            brush_y0 = y;
+        } else {
+            // Normal mode: center brush on cursor with edge clamping
+            float bx = x;
+            float by = y;
+            if ((bx + brush_w / 2) > edit_srfc->w) bx = edit_srfc->w - brush_w / 2;
+            if ((bx - brush_w / 2) < 0)            bx = brush_w / 2;
+            if ((by + brush_h / 2) > edit_srfc->h) by = edit_srfc->h - brush_h / 2;
+            if ((by - brush_h / 2) < 0)            by = brush_h / 2;
+            brush_x0 = bx - brush_w / 2;
+            brush_y0 = by - brush_h / 2;
+        }
 
         // Convert from image space back to screen space
         // image_x = (screen_x - img_pos.x)/scale - x_offset  (for non-MSK)
@@ -277,40 +288,50 @@ void draw_brush_cursor(StrokeState* stroke_state)
 void surface_paint(variables* My_Variables, Surface* dst, float x, float y)
 {
     int color_pick = My_Variables->Color_Pick;
-    float brush_w  = My_Variables->brush_size.x;
-    float brush_h  = My_Variables->brush_size.y;
+    float brush_w  = My_Variables->pixel_perfect ? 1.0f : My_Variables->brush_size.x;
+    float brush_h  = My_Variables->pixel_perfect ? 1.0f : My_Variables->brush_size.y;
     int brush_size = brush_h * brush_w;
 
     int w = dst->w;
     int h = dst->h;
 
-    //clamp brush size to within surface
-    if (brush_w > w) {
-        brush_w = w;
-    }
-    if (brush_h > h) {
-        brush_h = h;
-    }
-    //clamp brush position to edge
-    if ((x + brush_w / 2) > w) {
-        x = w - brush_w / 2;
-    }
-    if ((x - brush_w / 2) < 0) {
-        x = brush_w /2;
-    }
-    if ((y + brush_h / 2) > h) {
-        y = h - brush_h / 2;
-    }
-    if ((y - brush_h / 2) < 0) {
-        y = brush_h / 2;
-    }
+    if (My_Variables->pixel_perfect) {
+        // Pixel perfect: snapped coordinate is the top-left of the pixel cell
+        x = floorf(x);
+        y = floorf(y);
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+        if (x >= w) x = w - 1;
+        if (y >= h) y = h - 1;
+    } else {
+        //clamp brush size to within surface
+        if (brush_w > w) {
+            brush_w = w;
+        }
+        if (brush_h > h) {
+            brush_h = h;
+        }
+        //clamp brush position to edge
+        if ((x + brush_w / 2) > w) {
+            x = w - brush_w / 2;
+        }
+        if ((x - brush_w / 2) < 0) {
+            x = brush_w /2;
+        }
+        if ((y + brush_h / 2) > h) {
+            y = h - brush_h / 2;
+        }
+        if ((y - brush_h / 2) < 0) {
+            y = brush_h / 2;
+        }
 
-    //further clamp the brush to prevent overflow
-    //TODO: this is a lazy implementation that doesn't allow
-    //      the brush to shrink in size as it goes over the edge
-    //      or rather, to clip the brush so it doesn't paint off the edge
-    x -= brush_w/2;
-    y -= brush_h/2;
+        //further clamp the brush to prevent overflow
+        //TODO: this is a lazy implementation that doesn't allow
+        //      the brush to shrink in size as it goes over the edge
+        //      or rather, to clip the brush so it doesn't paint off the edge
+        x -= brush_w/2;
+        y -= brush_h/2;
+    }
 
     Rect dst_rect = {(int)x, (int)y, (int)brush_w, (int)brush_h};
     PaintSurface(dst, dst_rect, color_pick);
@@ -318,6 +339,9 @@ void surface_paint(variables* My_Variables, Surface* dst, float x, float y)
 
 void brush_size_handler(variables* My_Variables)
 {
+    ImGui::Checkbox("Pixel Perfect", &My_Variables->pixel_perfect);
+
+    ImGui::BeginDisabled(My_Variables->pixel_perfect);
     ImGui::DragFloat("###width", &My_Variables->brush_size.x, 1.0f, 1.0f, FLT_MAX, "Brush Width: %.0f pixels");
     ImGui::SameLine();
     ImGui::Checkbox("Link", &My_Variables->link_brush_sizes);
@@ -326,6 +350,7 @@ void brush_size_handler(variables* My_Variables)
         My_Variables->brush_size.y = My_Variables->brush_size.x;
     }
     ImGui::DragFloat("###height", &My_Variables->brush_size.y, 1.0f, 1.0f, FLT_MAX, "Brush Height: %.0f pixels");
+    ImGui::EndDisabled();
 }
 
 void draw_frame_boundary(image_data* edit_data, ImVec2 img_pos, bool edit_MSK)
@@ -378,4 +403,64 @@ void draw_frame_boundary(image_data* edit_data, ImVec2 img_pos, bool edit_MSK)
     // Outline: black 2px outer, white 1px inner
     draw_list->AddRect(f_min, f_max, IM_COL32(0, 0, 0, 255), 0.0f, 0, 2.0f);
     draw_list->AddRect(f_min, f_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, 1.0f);
+}
+
+void draw_pixel_grid(image_data* edit_data, ImVec2 img_pos, bool edit_MSK)
+{
+    float scale = edit_data->scale;
+    if (scale < 4.0f) return;
+
+    int dir = edit_data->display_orient_num;
+    int img_w, img_h;
+    if (edit_data->type == MSK || edit_MSK) {
+        img_w = edit_data->width;
+        img_h = edit_data->height;
+    } else {
+        img_w = edit_data->ANM_bounding_box[dir].x2 - edit_data->ANM_bounding_box[dir].x1;
+        img_h = edit_data->ANM_bounding_box[dir].y2 - edit_data->ANM_bounding_box[dir].y1;
+    }
+
+    // Image rect in screen space
+    ImVec2 img_min = img_pos;
+    ImVec2 img_max = { img_pos.x + img_w * scale, img_pos.y + img_h * scale };
+
+    // Clip to visible window region
+    ImVec2 win_min = ImGui::GetWindowPos();
+    ImVec2 win_size = ImGui::GetWindowSize();
+    ImVec2 win_max = { win_min.x + win_size.x, win_min.y + win_size.y };
+
+    ImVec2 vis_min = { fmaxf(img_min.x, win_min.x), fmaxf(img_min.y, win_min.y) };
+    ImVec2 vis_max = { fminf(img_max.x, win_max.x), fminf(img_max.y, win_max.y) };
+
+    if (vis_min.x >= vis_max.x || vis_min.y >= vis_max.y) return;
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    draw_list->PushClipRect(vis_min, vis_max, true);
+
+    ImU32 grid_col = IM_COL32(128, 128, 128, 60);
+
+    // First/last visible pixel indices
+    int first_col = (int)floorf((vis_min.x - img_pos.x) / scale);
+    int last_col  = (int)ceilf((vis_max.x - img_pos.x) / scale);
+    int first_row = (int)floorf((vis_min.y - img_pos.y) / scale);
+    int last_row  = (int)ceilf((vis_max.y - img_pos.y) / scale);
+
+    if (first_col < 0) first_col = 0;
+    if (last_col > img_w) last_col = img_w;
+    if (first_row < 0) first_row = 0;
+    if (last_row > img_h) last_row = img_h;
+
+    // Vertical lines (pixel column boundaries)
+    for (int col = first_col; col <= last_col; col++) {
+        float sx = img_pos.x + col * scale;
+        draw_list->AddLine({ sx, vis_min.y }, { sx, vis_max.y }, grid_col);
+    }
+
+    // Horizontal lines (pixel row boundaries)
+    for (int row = first_row; row <= last_row; row++) {
+        float sy = img_pos.y + row * scale;
+        draw_list->AddLine({ vis_min.x, sy }, { vis_max.x, sy }, grid_col);
+    }
+
+    draw_list->PopClipRect();
 }
