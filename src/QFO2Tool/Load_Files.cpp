@@ -725,7 +725,7 @@ bool ImDialog_load_files(LF* F_Prop, image_data *img_data, user_info *usr_info, 
             "}";
 
         char* folder = usr_info->default_load_path;
-        ifd::FileDialog::Instance().Open("FileLoadDialog", "Load File", ext_filter, folder);
+        ifd::FileDialog::Instance().Open("FileLoadDialog", "Load File", ext_filter, false, folder);
     }
 
     if (ifd::FileDialog::Instance().IsDone("FileLoadDialog")) {
