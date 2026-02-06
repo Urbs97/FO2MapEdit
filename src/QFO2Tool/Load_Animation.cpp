@@ -244,73 +244,69 @@ void Gui_Video_Controls(image_data* img_data, img_type type)
     //scrl_pos.x = ImGui::GetScrollX();
     scrl_pos.y = ImGui::GetScrollY();
 
-    //gui video controls
-    ImGui::SetCursorPosY(wind_pos.y + scrl_pos.y - 80);
-    const char* speeds[] = { "Pause", "1/4x", "1/2x", "1x", "2x" };
-    ImGui::SliderInt("Playback Speed", &img_data->playback_speed, 0, 4, speeds[img_data->playback_speed]);
-
-    if (!type == MSK) { //TODO: this shouldn't be necessary for MSK files (or others)
-        //populate directions[] only with existing directions
-        const char* directions[6];
-        set_directions(directions, img_data);
-        ImGui::SliderInt("Direction", &img_data->display_orient_num, 0, 5, directions[img_data->display_orient_num]);
+    //check if this image has multiple frames or directions
+    int num_frames = img_data->ANM_dir[img_data->display_orient_num].num_frames;
+    bool has_multiple_dirs = false;
+    for (int i = 0; i < 6; i++) {
+        if (img_data->ANM_dir[i].num_frames > 0 && i != img_data->display_orient_num) {
+            has_multiple_dirs = true;
+            break;
+        }
     }
+    bool is_animation = (num_frames > 1) || has_multiple_dirs;
 
     int max_frame = 0;
-    if (ImGui::IsWindowFocused()) {
-        if (ImGui::IsKeyPressed(ImGuiKey_Space)) {
-            static int last_selected_speed = 3;         //3 is index value for 1.0x speed in playback_speeds[]
-            if (img_data->playback_speed == 0) {
-                img_data->playback_speed = last_selected_speed;
+    if (is_animation) {
+        //gui video controls
+        ImGui::SetCursorPosY(wind_pos.y + scrl_pos.y - 80);
+        const char* speeds[] = { "Pause", "1/4x", "1/2x", "1x", "2x" };
+        ImGui::SliderInt("Playback Speed", &img_data->playback_speed, 0, 4, speeds[img_data->playback_speed]);
+
+        if (has_multiple_dirs) {
+            const char* directions[6];
+            set_directions(directions, img_data);
+            ImGui::SliderInt("Direction", &img_data->display_orient_num, 0, 5, directions[img_data->display_orient_num]);
+        }
+
+        if (ImGui::IsWindowFocused()) {
+            if (ImGui::IsKeyPressed(ImGuiKey_Space)) {
+                static int last_selected_speed = 3;         //3 is index value for 1.0x speed in playback_speeds[]
+                if (img_data->playback_speed == 0) {
+                    img_data->playback_speed = last_selected_speed;
+                }
+                else {
+                    last_selected_speed = img_data->playback_speed;
+                    img_data->playback_speed = 0;
+                }
             }
-            else {
-                last_selected_speed = img_data->playback_speed;
-                img_data->playback_speed = 0;
+            if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) {
+                img_data->display_frame_num++;
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) {
+                img_data->display_frame_num--;
+            }
+            if (has_multiple_dirs) {
+                if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
+                    img_data->display_orient_num++;
+                    if (img_data->display_orient_num > 5) {
+                        img_data->display_orient_num = 0;
+                    }
+                }
+                if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
+                    img_data->display_orient_num--;
+                    if (img_data->display_orient_num < 0) {
+                        img_data->display_orient_num = 5;
+                    }
+                }
             }
         }
-        if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) {
-            img_data->display_frame_num++;
+
+        if (num_frames > 0) {
+            max_frame = num_frames - 1;
         }
-        if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) {
-            img_data->display_frame_num--;
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
-            img_data->display_orient_num++;
-            if (img_data->display_orient_num > 5) {
-                img_data->display_orient_num = 0;
-            }
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
-            img_data->display_orient_num--;
-            if (img_data->display_orient_num < 0) {
-                img_data->display_orient_num = 5;
-            }
-        }
+        ImGui::SliderInt("Frame Number", &img_data->display_frame_num, 0, max_frame, NULL);
     }
 
-    if (type == OTHER) {
-        if (img_data->ANM_dir[img_data->display_orient_num].num_frames > 0) {
-            max_frame = img_data->ANM_dir[img_data->display_orient_num].num_frames - 1;
-        }
-        else {
-            img_data->display_frame_num = 0;
-            max_frame = 0;
-        }
-        ImGui::SliderInt("Frame Number", &img_data->display_frame_num, 0, max_frame, NULL);
-    }
-    else if (type == FRM) {
-        // if (img_data->FRM_dir[img_data->display_orient_num].num_frames > 0) {
-        //     max_frame = img_data->FRM_dir[img_data->display_orient_num].num_frames - 1;
-        // }
-        if (img_data->ANM_dir[img_data->display_orient_num].num_frames > 0) {
-            max_frame = img_data->ANM_dir[img_data->display_orient_num].num_frames - 1;
-        }
-        else {
-            img_data->display_frame_num = 0;
-            max_frame = 0;
-        }
-        ImGui::SliderInt("Frame Number", &img_data->display_frame_num, 0, max_frame, NULL);
-    }
     if (img_data->display_frame_num > max_frame) {
         img_data->display_frame_num = max_frame;
     }
