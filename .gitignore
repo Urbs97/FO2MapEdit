@@ -47,3 +47,4 @@ Makefile
 /src/resources/BARREL.FRM
 /src/resources/HANPWRAB.FRM
 /x64
+.cache/clangd/index
