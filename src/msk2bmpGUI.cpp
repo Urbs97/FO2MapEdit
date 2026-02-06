@@ -82,12 +82,13 @@ void Show_Palette_Window(struct variables *My_Variables);
 static void ShowMainMenuBar(int* counter, struct variables* My_Variables);
 void Open_Files(struct user_info* usr_info, int* counter, Palette* pxlFMT, struct variables* My_Variables);
 
-void main_window_bttns(variables* My_Variables, int index, int* counter);
-void contextual_buttons(variables* My_Variables, int window_number_focus);
+void main_window_bttns(variables* My_Variables, int* counter);
 
 
 void Show_MSK_Palette_Window(variables* My_Variables);
-bool popup_save_menu(bool* open_window, int* save_type, bool* single_dir);
+bool save_FRM_popup(LF* F_Prop);
+bool save_MSK_popup(LF* F_Prop);
+bool save_TILE_popup(LF* F_Prop);
 
 void dropped_files_callback(GLFWwindow* window, int count, const char** paths);
 
@@ -414,12 +415,7 @@ int main(int argc, char** argv)
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
 #pragma region buttons
-            main_window_bttns(&My_Variables, My_Variables.window_number_focus, &counter);
-            //contextual buttons for each image slot
-            if (My_Variables.window_number_focus >= 0)
-            {
-                contextual_buttons(&My_Variables, My_Variables.window_number_focus);
-            }
+            main_window_bttns(&My_Variables, &counter);
 
             //set contextual menu for main window
             //when file is dropped on window
@@ -611,6 +607,103 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
         ImGui::DragFloat("##Zoom", &img_data->scale, 0.1f, 0.0f, 10.0f, "Zoom: %%%.2fx", 0);
         ImGui::PopItemWidth();
 
+        // --- Contextual toolbar for this preview window ---
+        {
+            Palette* pxlFMT_FO_Pal = My_Variables->FO_Palette;
+            image_data* edit_data  = &F_Prop->edit_data;
+
+            bool alpha_off = checkbox_handler("Alpha Enabled", &F_Prop->alpha);
+            const char* items[] = { "Euclidan Color Matching", "Not Implemented..." };
+            ImGui::SameLine();
+            ImGui::Combo("##color_match", &My_Variables->color_match_algo, items, IM_ARRAYSIZE(items));
+
+            if (F_Prop->image_is_tileable) {
+                if (ImGui::Button("Color Match & Preview Tiles")) {
+                    prep_image_SURFACE(
+                        F_Prop,
+                        pxlFMT_FO_Pal,
+                        My_Variables->color_match_algo,
+                        &F_Prop->preview_tiles_window, alpha_off
+                    );
+                    F_Prop->show_image_render = false;
+                }
+                checkbox_handler("Show Map Tiles", &F_Prop->show_squares);
+                ImGui::SameLine();
+                checkbox_handler("Show Town Tiles", &F_Prop->show_tiles);
+            }
+
+            if (img_data->type == MSK) {
+                if (ImGui::Button("Edit MSK file")) {
+                    prep_image_SURFACE(
+                        F_Prop,
+                        pxlFMT_FO_Pal,
+                        My_Variables->color_match_algo,
+                        &F_Prop->edit_image_window, alpha_off
+                    );
+                    F_Prop->edit_MSK = true;
+                }
+            } else {
+                if (ImGui::Button("Color Match and Edit")) {
+                    for (int i = 0; i < 6; i++) {
+                        if (!edit_data->save_ptr) {
+                            break;
+                        }
+                        if (edit_data->save_ptr[i].frame_data) {
+                            free(edit_data->save_ptr[i].frame_data);
+                            edit_data->save_ptr[i].frame_data = NULL;
+                        }
+                    }
+
+                    prep_image_SURFACE(
+                        F_Prop,
+                        pxlFMT_FO_Pal,
+                        My_Variables->color_match_algo,
+                        &F_Prop->edit_image_window, alpha_off
+                    );
+                }
+
+                if (ImGui::Button("Convert Image to MSK")) {
+                    Convert_SURFACE_to_MSK(
+                        F_Prop->img_data.ANM_dir[0].frame_data[0],
+                        &F_Prop->img_data, 0);
+                    prep_image_SURFACE(
+                        F_Prop,
+                        pxlFMT_FO_Pal,
+                        My_Variables->color_match_algo,
+                        &F_Prop->edit_image_window, alpha_off
+                    );
+                }
+            }
+
+            if (img_data->type == OTHER && img_data->ANM_dir[img_data->display_orient_num].num_frames > 1) {
+                if (ImGui::Button("Convert Animation to FRM for Editing")) {
+                    F_Prop->show_image_render = crop_animation_SURFACE(img_data, edit_data, My_Variables->FO_Palette, 0, &My_Variables->shaders);
+                }
+            }
+
+            if (!F_Prop->img_data.ANM_dir) ImGui::BeginDisabled();
+            {
+                char png_popup_id[32];
+                snprintf(png_popup_id, sizeof(png_popup_id), "save_as_PNG##%02d", counter);
+                if (ImGui::Button("Save as PNG")) {
+                    ImGui::OpenPopup(png_popup_id);
+                }
+                bool open = true;
+                if (ImGui::BeginPopupModal(png_popup_id, &open)) {
+                    open = save_PNG_popup_INTERNAL(img_data, &usr_info);
+                    ImGui::EndPopup();
+                }
+            }
+            if (!F_Prop->img_data.ANM_dir) ImGui::EndDisabled();
+
+            if (!F_Prop->edit_image_window) {
+                if (ImGui::Button("Open Edit Window")) {
+                    F_Prop->edit_image_window = true;
+                }
+            }
+
+            ImGui::Separator();
+        }
 
         //warn if wrong size for map tile
         if (wrong_size) {
@@ -959,6 +1052,75 @@ void Edit_Image_Window(variables *My_Variables, LF* F_Prop, struct user_info* us
                     &My_Variables->Color_Pick);
 
         Gui_Video_Controls(&F_Prop->edit_data, F_Prop->edit_data.type);
+
+        // --- Contextual toolbar for this edit window ---
+        ImGui::Separator();
+
+        //loads MSK file to current slot
+        ImDialog_load_MSK(F_Prop, edit_data, usr_info, &My_Variables->shaders);
+
+        int width =  edit_data->width;
+        int height = edit_data->height;
+
+        if (!F_Prop->edit_MSK) {
+            if (edit_data->MSK_srfc) {
+                if (ImGui::Button("Edit MSK Layer...")) {
+                    F_Prop->edit_MSK = true;
+                    F_Prop->pre_MSK_type = edit_data->type;
+                    edit_data->type = MSK;
+                }
+            } else {
+                if (ImGui::Button("Create MSK Layer...")) {
+                    F_Prop->edit_MSK = true;
+                    F_Prop->pre_MSK_type = edit_data->type;
+                    edit_data->type = MSK;
+
+                    edit_data->MSK_srfc = Create_8Bit_Surface(width, height, NULL);
+                    edit_data->MSK_texture = init_texture(
+                        edit_data->MSK_srfc,
+                        edit_data->MSK_srfc->w,
+                        edit_data->MSK_srfc->h,
+                        MSK
+                    );
+                }
+            }
+        } else {
+            if (ImGui::Button("Cancel Editing Mask...")) {
+                F_Prop->edit_MSK = false;
+                edit_data->type = F_Prop->pre_MSK_type;
+            }
+        }
+
+        if (ImGui::Button("Cancel Editing...")) {
+            F_Prop->edit_MSK = false;
+            F_Prop->edit_image_window = false;
+            My_Variables->edit_image_focused = false;
+        }
+
+        if (ImGui::Button("Close Edit Window")) {
+            F_Prop->edit_image_window = false;
+        }
+
+        {
+            static bool open_save = false;
+            bool disabled = (F_Prop->edit_data.ANM_dir) ? false : true;
+            if (disabled) ImGui::BeginDisabled();
+            if (ImGui::Button("Save")) {
+                open_save = true;
+            }
+            if (open_save) {
+                if (edit_data->type == FRM) {
+                    open_save = save_FRM_popup(F_Prop);
+                } else
+                if (edit_data->type == MSK) {
+                    open_save = save_MSK_popup(F_Prop);
+                } else
+                if (edit_data->type == TILE) {
+                    open_save = save_TILE_popup(F_Prop);
+                }
+            }
+            if (disabled) ImGui::EndDisabled();
+        }
     }
 
     show_popup_warnings();
@@ -1001,9 +1163,9 @@ static void ShowMainMenuBar(int* counter, struct variables* My_Variables)
             ImGui::MenuItem("(demo menu)", NULL, false, false);
             if (ImGui::MenuItem("New (not yet implemented)", "", false, false)) {
                 /*TODO: add a new file option w/blank surfaces*/ }
-            // if (ImGui::MenuItem("Open", "Ctrl+O")) { 
+            if (ImGui::MenuItem("Open", "Ctrl+O")) {
                 Open_Files(&usr_info, counter, My_Variables->FO_Palette, My_Variables);
-            // }
+            }
             if (ImGui::MenuItem("Set Fallout2.exe Path")) {
                 Set_Default_Game_Path(&usr_info, My_Variables->exe_directory);
             }
@@ -1134,248 +1296,16 @@ bool save_TILE_popup(LF* F_Prop)
 }
 
 
-bool save_PNG_popup(LF* F_Prop)
+void main_window_bttns(variables* My_Variables, int* counter)
 {
+    LF* F_Prop     = &My_Variables->F_Prop[*counter];
     image_data* img_data = &F_Prop->img_data;
-    bool open = true;
-    if (ImGui::BeginPopupModal("save_as_PNG", &open)) {
-        open = save_PNG_popup_INTERNAL(img_data, &usr_info);
-        ImGui::EndPopup();
-    }
-    return true;
-}
-
-void main_window_bttns(variables* My_Variables, int index, int* counter)
-{
-    if (index < 0) {
-        index = 0;
-    }
-    LF* F_Prop   = &My_Variables->F_Prop[index];
-    Palette* pal =  My_Variables->FO_Palette;
-    static image_data* img_data = &F_Prop->img_data;
-    static image_data* edit_data = &F_Prop->edit_data;
 
     bool success = ImDialog_load_files(F_Prop, img_data, &usr_info, &My_Variables->shaders);
     if (success) {
         (*counter)++;
     }
-
-    if (F_Prop->edit_image_window) {
-        if (ImGui::Button("Close Edit Window")) {
-            F_Prop->edit_image_window = false;
-            (*counter)--;
-        }
-    } else {
-        if (ImGui::Button("Open Edit Window")) {
-            F_Prop->edit_image_window = true;
-            (*counter)++;
-        }
-    }
-
-    if (!F_Prop->img_data.ANM_dir) ImGui::BeginDisabled();
-        if (ImGui::Button("Save as PNG")) {
-            ImGui::OpenPopup("save_as_PNG");
-        }
-        save_PNG_popup(F_Prop);
-
-    if (!F_Prop->img_data.ANM_dir) ImGui::EndDisabled();
-
-
-    static bool open_save = false;
-    bool disabled = (F_Prop->edit_data.ANM_dir) ? false : true;
-    if (disabled) ImGui::BeginDisabled();
-    if (ImGui::Button("Save")) {
-        open_save = true;
-    }
-    if (open_save) {
-        if (edit_data->type == FRM) {
-            open_save = save_FRM_popup(F_Prop);
-        } else
-        if (edit_data->type == MSK) {
-            open_save = save_MSK_popup(F_Prop);
-        } else
-        if (edit_data->type == TILE) {
-            open_save = save_TILE_popup(F_Prop);
-        }
-    }
-    if (disabled) ImGui::EndDisabled();
     ImGui::Separator();
-}
-
-void contextual_buttons(variables* My_Variables, int window_number_focus)
-{
-    //shortcuts, need to replace with direct calls?
-    LF* F_Prop = &My_Variables->F_Prop[window_number_focus];
-    Palette* pxlFMT_FO_Pal = My_Variables->FO_Palette;
-    image_data* img_data   = &F_Prop->img_data;
-    image_data* edit_data  = &F_Prop->edit_data;
-    //TODO: save as animated image, needs more work
-    //      specifically need to save as GIF at least
-
-    int dir = edit_data->display_orient_num;
-    int num = edit_data->display_frame_num;
-
-    //Edit_Image buttons
-    if (My_Variables->edit_image_focused) {
-        int width =  edit_data->width;
-        int height = edit_data->height;
-
-        //loads MSK file to current slot
-        ImDialog_load_MSK(F_Prop, edit_data, &usr_info, &My_Variables->shaders);
-
-
-        //TODO: add frame editing functions/frame saving functions
-        //regular edit image window with animated color pallete painting
-        if (!F_Prop->edit_MSK) {
-            if (edit_data->MSK_srfc) {
-                if (ImGui::Button("Edit MSK Layer...")) {
-                    F_Prop->edit_MSK = true;
-                    F_Prop->pre_MSK_type = edit_data->type;
-                    edit_data->type = MSK;
-                }
-            } else {
-                if (ImGui::Button("Create MSK Layer...")) {
-                    F_Prop->edit_MSK = true;
-                    F_Prop->pre_MSK_type = edit_data->type;
-                    edit_data->type = MSK;
-
-                    edit_data->MSK_srfc = Create_8Bit_Surface(width, height, NULL);
-                    edit_data->MSK_texture = init_texture(
-                        edit_data->MSK_srfc,
-                        edit_data->MSK_srfc->w,
-                        edit_data->MSK_srfc->h,
-                        MSK
-                    );
-                }
-            }
-        } else {    //edit mask window
-            if (ImGui::Button("Cancel Editing Mask...")) {
-                F_Prop->edit_MSK = false;
-                edit_data->type = F_Prop->pre_MSK_type;
-            }
-        }
-        //closes both edit windows, doesn't cancel all edits yet
-        if (ImGui::Button("Cancel Editing...")) {
-            F_Prop->edit_MSK = false;
-            F_Prop->edit_image_window = false;
-            My_Variables->edit_image_focused = false;
-        }
-    }
-    //Preview_Image buttons
-    else if (!My_Variables->edit_image_focused) {
-
-        bool alpha_off = checkbox_handler("Alpha Enabled", &F_Prop->alpha);
-        const char* items[] = { "Euclidan Color Matching", "Not Implemented..." };
-        ImGui::SameLine();
-        ImGui::Combo("##color_match", &My_Variables->color_match_algo, items, IM_ARRAYSIZE(items));
-
-
-        //TODO: manage some sort of contextual menu for tileable images?
-        //Tileable image Buttons
-        if (F_Prop->image_is_tileable) {
-            if (ImGui::Button("Color Match & Preview Tiles")) {
-                prep_image_SURFACE(
-                    F_Prop,
-                    pxlFMT_FO_Pal,
-                    My_Variables->color_match_algo,
-                    &F_Prop->preview_tiles_window, alpha_off
-                );
-                //TODO: if image already palettized, need to just feed the texture in
-                F_Prop->show_image_render = false;
-            }
-            checkbox_handler("Show Map Tiles", &F_Prop->show_squares);
-            ImGui::SameLine();
-            checkbox_handler("Show Town Tiles", &F_Prop->show_tiles);
-        }
-
-
-
-
-
-        if (img_data->type == MSK) {
-            if (ImGui::Button("Edit MSK file")) {
-                prep_image_SURFACE(
-                    F_Prop,
-                    pxlFMT_FO_Pal,
-                    My_Variables->color_match_algo,
-                    &F_Prop->edit_image_window, alpha_off
-                );
-                F_Prop->edit_MSK = true;
-            }
-        } else {
-            //non-MSK specific buttons
-            if (ImGui::Button("Color Match and Edit")) {
-                for (int i = 0; i < 6; i++) {
-                    if (!edit_data->save_ptr) {
-                        break;
-                    }
-                    if (edit_data->save_ptr[i].frame_data) {
-                        free(edit_data->save_ptr[i].frame_data);
-                        edit_data->save_ptr[i].frame_data = NULL;
-                    }
-                }
-
-                prep_image_SURFACE(
-                    F_Prop,
-                    pxlFMT_FO_Pal,
-                    My_Variables->color_match_algo,
-                    &F_Prop->edit_image_window, alpha_off
-                );
-            }
-
-
-            if (ImGui::Button("Convert Image to MSK")) {
-                Convert_SURFACE_to_MSK(
-                    F_Prop->img_data.ANM_dir[0].frame_data[0],
-                    &F_Prop->img_data, 0);
-                prep_image_SURFACE(
-                    F_Prop,
-                    pxlFMT_FO_Pal,
-                    My_Variables->color_match_algo,
-                    &F_Prop->edit_image_window, alpha_off
-                );
-            }
-        }
-
-        ImGui::Separator();
-
-        if (img_data->type == OTHER && img_data->ANM_dir[img_data->display_orient_num].num_frames > 1) {
-            if (ImGui::Button("Convert Animation to FRM for Editing")) {
-                F_Prop->show_image_render = crop_animation_SURFACE(img_data, edit_data, My_Variables->FO_Palette, 0, &My_Variables->shaders);
-            }
-        }
-    }
-}
-
-//TODO: delete? not used anymore
-bool popup_save_menu(bool* open_window, int* save_type, bool* single_dir)
-{
-    bool window = true;
-    ImGui::Begin("File type?", open_window);
-    if (ImGui::Button("Save as FRM...")) {
-        *save_type = FRM;
-        *open_window = false;
-        window = false;
-    }
-    if (ImGui::Button("Save selected direction as FRx...")) {
-        *save_type = FRx;
-        *single_dir = true;
-        *open_window = false;
-        window = false;
-    }
-    if (ImGui::Button("Save all available directions as FRx...")) {
-        *save_type = FRx;
-        *single_dir = false;
-        *open_window = false;
-        window = false;
-    }
-    if (ImGui::Button("Save as BMP...")) {
-        *save_type = OTHER;
-        *open_window = false;
-        window = false;
-    }
-    ImGui::End();
-    return window;
 }
 
 #ifdef QFO2_WINDOWS
