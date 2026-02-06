@@ -36,6 +36,7 @@ struct LF {
     bool edit_image_window = false;
     bool image_is_tileable = false;
     bool edit_MSK = false;
+    img_type pre_MSK_type = UNK;
 };
 
 struct shader_info {

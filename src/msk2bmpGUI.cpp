@@ -93,6 +93,9 @@ void dropped_files_callback(GLFWwindow* window, int count, const char** paths);
 
 static void glfw_error_callback(int error, const char* description)
 {
+    // Suppress GLFW_FEATURE_UNAVAILABLE (65548) for Wayland window position warnings
+    if (error == 65548)
+        return;
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
@@ -589,8 +592,8 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
             if (anm_dir->frame_data == NULL) {
                 wrong_size = false;
             } else {
-                wrong_size = (anm_dir->frame_data[0]->w != 350)
-                           || (anm_dir->frame_data[0]->h != 300);
+                wrong_size = (anm_dir->frame_data[0]->w % 350 != 0)
+                           || (anm_dir->frame_data[0]->h % 300 != 0);
             }
         }
     }
@@ -1228,10 +1231,14 @@ void contextual_buttons(variables* My_Variables, int window_number_focus)
             if (edit_data->MSK_srfc) {
                 if (ImGui::Button("Edit MSK Layer...")) {
                     F_Prop->edit_MSK = true;
+                    F_Prop->pre_MSK_type = edit_data->type;
+                    edit_data->type = MSK;
                 }
             } else {
                 if (ImGui::Button("Create MSK Layer...")) {
                     F_Prop->edit_MSK = true;
+                    F_Prop->pre_MSK_type = edit_data->type;
+                    edit_data->type = MSK;
 
                     edit_data->MSK_srfc = Create_8Bit_Surface(width, height, NULL);
                     edit_data->MSK_texture = init_texture(
@@ -1245,6 +1252,7 @@ void contextual_buttons(variables* My_Variables, int window_number_focus)
         } else {    //edit mask window
             if (ImGui::Button("Cancel Editing Mask...")) {
                 F_Prop->edit_MSK = false;
+                edit_data->type = F_Prop->pre_MSK_type;
             }
         }
         //closes both edit windows, doesn't cancel all edits yet

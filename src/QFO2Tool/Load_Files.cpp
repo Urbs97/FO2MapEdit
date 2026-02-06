@@ -887,6 +887,8 @@ bool File_Type_Check(LF *F_Prop, shader_info *shaders, image_data *img_data, con
             //so we can see the image on load
             img_data->display_orient_num = NE;
             img_data->display_frame_num  = 0;
+
+            F_Prop->file_open_window = true;
         }
 
         if (!img_data->ANM_dir[0].frame_box) {
