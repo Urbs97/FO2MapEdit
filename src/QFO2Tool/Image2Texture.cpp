@@ -115,6 +115,8 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
     dst->offset = src->offset;
 
     int dir = src->display_orient_num = dst->display_orient_num = src->display_orient_num;
+    dst->display_frame_num = src->display_frame_num;
+    dst->playback_speed    = src->playback_speed;
 
 #pragma region copy_it_all
     if (src->type == FRM || src->type == MSK) {
@@ -126,7 +128,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
             dst->FRM_size = src->FRM_size;
             copy_it_all_ANM(src, dst);
             dst->FRM_texture = init_texture(
-                dst->ANM_dir[src->display_orient_num].frame_data[0],
+                dst->ANM_dir[dir].frame_data[src->display_frame_num],
                 dst->width,
                 dst->height,
                 dst->type);
