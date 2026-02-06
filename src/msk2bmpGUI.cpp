@@ -1052,6 +1052,14 @@ void Show_Palette_Window(variables* My_Variables) {
                 My_Variables->Color_Pick = (uint8_t)(index);
             }
 
+            if (index == My_Variables->Color_Pick) {
+                ImVec2 min = ImGui::GetItemRectMin();
+                ImVec2 max = ImGui::GetItemRectMax();
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                draw_list->AddRect(min, max, IM_COL32(0, 0, 0, 255), 0.0f, 0, 2.0f);
+                draw_list->AddRect(min, max, IM_COL32(255, 255, 255, 255), 0.0f, 0, 1.0f);
+            }
+
             if (x < 15) ImGui::SameLine();
         }
     }
