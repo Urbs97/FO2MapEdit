@@ -612,10 +612,13 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
             Palette* pxlFMT_FO_Pal = My_Variables->FO_Palette;
             image_data* edit_data  = &F_Prop->edit_data;
 
-            bool alpha_off = checkbox_handler("Alpha Enabled", &F_Prop->alpha);
-            const char* items[] = { "Euclidan Color Matching", "Not Implemented..." };
-            ImGui::SameLine();
-            ImGui::Combo("##color_match", &My_Variables->color_match_algo, items, IM_ARRAYSIZE(items));
+            bool alpha_off = false;
+            if (img_data->type == OTHER) {
+                alpha_off = checkbox_handler("Alpha Enabled", &F_Prop->alpha);
+                const char* items[] = { "Euclidan Color Matching", "Not Implemented..." };
+                ImGui::SameLine();
+                ImGui::Combo("##color_match", &My_Variables->color_match_algo, items, IM_ARRAYSIZE(items));
+            }
 
             if (F_Prop->image_is_tileable) {
                 if (ImGui::Button("Color Match & Preview Tiles")) {
@@ -642,7 +645,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                     );
                     F_Prop->edit_MSK = true;
                 }
-            } else {
+            } else if (img_data->type == OTHER) {
                 if (ImGui::Button("Color Match and Edit")) {
                     for (int i = 0; i < 6; i++) {
                         if (!edit_data->save_ptr) {
@@ -696,8 +699,16 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
             }
             if (!F_Prop->img_data.ANM_dir) ImGui::EndDisabled();
 
-            if (!F_Prop->edit_image_window) {
+            if (!F_Prop->edit_image_window && img_data->type != MSK) {
                 if (ImGui::Button("Open Edit Window")) {
+                    if (img_data->type == FRM) {
+                        prep_image_SURFACE(
+                            F_Prop,
+                            pxlFMT_FO_Pal,
+                            My_Variables->color_match_algo,
+                            &F_Prop->edit_image_window, alpha_off
+                        );
+                    }
                     F_Prop->edit_image_window = true;
                 }
             }
@@ -1056,38 +1067,40 @@ void Edit_Image_Window(variables *My_Variables, LF* F_Prop, struct user_info* us
         // --- Contextual toolbar for this edit window ---
         ImGui::Separator();
 
-        //loads MSK file to current slot
-        ImDialog_load_MSK(F_Prop, edit_data, usr_info, &My_Variables->shaders);
+        if (F_Prop->image_is_tileable) {
+            //loads MSK file to current slot
+            ImDialog_load_MSK(F_Prop, edit_data, usr_info, &My_Variables->shaders);
 
-        int width =  edit_data->width;
-        int height = edit_data->height;
+            int width =  edit_data->width;
+            int height = edit_data->height;
 
-        if (!F_Prop->edit_MSK) {
-            if (edit_data->MSK_srfc) {
-                if (ImGui::Button("Edit MSK Layer...")) {
-                    F_Prop->edit_MSK = true;
-                    F_Prop->pre_MSK_type = edit_data->type;
-                    edit_data->type = MSK;
+            if (!F_Prop->edit_MSK) {
+                if (edit_data->MSK_srfc) {
+                    if (ImGui::Button("Edit MSK Layer...")) {
+                        F_Prop->edit_MSK = true;
+                        F_Prop->pre_MSK_type = edit_data->type;
+                        edit_data->type = MSK;
+                    }
+                } else {
+                    if (ImGui::Button("Create MSK Layer...")) {
+                        F_Prop->edit_MSK = true;
+                        F_Prop->pre_MSK_type = edit_data->type;
+                        edit_data->type = MSK;
+
+                        edit_data->MSK_srfc = Create_8Bit_Surface(width, height, NULL);
+                        edit_data->MSK_texture = init_texture(
+                            edit_data->MSK_srfc,
+                            edit_data->MSK_srfc->w,
+                            edit_data->MSK_srfc->h,
+                            MSK
+                        );
+                    }
                 }
             } else {
-                if (ImGui::Button("Create MSK Layer...")) {
-                    F_Prop->edit_MSK = true;
-                    F_Prop->pre_MSK_type = edit_data->type;
-                    edit_data->type = MSK;
-
-                    edit_data->MSK_srfc = Create_8Bit_Surface(width, height, NULL);
-                    edit_data->MSK_texture = init_texture(
-                        edit_data->MSK_srfc,
-                        edit_data->MSK_srfc->w,
-                        edit_data->MSK_srfc->h,
-                        MSK
-                    );
+                if (ImGui::Button("Cancel Editing Mask...")) {
+                    F_Prop->edit_MSK = false;
+                    edit_data->type = F_Prop->pre_MSK_type;
                 }
-            }
-        } else {
-            if (ImGui::Button("Cancel Editing Mask...")) {
-                F_Prop->edit_MSK = false;
-                edit_data->type = F_Prop->pre_MSK_type;
             }
         }
 
