@@ -157,24 +157,6 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos,
         }
     }
 
-    //TODO: zoom display and other info needs to be its own function call
-    //      window_info()? window_stats()? image_stats()?
-    ImGui::PushItemWidth(100);
-    ImGui::DragFloat("##Zoom", &edit_data->scale, 0.1f, 0.0f, 10.0f, "Zoom: %%%.2fx", 0);
-    ImGui::PopItemWidth();
-    if (ImGui::Button("Reset Image")) {
-        ClearSurface(edit_srfc);
-        Surface* src   = edit_data->ANM_dir[dir].frame_data[num];
-        GLuint texture = edit_data->FRM_texture;
-        if (edit_MSK) {
-            src        = edit_data->MSK_srfc;
-            texture    = edit_data->MSK_texture;
-        }
-        memcpy(edit_srfc->pxls, src->pxls, src->w*src->h);
-
-        SURFACE_to_texture(edit_srfc, texture,
-                        edit_srfc->w, edit_srfc->h, 1);
-    }
 
     //Converts unpalettized image to texture for display
     //TODO:

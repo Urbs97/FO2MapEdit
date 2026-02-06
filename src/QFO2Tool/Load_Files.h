@@ -33,7 +33,7 @@ struct LF {
     bool file_open_window = false;
     bool preview_tiles_window = false;
     bool show_image_render = false;
-    bool edit_image_window = false;
+    bool editing_enabled = false;
     bool image_is_tileable = false;
     bool edit_MSK = false;
     img_type pre_MSK_type = UNK;

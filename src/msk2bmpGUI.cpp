@@ -75,7 +75,6 @@ static struct dropped_files all_dropped_files = {0};
 void Show_Preview_Window(variables *My_Variables, LF* F_Prop, int counter);
 void Preview_Tiles_Window(variables *My_Variables, LF* F_Prop, int counter);
 void Show_Image_Render(variables *My_Variables, LF* F_Prop, struct user_info* usr_info, int counter);
-void Edit_Image_Window(variables *My_Variables, LF* F_Prop, struct user_info* usr_info, int counter);
 
 void Show_Palette_Window(struct variables *My_Variables);
 
@@ -354,19 +353,15 @@ int main(int argc, char** argv)
             ImGui::DockBuilderDockWindow("###palette"   , dock_id_bleft);
             ImGui::DockBuilderDockWindow("###preview00" , dock_main_id);
             ImGui::DockBuilderDockWindow("###render00"  , dock_id_right);
-            ImGui::DockBuilderDockWindow("###edit00"    , dock_main_id);
 
             for (int i = 1; i <= 99; i++) {
                 char buff1[13];
                 sprintf(buff1, "###preview%02d", i);
                 char buff2[12];
                 sprintf(buff2, "###render%02d", i);
-                char buff3[10];
-                sprintf(buff3, "###edit%02d", i);
 
                 ImGui::DockBuilderDockWindow(buff1, dock_main_id);
                 ImGui::DockBuilderDockWindow(buff2, dock_id_right);
-                ImGui::DockBuilderDockWindow(buff3, dock_main_id);
             }
             ImGui::DockBuilderFinish(dockspace_id);
         }
@@ -486,10 +481,6 @@ int main(int argc, char** argv)
             if (My_Variables.F_Prop[i].file_open_window) {
                 Show_Preview_Window(&My_Variables, &My_Variables.F_Prop[i], i);
             }
-            // Edit full image
-            if (My_Variables.F_Prop[i].edit_image_window) {
-                Edit_Image_Window(&My_Variables, &My_Variables.F_Prop[i], &usr_info, counter);
-            }
         }
 
         // Rendering
@@ -567,12 +558,114 @@ void dropped_files_callback(GLFWwindow* window, int count, const char** paths)
 }
 
 
+//TODO: need to add direct MSK file editing
+//      probably in a different function?
+void init_edit_struct_ANM(ANM_Dir* edit_struct, image_data* edit_data, Palette* palette)
+{
+    //this is for editing MSK files when loading them solo
+    if (!edit_data->ANM_dir) {
+        // edit_data->display_orient_num = 0;
+        // edit_data->FRM_hdr
+        edit_struct[0].frame_data = (Surface**)malloc(sizeof(Surface*));
+        if (!edit_struct[0].frame_data) {
+            //TODO: log out to txt file
+            set_popup_warning(
+                "[ERROR] init_edit_struct_ANM()\n\n"
+                "Unable to allocate memory for edit_frame.\n"
+            );
+            printf("Unable to allocate memory for edit_frame: %d\n", __LINE__);
+            return;
+        }
+        edit_struct[0].frame_data[0] = Create_8Bit_Surface(edit_data->width, edit_data->height, palette);
+        if (!edit_struct[0].frame_data[0]) {
+            free(edit_struct[0].frame_data);
+            //TODO: log out to txt file
+            set_popup_warning(
+                "[ERROR] init_edit_struct_ANM()\n\n"
+                "Unable to create 8bit surface.\n"
+            );
+            printf("Unable to create 8bit surface: %d\n", __LINE__);
+            return;
+        }
+        edit_data->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir*));
+        if (!edit_data->ANM_dir) {
+            free(edit_struct[0].frame_data);
+            FreeSurface(edit_struct[0].frame_data[0]);
+            //TODO: log out to txt file
+            set_popup_warning(
+                "[ERROR] init_edit_struct_ANM()\n\n"
+                "Unable to create 8bit surface.\n"
+            );
+            printf("Unable to create 8bit surface: %d\n", __LINE__);
+            return;
+        }
+        edit_data->ANM_dir[0].orientation = NE;
+        edit_data->save_ptr = edit_struct;
+        return;
+    }
+
+    for (int dir = 0; dir < 6; dir++) {
+        int num_frames = edit_data->ANM_dir[dir].num_frames;
+        edit_struct[dir].frame_data = (Surface**)malloc(num_frames*sizeof(Surface*));
+
+        for (int frame = 0; frame < num_frames; frame++) {
+            if (edit_data->ANM_dir[dir].frame_data == NULL) {
+                break;
+            }
+
+            //TODO: maybe this needs to be "edit_data->FRM_dir[0].bounding_box.x1" etc?
+            //      doing this might make it easier to edit a frame (maybe fewer crashes?)
+            //      but doing this and painting outside the official Frame_Width/_Height would
+            //      have to be dealt with by expanding the _Width/_Height whenever this happens
+            //      AND give the user some feedback that this is happening
+            Surface* src = edit_data->ANM_dir[dir].frame_data[frame];
+            Surface* dst = Create_8Bit_Surface(src->w, src->h, palette);
+
+            memcpy(dst->pxls, src->pxls, src->w*src->h);
+
+            edit_struct[dir].frame_data[frame] = dst;
+        }
+    }
+    edit_data->save_ptr = edit_struct;
+
+}
+
+void init_MSK_surface(Surface* edit_MSK_srfc, int w, int h)
+{
+    //these were both for when the entire struct was being allocated at once
+    // edit_MSK_srfc->pxls = (uint8_t*)(&(edit_MSK_srfc->pxls)+1);  //alternate way of assigning ptr
+    // edit_MSK_srfc.pxls = (uint8_t*)(edit_MSK_srfc+1);
+
+    //TODO: replace 350*300 with something that works for different sized MSK files?
+    //      needs to match attached FRM?
+    edit_MSK_srfc->pxls = (uint8_t*)calloc(1, w*h);
+
+    if (!edit_MSK_srfc->pxls) {
+        //TODO: log out to txt file
+        set_popup_warning(
+            "[ERROR] init_MSK_surface()\n\n"
+            "Unable to allocate edit_MSK_srfc->pxls.\n"
+        );
+        printf("[Error] unable to allocate MSK surface pixels.\n");
+        return;
+    }
+    edit_MSK_srfc->channels = 1;
+    edit_MSK_srfc->w        = w;
+    edit_MSK_srfc->h        = h;
+    edit_MSK_srfc->pitch    = w;
+}
+
 //TODO: store image/editing info in the window itself
 void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter)
 {
     shader_info* shaders   = &My_Variables->shaders;
     Palette* pxlFMT_FO_Pal = My_Variables->FO_Palette;
     image_data* img_data   = &F_Prop->img_data;
+
+    // Edit state (shared across file slots, same pattern as old Edit_Image_Window)
+    static ANM_Dir edit_struct[6];
+    static Surface edit_MSK_srfc;
+    static bool edit_msk_copied = false;
 
     std::string a = F_Prop->c_name;
     char b[3];
@@ -598,13 +691,14 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
         //set contextual menu for preview window
         if (ImGui::IsWindowFocused()) {
             My_Variables->window_number_focus = counter;
-            My_Variables->edit_image_focused = false;
+            My_Variables->edit_image_focused = F_Prop->editing_enabled;
         }
         ImGui::Checkbox("Show Frame Stats", &F_Prop->show_stats);
 
 
         ImGui::PushItemWidth(100);
-        ImGui::DragFloat("##Zoom", &img_data->scale, 0.1f, 0.0f, 10.0f, "Zoom: %%%.2fx", 0);
+        float* zoom_scale = F_Prop->editing_enabled ? &F_Prop->edit_data.scale : &img_data->scale;
+        ImGui::DragFloat("##Zoom", zoom_scale, 0.1f, 0.0f, 10.0f, "Zoom: %%%.2fx", 0);
         ImGui::PopItemWidth();
 
         // --- Contextual toolbar for this preview window ---
@@ -635,46 +729,48 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                 checkbox_handler("Show Town Tiles", &F_Prop->show_tiles);
             }
 
-            if (img_data->type == MSK) {
-                if (ImGui::Button("Edit MSK file")) {
-                    prep_image_SURFACE(
-                        F_Prop,
-                        pxlFMT_FO_Pal,
-                        My_Variables->color_match_algo,
-                        &F_Prop->edit_image_window, alpha_off
-                    );
-                    F_Prop->edit_MSK = true;
-                }
-            } else if (img_data->type == OTHER) {
-                if (ImGui::Button("Color Match and Edit")) {
-                    for (int i = 0; i < 6; i++) {
-                        if (!edit_data->save_ptr) {
-                            break;
+            if (!F_Prop->editing_enabled) {
+                if (img_data->type == MSK) {
+                    if (ImGui::Button("Edit MSK file")) {
+                        prep_image_SURFACE(
+                            F_Prop,
+                            pxlFMT_FO_Pal,
+                            My_Variables->color_match_algo,
+                            &F_Prop->editing_enabled, alpha_off
+                        );
+                        F_Prop->edit_MSK = true;
+                    }
+                } else if (img_data->type == OTHER) {
+                    if (ImGui::Button("Color Match and Edit")) {
+                        for (int i = 0; i < 6; i++) {
+                            if (!edit_data->save_ptr) {
+                                break;
+                            }
+                            if (edit_data->save_ptr[i].frame_data) {
+                                free(edit_data->save_ptr[i].frame_data);
+                                edit_data->save_ptr[i].frame_data = NULL;
+                            }
                         }
-                        if (edit_data->save_ptr[i].frame_data) {
-                            free(edit_data->save_ptr[i].frame_data);
-                            edit_data->save_ptr[i].frame_data = NULL;
-                        }
+
+                        prep_image_SURFACE(
+                            F_Prop,
+                            pxlFMT_FO_Pal,
+                            My_Variables->color_match_algo,
+                            &F_Prop->editing_enabled, alpha_off
+                        );
                     }
 
-                    prep_image_SURFACE(
-                        F_Prop,
-                        pxlFMT_FO_Pal,
-                        My_Variables->color_match_algo,
-                        &F_Prop->edit_image_window, alpha_off
-                    );
-                }
-
-                if (ImGui::Button("Convert Image to MSK")) {
-                    Convert_SURFACE_to_MSK(
-                        F_Prop->img_data.ANM_dir[0].frame_data[0],
-                        &F_Prop->img_data, 0);
-                    prep_image_SURFACE(
-                        F_Prop,
-                        pxlFMT_FO_Pal,
-                        My_Variables->color_match_algo,
-                        &F_Prop->edit_image_window, alpha_off
-                    );
+                    if (ImGui::Button("Convert Image to MSK")) {
+                        Convert_SURFACE_to_MSK(
+                            F_Prop->img_data.ANM_dir[0].frame_data[0],
+                            &F_Prop->img_data, 0);
+                        prep_image_SURFACE(
+                            F_Prop,
+                            pxlFMT_FO_Pal,
+                            My_Variables->color_match_algo,
+                            &F_Prop->editing_enabled, alpha_off
+                        );
+                    }
                 }
             }
 
@@ -699,17 +795,113 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
             }
             if (!F_Prop->img_data.ANM_dir) ImGui::EndDisabled();
 
-            if (!F_Prop->edit_image_window && img_data->type != MSK) {
-                if (ImGui::Button("Open Edit Window")) {
-                    if (img_data->type == FRM) {
-                        prep_image_SURFACE(
-                            F_Prop,
-                            pxlFMT_FO_Pal,
-                            My_Variables->color_match_algo,
-                            &F_Prop->edit_image_window, alpha_off
-                        );
+            if (img_data->type != MSK) {
+                if (!F_Prop->editing_enabled) {
+                    if (ImGui::Button("Enable Editing")) {
+                        if (img_data->type == FRM) {
+                            prep_image_SURFACE(
+                                F_Prop,
+                                pxlFMT_FO_Pal,
+                                My_Variables->color_match_algo,
+                                &F_Prop->editing_enabled, alpha_off
+                            );
+                        }
+                        F_Prop->editing_enabled = true;
                     }
-                    F_Prop->edit_image_window = true;
+                } else {
+                    if (ImGui::Button("Disable Editing")) {
+                        F_Prop->editing_enabled = false;
+                        F_Prop->edit_MSK = false;
+                        My_Variables->edit_image_focused = false;
+                    }
+                }
+            }
+
+            // --- Edit toolbar (in top toolbar area) ---
+            if (F_Prop->editing_enabled) {
+                image_data* ed = &F_Prop->edit_data;
+
+                if (F_Prop->image_is_tileable) {
+                    //loads MSK file to current slot
+                    ImDialog_load_MSK(F_Prop, ed, &usr_info, &My_Variables->shaders);
+
+                    if (!F_Prop->edit_MSK) {
+                        if (ed->MSK_srfc) {
+                            if (ImGui::Button("Edit MSK Layer...")) {
+                                F_Prop->edit_MSK = true;
+                                F_Prop->pre_MSK_type = ed->type;
+                                ed->type = MSK;
+                            }
+                        } else {
+                            if (ImGui::Button("Create MSK Layer...")) {
+                                F_Prop->edit_MSK = true;
+                                F_Prop->pre_MSK_type = ed->type;
+                                ed->type = MSK;
+
+                                int width =  ed->width;
+                                int height = ed->height;
+                                ed->MSK_srfc = Create_8Bit_Surface(width, height, NULL);
+                                ed->MSK_texture = init_texture(
+                                    ed->MSK_srfc,
+                                    ed->MSK_srfc->w,
+                                    ed->MSK_srfc->h,
+                                    MSK
+                                );
+                            }
+                        }
+                    } else {
+                        if (ImGui::Button("Cancel Editing Mask...")) {
+                            F_Prop->edit_MSK = false;
+                            ed->type = F_Prop->pre_MSK_type;
+                        }
+                    }
+                }
+
+                if (ImGui::Button("Reset Image")) {
+                    int num = ed->display_frame_num;
+                    int dir = ed->display_orient_num;
+                    Surface* edit_srfc;
+                    if (!F_Prop->edit_MSK) {
+                        edit_srfc = edit_struct[dir].frame_data[num];
+                    } else {
+                        edit_srfc = &edit_MSK_srfc;
+                    }
+                    ClearSurface(edit_srfc);
+                    Surface* src   = ed->ANM_dir[dir].frame_data[num];
+                    GLuint texture = ed->FRM_texture;
+                    if (F_Prop->edit_MSK) {
+                        src     = ed->MSK_srfc;
+                        texture = ed->MSK_texture;
+                    }
+                    memcpy(edit_srfc->pxls, src->pxls, src->w*src->h);
+                    SURFACE_to_texture(edit_srfc, texture, edit_srfc->w, edit_srfc->h, 1);
+                }
+
+                if (ImGui::Button("Cancel Editing...")) {
+                    F_Prop->edit_MSK = false;
+                    F_Prop->editing_enabled = false;
+                    My_Variables->edit_image_focused = false;
+                }
+
+                {
+                    static bool open_save = false;
+                    bool disabled = (F_Prop->edit_data.ANM_dir) ? false : true;
+                    if (disabled) ImGui::BeginDisabled();
+                    if (ImGui::Button("Save")) {
+                        open_save = true;
+                    }
+                    if (open_save) {
+                        if (ed->type == FRM) {
+                            open_save = save_FRM_popup(F_Prop);
+                        } else
+                        if (ed->type == MSK) {
+                            open_save = save_MSK_popup(F_Prop);
+                        } else
+                        if (ed->type == TILE) {
+                            open_save = save_TILE_popup(F_Prop);
+                        }
+                    }
+                    if (disabled) ImGui::EndDisabled();
                 }
             }
 
@@ -727,31 +919,86 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
         //      this would require attaching the name to each surface
         ImGui::Text(F_Prop->c_name);
 
-        if (img_data->type == FRM) {
-            //show the original image for previewing
-            //TODO: finish setting up usr.info.show_image_stats in settings config in menu
-            preview_FRM_SURFACE(My_Variables, img_data, (F_Prop->show_stats || usr_info.show_image_stats));
+        if (F_Prop->editing_enabled) {
+            // --- Edit mode ---
+            image_data* edit_data = &F_Prop->edit_data;
 
-            //gui video controls
-            Gui_Video_Controls(img_data, img_data->type);
-        }
-        else if (img_data->type == MSK) {
-            Preview_MSK_Image(My_Variables, img_data, (F_Prop->show_stats || usr_info.show_image_stats));
-        }
-        else if (img_data->type == OTHER) {
-            Preview_Image(My_Variables, img_data, (F_Prop->show_stats || usr_info.show_image_stats));
-            //Draw red squares for possible overworld map tiling
-            draw_red_squares(img_data, F_Prop->show_squares);
+            if (!edit_data->ANM_dir) {
+                ImGui::Text("No FRM_dir");
+            }
+            else if (edit_data->ANM_dir[edit_data->display_orient_num].frame_data == NULL) {
+                ImGui::Text("No frame_data");
+            }
+            else {
+                // Initialize edit structures on demand
+                if (!edit_struct[0].frame_data) {
+                    init_edit_struct_ANM(edit_struct, edit_data, My_Variables->FO_Palette);
+                }
+                if (!edit_MSK_srfc.pxls) {
+                    init_MSK_surface(&edit_MSK_srfc, edit_data->width, edit_data->height);
+                }
+                // Copy MSK data once when entering edit mode
+                if (!edit_msk_copied) {
+                    if (edit_data->MSK_srfc) {
+                        edit_msk_copied = true;
+                        memcpy(edit_MSK_srfc.pxls, edit_data->MSK_srfc->pxls, edit_MSK_srfc.w*edit_MSK_srfc.h);
+                    }
+                }
 
-            draw_red_tiles(img_data, F_Prop->show_tiles);
+                if (F_Prop->show_stats) {
+                    show_image_stats_FRM_SURFACE(&F_Prop->edit_data, My_Variables->Font);
+                }
 
-            Gui_Video_Controls(img_data, F_Prop->img_data.type);
+                ImVec2 img_pos = display_img_ImGUI(My_Variables, edit_data);
+
+                Edit_Image(My_Variables, img_pos,
+                            &F_Prop->edit_data, edit_struct,
+                            &edit_MSK_srfc, F_Prop->edit_MSK,
+                            My_Variables->Palette_Update,
+                            &My_Variables->Color_Pick);
+
+                Gui_Video_Controls(&F_Prop->edit_data, F_Prop->edit_data.type);
+            }
+        } else {
+            // --- Preview mode ---
+            if (img_data->type == FRM) {
+                //show the original image for previewing
+                //TODO: finish setting up usr.info.show_image_stats in settings config in menu
+                preview_FRM_SURFACE(My_Variables, img_data, (F_Prop->show_stats || usr_info.show_image_stats));
+
+                //gui video controls
+                Gui_Video_Controls(img_data, img_data->type);
+            }
+            else if (img_data->type == MSK) {
+                Preview_MSK_Image(My_Variables, img_data, (F_Prop->show_stats || usr_info.show_image_stats));
+            }
+            else if (img_data->type == OTHER) {
+                Preview_Image(My_Variables, img_data, (F_Prop->show_stats || usr_info.show_image_stats));
+                //Draw red squares for possible overworld map tiling
+                draw_red_squares(img_data, F_Prop->show_squares);
+
+                draw_red_tiles(img_data, F_Prop->show_tiles);
+
+                Gui_Video_Controls(img_data, F_Prop->img_data.type);
+            }
         }
 
     }
     show_popup_warnings();
 
     ImGui::End();
+
+    // Cleanup when editing is disabled
+    if (!F_Prop->editing_enabled) {
+        free(edit_MSK_srfc.pxls);
+        edit_MSK_srfc.pxls = NULL;
+        for (int i = 0; i < 6; i++)
+        {
+            free(edit_struct[i].frame_data);
+            edit_struct[i].frame_data = NULL;
+        }
+        edit_msk_copied = false;
+    }
 
     // Preview tiles from red boxes
     if (F_Prop->preview_tiles_window) {
@@ -891,268 +1138,6 @@ void Show_Image_Render(variables* My_Variables, LF* F_Prop, struct user_info* us
         Gui_Video_Controls(edit_data, edit_data->type);
     }
     ImGui::End();
-}
-
-//TODO: need to add direct MSK file editing
-//      probably in a different function?
-void init_edit_struct_ANM(ANM_Dir* edit_struct, image_data* edit_data, Palette* palette)
-{
-    //this is for editing MSK files when loading them solo
-    if (!edit_data->ANM_dir) {
-        // edit_data->display_orient_num = 0;
-        // edit_data->FRM_hdr
-        edit_struct[0].frame_data = (Surface**)malloc(sizeof(Surface*));
-        if (!edit_struct[0].frame_data) {
-            //TODO: log out to txt file
-            set_popup_warning(
-                "[ERROR] init_edit_struct_ANM()\n\n"
-                "Unable to allocate memory for edit_frame.\n"
-            );
-            printf("Unable to allocate memory for edit_frame: %d\n", __LINE__);
-            return;
-        }
-        edit_struct[0].frame_data[0] = Create_8Bit_Surface(edit_data->width, edit_data->height, palette);
-        if (!edit_struct[0].frame_data[0]) {
-            free(edit_struct[0].frame_data);
-            //TODO: log out to txt file
-            set_popup_warning(
-                "[ERROR] init_edit_struct_ANM()\n\n"
-                "Unable to create 8bit surface.\n"
-            );
-            printf("Unable to create 8bit surface: %d\n", __LINE__);
-            return;
-        }
-        edit_data->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir*));
-        if (!edit_data->ANM_dir) {
-            free(edit_struct[0].frame_data);
-            FreeSurface(edit_struct[0].frame_data[0]);
-            //TODO: log out to txt file
-            set_popup_warning(
-                "[ERROR] init_edit_struct_ANM()\n\n"
-                "Unable to create 8bit surface.\n"
-            );
-            printf("Unable to create 8bit surface: %d\n", __LINE__);
-            return;
-        }
-        edit_data->ANM_dir[0].orientation = NE;
-        edit_data->save_ptr = edit_struct;
-        return;
-    }
-
-    for (int dir = 0; dir < 6; dir++) {
-        int num_frames = edit_data->ANM_dir[dir].num_frames;
-        edit_struct[dir].frame_data = (Surface**)malloc(num_frames*sizeof(Surface*));
-
-        for (int frame = 0; frame < num_frames; frame++) {
-            if (edit_data->ANM_dir[dir].frame_data == NULL) {
-                break;
-            }
-
-            //TODO: maybe this needs to be "edit_data->FRM_dir[0].bounding_box.x1" etc?
-            //      doing this might make it easier to edit a frame (maybe fewer crashes?)
-            //      but doing this and painting outside the official Frame_Width/_Height would
-            //      have to be dealt with by expanding the _Width/_Height whenever this happens
-            //      AND give the user some feedback that this is happening
-            Surface* src = edit_data->ANM_dir[dir].frame_data[frame];
-            Surface* dst = Create_8Bit_Surface(src->w, src->h, palette);
-
-            memcpy(dst->pxls, src->pxls, src->w*src->h);
-
-            edit_struct[dir].frame_data[frame] = dst;
-        }
-    }
-    edit_data->save_ptr = edit_struct;
-
-}
-
-void init_MSK_surface(Surface* edit_MSK_srfc, int w, int h)
-{
-    //these were both for when the entire struct was being allocated at once
-    // edit_MSK_srfc->pxls = (uint8_t*)(&(edit_MSK_srfc->pxls)+1);  //alternate way of assigning ptr
-    // edit_MSK_srfc.pxls = (uint8_t*)(edit_MSK_srfc+1);
-
-    //TODO: replace 350*300 with something that works for different sized MSK files?
-    //      needs to match attached FRM?
-    edit_MSK_srfc->pxls = (uint8_t*)calloc(1, w*h);
-
-    if (!edit_MSK_srfc->pxls) {
-        //TODO: log out to txt file
-        set_popup_warning(
-            "[ERROR] init_MSK_surface()\n\n"
-            "Unable to allocate edit_MSK_srfc->pxls.\n"
-        );
-        printf("[Error] unable to allocate MSK surface pixels.\n");
-        return;
-    }
-    edit_MSK_srfc->channels = 1;
-    edit_MSK_srfc->w        = w;
-    edit_MSK_srfc->h        = h;
-    edit_MSK_srfc->pitch    = w;
-}
-
-//TODO: remove this runOnce variable
-//      see TODO where it's called
-bool runOnce = true;
-void Edit_Image_Window(variables *My_Variables, LF* F_Prop, struct user_info* usr_info, int counter)
-{
-    image_data* edit_data = &F_Prop->edit_data;
-    char b[3];
-    sprintf(b, "%02d", counter);
-    std::string a = "";
-    if (F_Prop->c_name) {
-        std::string a = F_Prop->c_name;
-    }
-    std::string name = a + " Edit Window...###edit" + b;
-
-    static ANM_Dir edit_struct[6];
-    static Surface edit_MSK_srfc;
-
-    //TODO: completely refactor this function
-    //      to have the ImGui::Begin() call outside
-    if (ImGui::Begin(name.c_str(), &F_Prop->edit_image_window, 0))
-    {
-        if (!edit_data->ANM_dir) {
-            ImGui::Text("No FRM_dir");
-            ImGui::End();
-            return;
-        }
-        if (edit_data->ANM_dir[edit_data->display_orient_num].frame_data == NULL) {
-            ImGui::Text("No frame_data");
-            ImGui::End();
-            return;
-        }
-
-
-
-        if (!edit_struct[0].frame_data) {
-            init_edit_struct_ANM(edit_struct, edit_data, My_Variables->FO_Palette);
-        }
-        if (!edit_MSK_srfc.pxls) {
-            init_MSK_surface(&edit_MSK_srfc, edit_data->width, edit_data->height);
-        }
-        //TODO: this runOnce is dumb, replace with something not dumb
-        //      should probably run when loading MSK to slot
-        if (runOnce) {
-            if (edit_data->MSK_srfc) {
-                runOnce = false;
-                memcpy(edit_MSK_srfc.pxls, edit_data->MSK_srfc->pxls, edit_MSK_srfc.w*edit_MSK_srfc.h);
-            }
-        }
-
-
-
-
-
-        ImGui::Checkbox("Show Frame Stats", &F_Prop->show_stats);
-        if (F_Prop->show_stats) {
-            show_image_stats_FRM_SURFACE(&F_Prop->edit_data, My_Variables->Font);
-        }
-
-        if (ImGui::IsWindowFocused()) {
-            My_Variables->window_number_focus = counter-1;
-            My_Variables->edit_image_focused  = true;
-        }
-
-        //TODO: check this against image_render()
-        ImVec2 img_pos = display_img_ImGUI(My_Variables, edit_data);
-
-        Edit_Image(My_Variables, img_pos,
-                    &F_Prop->edit_data, edit_struct,
-                    &edit_MSK_srfc, F_Prop->edit_MSK,
-                    My_Variables->Palette_Update,
-                    &My_Variables->Color_Pick);
-
-        Gui_Video_Controls(&F_Prop->edit_data, F_Prop->edit_data.type);
-
-        // --- Contextual toolbar for this edit window ---
-        ImGui::Separator();
-
-        if (F_Prop->image_is_tileable) {
-            //loads MSK file to current slot
-            ImDialog_load_MSK(F_Prop, edit_data, usr_info, &My_Variables->shaders);
-
-            int width =  edit_data->width;
-            int height = edit_data->height;
-
-            if (!F_Prop->edit_MSK) {
-                if (edit_data->MSK_srfc) {
-                    if (ImGui::Button("Edit MSK Layer...")) {
-                        F_Prop->edit_MSK = true;
-                        F_Prop->pre_MSK_type = edit_data->type;
-                        edit_data->type = MSK;
-                    }
-                } else {
-                    if (ImGui::Button("Create MSK Layer...")) {
-                        F_Prop->edit_MSK = true;
-                        F_Prop->pre_MSK_type = edit_data->type;
-                        edit_data->type = MSK;
-
-                        edit_data->MSK_srfc = Create_8Bit_Surface(width, height, NULL);
-                        edit_data->MSK_texture = init_texture(
-                            edit_data->MSK_srfc,
-                            edit_data->MSK_srfc->w,
-                            edit_data->MSK_srfc->h,
-                            MSK
-                        );
-                    }
-                }
-            } else {
-                if (ImGui::Button("Cancel Editing Mask...")) {
-                    F_Prop->edit_MSK = false;
-                    edit_data->type = F_Prop->pre_MSK_type;
-                }
-            }
-        }
-
-        if (ImGui::Button("Cancel Editing...")) {
-            F_Prop->edit_MSK = false;
-            F_Prop->edit_image_window = false;
-            My_Variables->edit_image_focused = false;
-        }
-
-        if (ImGui::Button("Close Edit Window")) {
-            F_Prop->edit_image_window = false;
-        }
-
-        {
-            static bool open_save = false;
-            bool disabled = (F_Prop->edit_data.ANM_dir) ? false : true;
-            if (disabled) ImGui::BeginDisabled();
-            if (ImGui::Button("Save")) {
-                open_save = true;
-            }
-            if (open_save) {
-                if (edit_data->type == FRM) {
-                    open_save = save_FRM_popup(F_Prop);
-                } else
-                if (edit_data->type == MSK) {
-                    open_save = save_MSK_popup(F_Prop);
-                } else
-                if (edit_data->type == TILE) {
-                    open_save = save_TILE_popup(F_Prop);
-                }
-            }
-            if (disabled) ImGui::EndDisabled();
-        }
-    }
-
-    show_popup_warnings();
-
-    ImGui::End();
-
-    //stuff that happens when window is closed?
-    if (!F_Prop->edit_image_window) {
-        free(edit_MSK_srfc.pxls);
-        edit_MSK_srfc.pxls = NULL;
-        for (int i = 0; i < 6; i++)
-        {
-            free(edit_struct[i].frame_data);
-            edit_struct[i].frame_data = NULL;
-        }
-
-        My_Variables->window_number_focus = -1;
-        My_Variables->edit_image_focused = false;
-    }
 }
 
 //TODO: Need to test wide character support
