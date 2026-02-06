@@ -645,7 +645,6 @@ void draw_red_tiles(image_data *img_data, bool show_squares)
 
         if (!drew_row)
         {
-            printf("count: %d\n", count);
             break;
         }
         drew_row = false;

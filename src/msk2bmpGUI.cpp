@@ -698,6 +698,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
             } else {
                 wrong_size = (anm_dir->frame_data[0]->w % 350 != 0)
                            || (anm_dir->frame_data[0]->h % 300 != 0);
+                F_Prop->image_is_tileable = true;
             }
         }
     }
@@ -730,7 +731,10 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
             }
 
             if (F_Prop->image_is_tileable) {
-                if (ImGui::Button("Color Match & Preview Tiles")) {
+                if (!F_Prop->palettized) ImGui::BeginDisabled();
+                if (ImGui::Button("Export Worldmap Tiles")) {
+                    F_Prop->show_squares = true;
+                    F_Prop->show_tiles = false;
                     prep_image_SURFACE(
                         F_Prop,
                         pxlFMT_FO_Pal,
@@ -739,9 +743,19 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                     );
                     F_Prop->show_image_render = false;
                 }
-                checkbox_handler("Show Map Tiles", &F_Prop->show_squares);
                 ImGui::SameLine();
-                checkbox_handler("Show Town Tiles", &F_Prop->show_tiles);
+                if (ImGui::Button("Export Town-Map Tiles")) {
+                    F_Prop->show_squares = false;
+                    F_Prop->show_tiles = true;
+                    prep_image_SURFACE(
+                        F_Prop,
+                        pxlFMT_FO_Pal,
+                        My_Variables->color_match_algo,
+                        &F_Prop->preview_tiles_window, alpha_off
+                    );
+                    F_Prop->show_image_render = false;
+                }
+                if (!F_Prop->palettized) ImGui::EndDisabled();
             }
 
             if (!F_Prop->editing_enabled) {
@@ -755,8 +769,9 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                         );
                         F_Prop->edit_MSK = true;
                     }
-                } else if (img_data->type == OTHER) {
-                    if (ImGui::Button("Color Match and Edit")) {
+                } else if (img_data->type == OTHER && !F_Prop->palettized) {
+                    if (ImGui::Button("Palettize Image")) {
+                        F_Prop->palettized = true;
                         for (int i = 0; i < 6; i++) {
                             if (!edit_data->save_ptr) {
                                 break;
@@ -767,11 +782,12 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                             }
                         }
 
+                        bool discard = false;
                         prep_image_SURFACE(
                             F_Prop,
                             pxlFMT_FO_Pal,
                             My_Variables->color_match_algo,
-                            &F_Prop->editing_enabled, alpha_off
+                            &discard, alpha_off
                         );
                     }
 
@@ -795,20 +811,22 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                 }
             }
 
-            if (!F_Prop->img_data.ANM_dir) ImGui::BeginDisabled();
-            {
-                char png_popup_id[32];
-                snprintf(png_popup_id, sizeof(png_popup_id), "save_as_PNG##%02d", counter);
-                if (ImGui::Button("Save as PNG")) {
-                    ImGui::OpenPopup(png_popup_id);
+            if (img_data->type != OTHER) {
+                if (!F_Prop->img_data.ANM_dir) ImGui::BeginDisabled();
+                {
+                    char png_popup_id[32];
+                    snprintf(png_popup_id, sizeof(png_popup_id), "save_as_PNG##%02d", counter);
+                    if (ImGui::Button("Save as PNG")) {
+                        ImGui::OpenPopup(png_popup_id);
+                    }
+                    bool open = true;
+                    if (ImGui::BeginPopupModal(png_popup_id, &open)) {
+                        open = save_PNG_popup_INTERNAL(img_data, &usr_info);
+                        ImGui::EndPopup();
+                    }
                 }
-                bool open = true;
-                if (ImGui::BeginPopupModal(png_popup_id, &open)) {
-                    open = save_PNG_popup_INTERNAL(img_data, &usr_info);
-                    ImGui::EndPopup();
-                }
+                if (!F_Prop->img_data.ANM_dir) ImGui::EndDisabled();
             }
-            if (!F_Prop->img_data.ANM_dir) ImGui::EndDisabled();
 
             if (img_data->type != MSK) {
                 if (!F_Prop->editing_enabled) {
@@ -893,31 +911,24 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                     SURFACE_to_texture(edit_srfc, texture, edit_srfc->w, edit_srfc->h, 1);
                 }
 
-                if (ImGui::Button("Cancel Editing...")) {
-                    F_Prop->edit_MSK = false;
-                    F_Prop->editing_enabled = false;
-                    My_Variables->edit_image_focused = false;
-                }
+            }
 
-                {
-                    static bool open_save = false;
-                    bool disabled = (F_Prop->edit_data.ANM_dir) ? false : true;
-                    if (disabled) ImGui::BeginDisabled();
-                    if (ImGui::Button("Save")) {
-                        open_save = true;
+            if (F_Prop->edit_data.ANM_dir) {
+                static bool open_save = false;
+                image_data* ed = &F_Prop->edit_data;
+                if (ImGui::Button("Export FRM")) {
+                    open_save = true;
+                }
+                if (open_save) {
+                    if (ed->type == FRM) {
+                        open_save = save_FRM_popup(F_Prop);
+                    } else
+                    if (ed->type == MSK) {
+                        open_save = save_MSK_popup(F_Prop);
+                    } else
+                    if (ed->type == TILE) {
+                        open_save = save_TILE_popup(F_Prop);
                     }
-                    if (open_save) {
-                        if (ed->type == FRM) {
-                            open_save = save_FRM_popup(F_Prop);
-                        } else
-                        if (ed->type == MSK) {
-                            open_save = save_MSK_popup(F_Prop);
-                        } else
-                        if (ed->type == TILE) {
-                            open_save = save_TILE_popup(F_Prop);
-                        }
-                    }
-                    if (disabled) ImGui::EndDisabled();
                 }
             }
 
