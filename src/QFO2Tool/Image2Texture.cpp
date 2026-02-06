@@ -249,7 +249,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
         return;
     }
     //open edit window
-    *window = true;
+    if (window) *window = true;
 }
 
 GLuint init_texture(Surface* src, int w, int h, img_type type)

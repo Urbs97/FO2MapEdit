@@ -15,103 +15,11 @@
 #include "ImGui_Warning.h"
 
 
-// Fallout map tile size hardcoded in engine to 350x300 pixels WxH
-#define MTILE_W (350)
-#define MTILE_H (300)
-#define MTILE_SIZE (350 * 300)
-
-void crop_WMAP_tile(int tile_w, int tile_h, int img_w, int img_h, int scale, image_data *img_data);
 void draw_red_squares(image_data *img_data, bool show_squares);
 void draw_red_tiles(image_data *img_data, bool show_squares);
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
-
-void preview_WMAP_tiles_SURFACE(variables* My_Variables, image_data* img_data)
-{
-    zoom_pan(img_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
-    shader_info* shaders = &My_Variables->shaders;
-
-    int dir = img_data->display_orient_num;
-    if (!img_data->ANM_dir) {
-        ImGui::Text("No ANM_dir");
-        return;
-    }
-    if (img_data->ANM_dir[dir].frame_data == NULL) {
-        ImGui::Text("No frame_data");
-        return;
-    }
-
-    animate_SURFACE_to_sub_texture(
-        img_data, img_data->ANM_dir[dir].frame_data[0],
-        My_Variables->CurrentTime_ms
-    );
-
-    float scale    = img_data->scale;
-    int img_width  = img_data->width;
-    int img_height = img_data->height;
-
-    //TODO: rename?
-    //      this takes 3 textures and draws them into 1 framebuffer
-    draw_PAL_to_framebuffer(
-        shaders->FO_pal,
-        shaders->render_PAL_shader,
-        &shaders->giant_triangle,
-        img_data);
-
-    crop_WMAP_tile(MTILE_W, MTILE_H, img_width, img_height, scale, img_data);
-
-}
-
-//TODO: refactor this
-void crop_WMAP_tile(int tile_w, int tile_h, int img_w, int img_h, int scale, image_data *img_data)
-{
-    //TODO: change top_corner() for img_pos passed in from outside
-    ImVec2 base_top_corner = top_corner(img_data->offset);
-    ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-
-    ImGuiWindow *window = ImGui::GetCurrentWindow();
-    // Preview window for tiles already converted to palettized and dithered format
-    ImVec2 uv_min; // = Origin;
-    ImVec2 uv_max;
-    int max_box_x = img_w / tile_w;
-    int max_box_y = img_h / tile_h;
-    int pxl_border = 3;
-
-    for (int y = 0; y < max_box_y; y++)
-    {
-        for (int x = 0; x < max_box_x; x++)
-        {
-
-            uv_min.x = ((x * (float)tile_w)) / img_w;
-            uv_min.y = ((y * (float)tile_h)) / img_h;
-
-            uv_max = {(uv_min.x + ((float)tile_w / img_w)),
-                      (uv_min.y + ((float)tile_h / img_h))};
-
-            ImVec2 new_corner;
-            new_corner.x = base_top_corner.x + (tile_w + pxl_border) * x * scale;
-            new_corner.y = base_top_corner.y + (tile_h + pxl_border) * y * scale;
-
-            ImVec2 new_bottom;
-            new_bottom.x = new_corner.x + (tile_w * scale);
-            new_bottom.y = new_corner.y + (tile_h * scale);
-
-#pragma region render tiles
-            //TODO: blit each crop to a single texture
-            //      with adequate spacing between
-            //      then display that texture directly in window call
-            //  then use regular zoom/pan on that texture drawlist call
-
-            // image I'm trying to pan and zoom with
-            window->DrawList->AddImage(
-                (ImTextureID)(uintptr_t)img_data->render_texture,
-                new_corner, new_bottom,
-                uv_min, uv_max,
-                ImGui::GetColorU32(tint_col));
-        }
-    }
-}
 
 
 ImVec2 T_Corner =   {48,-12};

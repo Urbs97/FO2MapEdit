@@ -732,16 +732,27 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
 
             if (F_Prop->image_is_tileable) {
                 if (!F_Prop->palettized) ImGui::BeginDisabled();
+                static bool open_wmap_export = false;
                 if (ImGui::Button("Export Worldmap Tiles")) {
                     F_Prop->show_squares = true;
                     F_Prop->show_tiles = false;
-                    prep_image_SURFACE(
-                        F_Prop,
-                        pxlFMT_FO_Pal,
-                        My_Variables->color_match_algo,
-                        &F_Prop->preview_tiles_window, alpha_off
+                    F_Prop->edit_data.type = TILE;
+                    image_data* ed = &F_Prop->edit_data;
+                    int dir = ed->display_orient_num;
+                    animate_SURFACE_to_sub_texture(
+                        ed, ed->ANM_dir[dir].frame_data[0],
+                        My_Variables->CurrentTime_ms
                     );
-                    F_Prop->show_image_render = false;
+                    shader_info* shaders = &My_Variables->shaders;
+                    draw_PAL_to_framebuffer(
+                        shaders->FO_pal,
+                        shaders->render_PAL_shader,
+                        &shaders->giant_triangle,
+                        ed);
+                    open_wmap_export = true;
+                }
+                if (open_wmap_export) {
+                    open_wmap_export = save_TILE_popup(F_Prop);
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Export Town-Map Tiles")) {
@@ -1147,12 +1158,7 @@ void Preview_Tiles_Window(variables* My_Variables, LF* F_Prop, int counter)
             My_Variables->render_wind_focused = false;
         }
 
-        if (F_Prop->show_squares) {
-            preview_WMAP_tiles_SURFACE(My_Variables, edit_data);
-        }
-        else {
-            prev_TMAP_tiles_SURFACE(&usr_info, My_Variables, edit_data);
-        }
+        prev_TMAP_tiles_SURFACE(&usr_info, My_Variables, edit_data);
     }
     ImGui::End();
 }

@@ -766,7 +766,7 @@ bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path,
 }
 
 
-uint8_t* tile_grid(Surface* src, uint8_t* selected, int e)
+uint8_t* tile_grid(Surface* src, uint8_t* selected, int* e)
 {
     int tile_w = src->w / MAP_TILE_W;
     int tile_h = src->h / MAP_TILE_H;
@@ -774,7 +774,7 @@ uint8_t* tile_grid(Surface* src, uint8_t* selected, int e)
     if (!selected) {
         selected = (uint8_t*)calloc(1, total*sizeof(uint8_t));
     }
-    if (e == 0) {
+    if (*e == 0) {
         //set all tile entries to selected
         memset(selected,1,total);
     }
@@ -787,11 +787,9 @@ uint8_t* tile_grid(Surface* src, uint8_t* selected, int e)
             ImGui::PushID(cur_tile);
             if (ImGui::Selectable(num, selected[cur_tile] != 0, 0, ImVec2(50, 50)))
             {
-                // Toggle clicked cell - clear all cells and set single selected
-                if (e == 2) {
-                    memset(selected,0,total);
-                    selected[cur_tile] ^= 1;
-                }
+                *e = 2;
+                memset(selected,0,total);
+                selected[cur_tile] = 1;
             }
             ImGui::PopID();
         }
@@ -860,7 +858,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
     static uint8_t* selected;
-    selected = tile_grid(src, selected, e);
+    selected = tile_grid(src, selected, &e);
     ImGui::PopStyleVar();
 
     ImGui::Text(
