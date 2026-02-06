@@ -841,9 +841,12 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     // else if (e == 1) {}
     // else if (e == 2) {}
 
+    int num_tiles_x = src->w / MAP_TILE_W;
+    int num_tiles_y = src->h / MAP_TILE_H;
+    float button_size = 50.0f;
     ImVec2 scaled = {
-        src->w / 7.0f,
-        src->h / 6.0f
+        num_tiles_x * button_size,
+        num_tiles_y * button_size
     };
     ImVec2 img_pos = ImGui::GetCursorScreenPos();
 
@@ -855,8 +858,10 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
         ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f),
         ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)));
 
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
     static uint8_t* selected;
     selected = tile_grid(src, selected, e);
+    ImGui::PopStyleVar();
 
     ImGui::Text(
         "World map tiles (FRM) and mask tiles (MSK)\n"
