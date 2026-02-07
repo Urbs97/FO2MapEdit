@@ -19,6 +19,11 @@ struct wmap_info {
 bool write_wmap_file(const char* base_path, const char* save_name,
                      int tiles_x, int tiles_y, bool has_msk);
 
+#define WRLDMP_ART_IDX 339  // line index of wrldmp00.frm in vanilla intrface.lst (GOG/vanilla)
+
+bool write_worldmap_txt(const char* output_path, const char* base_name,
+                        int tiles_x, int tiles_y, Surface* msk_srfc);
+
 bool parse_wmap_file(const char* wmap_path, wmap_info* info);
 
 Surface* load_stitch_FRM_tiles(wmap_info* info, Palette* pal);

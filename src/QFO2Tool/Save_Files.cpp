@@ -14,6 +14,7 @@
 
 #include "Save_Files.h"
 
+#include <ctype.h>
 #include "B_Endian.h"
 #include "Worldmap_Project.h"
 #include "imgui.h"
@@ -645,7 +646,17 @@ void create_tile_name(char* dst, char* name, img_type save_type, char* path, int
     //-------create file path string based on path, tile_num, save_type
     snprintf(dst, MAX_PATH, "%s/%s%02d.%s", path, name, tile_num, ext[save_type]);
 
-    // printf("%s\n%s\n", dst, ext[save_type]);
+    // Lowercase the filename for MSK files to match vanilla convention.
+    // Fallout 2 engine expects lowercase mask names (e.g. wrldmp00.msk)
+    // and case matters on Linux/Proton.
+    if (save_type == MSK) {
+        char* slash = strrchr(dst, '/');
+        if (slash) {
+            for (char* p = slash + 1; *p; p++) {
+                *p = (char)tolower((unsigned char)*p);
+            }
+        }
+    }
 }
 
 
@@ -800,6 +811,15 @@ uint8_t* tile_grid(Surface* src, uint8_t* selected, int* e)
 }
 
 
+static bool surface_has_data(Surface* srfc) {
+    uint8_t* pxls = srfc->pxls;
+    int size = srfc->w * srfc->h;
+    for (int i = 0; i < size; i++) {
+        if (pxls[i]) return true;
+    }
+    return false;
+}
+
 //called 1st
 bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info, Surface* msk_srfc)
 {
@@ -828,6 +848,15 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     //  thing will overlap weirdly if moved
     static int e;
     static bool export_msk_tiles = false;
+    static int prev_frame = -1;
+    int cur_frame = ImGui::GetFrameCount();
+
+    // Re-scan mask on first frame the dialog is shown (gap in frame count)
+    if (cur_frame != prev_frame + 1) {
+        export_msk_tiles = msk_srfc ? surface_has_data(msk_srfc) : false;
+    }
+    prev_frame = cur_frame;
+
     ImGui::RadioButton("All Tiles",   &e, 0);
     // ImGui::RadioButton("Tile Range",  &e, 1);
     ImGui::RadioButton("Single Tile", &e, 2);
@@ -972,6 +1001,26 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
         int t_y = src->h / MAP_TILE_H;
         write_wmap_file(save_folder, save_name, t_x, t_y,
                         export_msk_tiles && msk_srfc);
+
+        // Engine opens "data\\worldmap.txt" via fileOpen(), which
+        // resolves through the data root at {game}/data/, producing
+        // {game}/data/data/worldmap.txt — same path as MSK files.
+        // For manual export, write next to the FRM tiles.
+        if (has_game_path) {
+            char data_data[MAX_PATH];
+            snprintf(data_data, MAX_PATH, "%s/data/data/",
+                     usr_info->default_game_path);
+            char* path = io_path_check(data_data);
+            if (path != data_data) {
+                strncpy(data_data, path, MAX_PATH);
+            }
+            io_make_dir(data_data);
+            write_worldmap_txt(data_data, save_name,
+                               t_x, t_y, export_msk_tiles ? msk_srfc : nullptr);
+        } else {
+            write_worldmap_txt(save_folder, save_name,
+                               t_x, t_y, export_msk_tiles ? msk_srfc : nullptr);
+        }
 
         free(selected);
         selected            = NULL;
@@ -1176,7 +1225,7 @@ void save_MSK_tile(uint8_t* tile_buffer, FILE* File_ptr, int width, int height)
         {
             // don't need to flip for MSK (maybe need to flip for bitmaps?)
             bitmask <<= 1;
-            bitmask |= tile_buffer[pxl_x + pxl_y * width];
+            bitmask |= tile_buffer[pxl_x + pxl_y * width] ? 1 : 0;
             if (++shift == 8)
             {
                 *outp = bitmask;

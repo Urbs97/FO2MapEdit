@@ -823,7 +823,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                             F_Prop,
                             pxlFMT_FO_Pal,
                             My_Variables->color_match_algo,
-                            &F_Prop->editing_enabled, alpha_off
+                            nullptr, alpha_off
                         );
                     }
                     commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
@@ -1022,10 +1022,18 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
 
             }
 
-            if (F_Prop->edit_data.ANM_dir) {
+            if (!F_Prop->image_is_tileable && img_data->type == FRM) {
                 static bool open_save = false;
                 image_data* ed = &F_Prop->edit_data;
                 if (ImGui::Button("Export FRM")) {
+                    if (!ed->ANM_dir) {
+                        prep_image_SURFACE(
+                            F_Prop,
+                            pxlFMT_FO_Pal,
+                            My_Variables->color_match_algo,
+                            nullptr, alpha_off
+                        );
+                    }
                     open_save = true;
                 }
                 if (open_save) {
