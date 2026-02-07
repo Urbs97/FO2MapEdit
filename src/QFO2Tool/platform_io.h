@@ -34,6 +34,6 @@ int io_file_size(const char* filename);
 bool io_backup_file(char* file_path, char* dest_path);
 bool io_create_backup_dir(char* dir);
 bool io_move_file(char* file_path, char* dest_dir);
-char* io_load_txt_file(char* full_path);
+char* io_load_txt_file(const char* full_path);
 bool io_save_txt_file(char* path, char* txt);
 bool fallout2exe_exists(const char* game_path);

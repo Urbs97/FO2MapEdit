@@ -78,9 +78,17 @@ static struct dropped_files all_dropped_files = {0};
 // File->New Worldmap Project state
 static bool     g_new_wmap_pending = false;
 static Surface* g_new_wmap_source  = nullptr;
-static char     g_new_wmap_base_name[8] = "WRLDMP";
+static char     g_new_wmap_base_name[64] = "WRLDMP";
 static int      g_new_wmap_tiles_x = 0;
 static int      g_new_wmap_tiles_y = 0;
+
+// File->Import Worldmap from FO2 state
+static bool g_import_wmap_pending = false;
+static char g_import_wmap_data_path[MAX_PATH] = "";
+static char g_import_wmap_base_name[64] = "WRLDMP";
+static char g_import_error[2048] = "";
+static bool g_import_wmap_done = false;
+static bool g_import_error_pending = false;
 
 // Function declarations
 void Show_Preview_Window(variables *My_Variables, LF* F_Prop, int counter);
@@ -1420,8 +1428,8 @@ static void NewWmapProject_Dialogs(int* counter, struct variables* My_Variables)
         ImGui::Text("Grid: %d x %d tiles", g_new_wmap_tiles_x, g_new_wmap_tiles_y);
         ImGui::Separator();
 
-        ImGui::Text("Base name (max 6 characters):");
-        ImGui::InputText("##wmap_base_name", g_new_wmap_base_name, 7);
+        ImGui::Text("Project name:");
+        ImGui::InputText("##wmap_base_name", g_new_wmap_base_name, sizeof(g_new_wmap_base_name));
 
         ImGui::Separator();
         if (ImGui::Button("OK", ImVec2(120, 0))) {
@@ -1501,6 +1509,15 @@ static void NewWmapProject_Dialogs(int* counter, struct variables* My_Variables)
             if (focus >= 0 && My_Variables->F_Prop[focus].wmap) {
                 if (save_wmap_project(save_path.c_str(), &My_Variables->F_Prop[focus])) {
                     add_recent_file(&usr_info, save_path.c_str());
+                    // Register the save path so find_open_file() can detect
+                    // this project is already open (prevents duplicate tabs
+                    // when loading the same .wmap from recent files)
+                    LF* fp = &My_Variables->F_Prop[focus];
+                    strncpy(fp->Opened_File, save_path.c_str(), MAX_PATH - 1);
+                    fp->Opened_File[MAX_PATH - 1] = '\0';
+                    // Update tab name to the filename
+                    char* slash = strrchr(fp->Opened_File, PLATFORM_SLASH);
+                    fp->c_name = slash ? slash + 1 : fp->Opened_File;
                 }
 
                 // Update default save path
@@ -1514,6 +1531,146 @@ static void NewWmapProject_Dialogs(int* counter, struct variables* My_Variables)
             }
         }
         ifd::FileDialog::Instance().Close();
+    }
+
+    // Handle Import Worldmap from FO2 folder picker result
+    if (ifd::FileDialog::Instance().IsDone("ImportWmapFolderDialog")) {
+        if (ifd::FileDialog::Instance().HasResult()) {
+            std::string path = ifd::FileDialog::Instance().GetResult().u8string();
+            printf("ImportWmapFolderDialog: selected path = '%s'\n", path.c_str());
+
+            // Check if this is the game root (containing data/worldmap.txt)
+            // or the data/ folder itself (containing worldmap.txt directly).
+            // Uses case-insensitive path resolution for Linux compatibility
+            // with extracted Fallout 2 archives (which use ALL CAPS filenames).
+            char wmap_check[MAX_PATH];
+            bool found_root = false;
+
+            // Check 1: user selected game root -> data/worldmap.txt exists under it
+            if (resolve_path_icase(path.c_str(), "data/worldmap.txt", wmap_check, MAX_PATH)) {
+                printf("  -> game root detected\n");
+                strncpy(g_import_wmap_data_path, path.c_str(), MAX_PATH - 1);
+                g_import_wmap_data_path[MAX_PATH - 1] = '\0';
+                strncpy(g_import_wmap_base_name, "WRLDMP", 7);
+                g_import_wmap_pending = true;
+                found_root = true;
+            }
+
+            // Check 2: user selected the data/ folder itself -> worldmap.txt is directly inside
+            if (!found_root && resolve_path_icase(path.c_str(), "worldmap.txt", wmap_check, MAX_PATH)) {
+                // Strip trailing slashes, then strip the last path component
+                // (the data/ dir) to get game root
+                char parent[MAX_PATH];
+                strncpy(parent, path.c_str(), MAX_PATH - 1);
+                parent[MAX_PATH - 1] = '\0';
+                int plen = strlen(parent);
+                while (plen > 1 && (parent[plen - 1] == '/' || parent[plen - 1] == '\\'))
+                    parent[--plen] = '\0';
+                char* last_slash = strrchr(parent, '/');
+#ifdef QFO2_WINDOWS
+                char* last_bslash = strrchr(parent, '\\');
+                if (last_bslash > last_slash) last_slash = last_bslash;
+#endif
+                if (last_slash) *last_slash = '\0';
+
+                printf("  -> data folder detected, using parent: %s\n", parent);
+                strncpy(g_import_wmap_data_path, parent, MAX_PATH - 1);
+                g_import_wmap_data_path[MAX_PATH - 1] = '\0';
+                strncpy(g_import_wmap_base_name, "WRLDMP", 7);
+                g_import_wmap_pending = true;
+                found_root = true;
+            }
+
+            if (!found_root) {
+                snprintf(g_import_error, sizeof(g_import_error),
+                    "worldmap.txt not found. Please select the Fallout 2 data/ folder.");
+                g_import_error_pending = true;
+            }
+        } else {
+            printf("ImportWmapFolderDialog: IsDone but no result (cancelled or empty)\n");
+        }
+        ifd::FileDialog::Instance().Close();
+    }
+
+    // Import Worldmap from FO2 confirmation popup
+    if (g_import_wmap_pending) {
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGui::OpenPopup("Import Worldmap from FO2");
+    }
+    if (ImGui::BeginPopupModal("Import Worldmap from FO2", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("Data folder: %s", g_import_wmap_data_path);
+        ImGui::Separator();
+
+        ImGui::Text("Project name:");
+        ImGui::InputText("##import_wmap_base_name", g_import_wmap_base_name, sizeof(g_import_wmap_base_name));
+
+        ImGui::Separator();
+        if (!g_import_wmap_done) {
+            if (ImGui::Button("Import", ImVec2(120, 0))) {
+                printf("Import button clicked: path='%s' name='%s'\n",
+                       g_import_wmap_data_path, g_import_wmap_base_name);
+                g_import_error[0] = '\0';
+                int msk_skipped = 0;
+                LF* F_Prop = &My_Variables->F_Prop[*counter];
+                bool ok = import_wmap_from_fo2(
+                    g_import_wmap_data_path, g_import_wmap_base_name,
+                    F_Prop, &F_Prop->img_data, &My_Variables->shaders,
+                    &msk_skipped);
+                printf("import_wmap_from_fo2 returned: %s\n", ok ? "true" : "false");
+                if (ok) {
+                    static char import_wmap_name[] = "Worldmap Project";
+                    F_Prop->c_name = import_wmap_name;
+                    (*counter)++;
+                    if (msk_skipped > 0) {
+                        snprintf(g_import_error, sizeof(g_import_error),
+                            "Import succeeded, but %d MSK mask file(s) could not be found or loaded. "
+                            "The worldmap mask layer may be incomplete.", msk_skipped);
+                        g_import_wmap_done = true;
+                    } else {
+                        g_import_wmap_pending = false;
+                        ImGui::CloseCurrentPopup();
+                    }
+                } else {
+                    snprintf(g_import_error, sizeof(g_import_error),
+                        "%s", get_popup_warning_text());
+                }
+            }
+            ImGui::SameLine();
+        }
+        if (ImGui::Button(g_import_wmap_done ? "OK" : "Cancel", ImVec2(120, 0))) {
+            g_import_wmap_pending = false;
+            g_import_wmap_done = false;
+            g_import_error[0] = '\0';
+            ImGui::CloseCurrentPopup();
+        }
+
+        if (g_import_error[0] != '\0') {
+            ImGui::Separator();
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+            ImGui::TextWrapped("%s", g_import_error);
+            ImGui::PopStyleColor();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    // Folder validation error popup
+    if (g_import_error_pending) {
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGui::OpenPopup("Import Worldmap Error");
+        g_import_error_pending = false;
+    }
+    ImGui::SetNextWindowSizeConstraints(ImVec2(400, 0), ImVec2(FLT_MAX, FLT_MAX));
+    if (ImGui::BeginPopupModal("Import Worldmap Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped("%s", g_import_error);
+        ImGui::Separator();
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            g_import_error[0] = '\0';
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 }
 
@@ -1535,6 +1692,13 @@ static void ShowMainMenuBar(int* counter, struct variables* My_Variables)
                     "Open Worldmap Project",
                     "Worldmap Project (*.wmap){.wmap,.WMAP}",
                     false, usr_info.default_load_path);
+            }
+            if (ImGui::MenuItem("Import Worldmap from FO2")) {
+                init_IFD();
+                ifd::FileDialog::Instance().Open("ImportWmapFolderDialog",
+                    "Select Fallout 2 data/ folder", "",
+                    false, usr_info.default_game_path[0]
+                        ? usr_info.default_game_path : usr_info.default_load_path);
             }
             // File->Save: enabled only when focused window is a worldmap project
             {
@@ -1668,7 +1832,7 @@ bool save_TILE_popup(LF* F_Prop)
     ImGui::Begin("Export FRM Tile", &open_window);
         if (open_window) {
             Surface* msk = img_data->MSK_srfc;
-            const char* preset = F_Prop->wmap ? F_Prop->wmap->base_name : nullptr;
+            const char* preset = F_Prop->wmap ? "WRLDMP" : nullptr;
             open_window = ImDialog_save_TILE_SURFACE(img_data, &usr_info, sv_info, msk, preset);
         }
     ImGui::End();

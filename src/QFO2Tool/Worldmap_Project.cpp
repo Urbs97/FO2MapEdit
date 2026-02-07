@@ -7,6 +7,7 @@
 #include "Image2Texture.h"
 #include "display_FRM_OpenGL.h"
 #include "ImGui_Warning.h"
+#include "B_Endian.h"
 
 
 bool write_worldmap_txt(const char* output_path, const char* base_name,
@@ -109,7 +110,8 @@ bool write_worldmap_txt(const char* output_path, const char* base_name,
 
 
 // Shared helper: set up OpenGL resources for a stitched worldmap surface.
-// Takes ownership of nothing — caller still owns stitched and msk_srfc.
+// Stores references to stitched and msk_srfc in img_data (does not copy).
+// After a successful call, img_data owns the surfaces — caller must not free them.
 static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc,
                               LF* F_Prop, image_data* img_data,
                               shader_info* shaders)
@@ -430,7 +432,8 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop,
         return false;
     }
     F_Prop->wmap->version = 2;
-    memcpy(F_Prop->wmap->base_name, hdr.base_name, 8);
+    memset(F_Prop->wmap->base_name, 0, sizeof(F_Prop->wmap->base_name));
+    memcpy(F_Prop->wmap->base_name, hdr.base_name, 7);
     F_Prop->wmap->tiles_x = (int)hdr.tiles_x;
     F_Prop->wmap->tiles_y = (int)hdr.tiles_y;
     F_Prop->wmap->has_msk = has_msk;
@@ -489,12 +492,547 @@ bool new_wmap_project(LF* F_Prop, image_data* img_data, shader_info* shaders,
         return false;
     }
     F_Prop->wmap->version = 2;
-    strncpy(F_Prop->wmap->base_name, base_name, 7);
-    F_Prop->wmap->base_name[7] = '\0';
+    strncpy(F_Prop->wmap->base_name, base_name, sizeof(F_Prop->wmap->base_name) - 1);
+    F_Prop->wmap->base_name[sizeof(F_Prop->wmap->base_name) - 1] = '\0';
     F_Prop->wmap->tiles_x = tiles_x;
     F_Prop->wmap->tiles_y = tiles_y;
     F_Prop->wmap->has_msk = false;
     F_Prop->wmap->save_path[0] = '\0';
 
+    return true;
+}
+
+
+// --- Import Worldmap from FO2 data folder ---
+
+// Case-insensitive path resolver for Linux.
+// Given a base path (known to exist, exact case) and a relative suffix
+// (potentially wrong case), walks each path component and matches
+// against actual directory entries using case-insensitive comparison.
+// Returns true and writes the resolved path to `out` if found.
+// On Windows this is a no-op since the filesystem is case-insensitive.
+bool resolve_path_icase(const char* base, const char* suffix, char* out, int out_size)
+{
+    snprintf(out, out_size, "%s/%s", base, suffix);
+
+#ifdef QFO2_WINDOWS
+    return io_file_exists(out) || io_isdir(out);
+#else
+    // Start from base (known good) and resolve each component of suffix
+    char resolved[MAX_PATH];
+    strncpy(resolved, base, MAX_PATH - 1);
+    resolved[MAX_PATH - 1] = '\0';
+
+    // Work through each component of suffix
+    char suffix_copy[MAX_PATH];
+    strncpy(suffix_copy, suffix, MAX_PATH - 1);
+    suffix_copy[MAX_PATH - 1] = '\0';
+
+    char* saveptr = nullptr;
+    char* tok = strtok_r(suffix_copy, "/", &saveptr);
+    while (tok) {
+        void* dir_stream = io_open_dir(resolved);
+        if (!dir_stream) return false;
+
+        bool found = false;
+        char* entry;
+        while ((entry = io_scan_dir(dir_stream)) != nullptr) {
+            if (strcasecmp(entry, tok) == 0) {
+                // Append the correctly-cased entry
+                int len = strlen(resolved);
+                snprintf(resolved + len, MAX_PATH - len, "/%s", entry);
+                found = true;
+                break;
+            }
+        }
+        io_close_dir(dir_stream);
+
+        if (!found) return false;
+
+        tok = strtok_r(nullptr, "/", &saveptr);
+    }
+
+    strncpy(out, resolved, out_size - 1);
+    out[out_size - 1] = '\0';
+    return true;
+#endif
+}
+
+
+struct wmap_tile_entry {
+    int  art_idx;
+    char walk_mask_name[32];  // empty string if no mask
+};
+
+
+static bool parse_worldmap_txt(const char* txt_path,
+    int* out_tiles_x, int* out_tiles_y,
+    wmap_tile_entry** out_entries, int* out_count)
+{
+    char* txt = io_load_txt_file(txt_path);
+    if (!txt) {
+        set_popup_warning(
+            "[ERROR] Import Worldmap from FO2\n\n"
+            "Unable to load worldmap.txt."
+        );
+        return false;
+    }
+
+    int tiles_x = 0;
+    int tile_capacity = 128;
+    int tile_count = 0;
+    wmap_tile_entry* entries = (wmap_tile_entry*)malloc(tile_capacity * sizeof(wmap_tile_entry));
+    if (!entries) {
+        set_popup_warning(
+            "[ERROR] Import Worldmap from FO2\n\n"
+            "Unable to allocate tile entries."
+        );
+        free(txt);
+        return false;
+    }
+
+    bool in_tile_data = false;
+    int  current_tile_idx = -1;  // which [Tile N] we're inside
+    wmap_tile_entry current_entry = {};
+
+    char* line = txt;
+    while (line && *line) {
+        // Find end of line
+        char* eol = strchr(line, '\n');
+        int line_len = eol ? (int)(eol - line) : (int)strlen(line);
+
+        // Strip trailing \r
+        int clean_len = line_len;
+        if (clean_len > 0 && line[clean_len - 1] == '\r') clean_len--;
+
+        // Make a null-terminated copy of this line
+        char line_buf[256];
+        if (clean_len >= (int)sizeof(line_buf)) clean_len = (int)sizeof(line_buf) - 1;
+        memcpy(line_buf, line, clean_len);
+        line_buf[clean_len] = '\0';
+
+        // Check for section headers
+        if (line_buf[0] == '[') {
+            // Commit previous tile if we were in one
+            if (current_tile_idx >= 0) {
+                if (tile_count >= tile_capacity) {
+                    tile_capacity *= 2;
+                    wmap_tile_entry* tmp = (wmap_tile_entry*)realloc(entries, tile_capacity * sizeof(wmap_tile_entry));
+                    if (!tmp) { free(entries); free(txt); return false; }
+                    entries = tmp;
+                }
+                entries[tile_count++] = current_entry;
+                current_tile_idx = -1;
+            }
+
+            if (strncmp(line_buf, "[Tile Data]", 11) == 0) {
+                in_tile_data = true;
+            } else if (sscanf(line_buf, "[Tile %d]", &current_tile_idx) == 1) {
+                in_tile_data = false;
+                current_entry = {};
+                current_entry.art_idx = -1;
+            } else {
+                in_tile_data = false;
+            }
+        }
+        else if (in_tile_data) {
+            // Parse num_horizontal_tiles
+            int val;
+            if (sscanf(line_buf, "num_horizontal_tiles=%d", &val) == 1) {
+                tiles_x = val;
+            }
+        }
+        else if (current_tile_idx >= 0) {
+            // Parse art_idx and walk_mask_name
+            int val;
+            if (sscanf(line_buf, "art_idx=%d", &val) == 1) {
+                current_entry.art_idx = val;
+            }
+            char mask_buf[32];
+            if (sscanf(line_buf, "walk_mask_name=%31s", mask_buf) == 1) {
+                strncpy(current_entry.walk_mask_name, mask_buf, 31);
+                current_entry.walk_mask_name[31] = '\0';
+            }
+        }
+
+        // Advance to next line
+        line = eol ? eol + 1 : nullptr;
+    }
+
+    // Commit last tile
+    if (current_tile_idx >= 0) {
+        if (tile_count >= tile_capacity) {
+            tile_capacity *= 2;
+            wmap_tile_entry* tmp = (wmap_tile_entry*)realloc(entries, tile_capacity * sizeof(wmap_tile_entry));
+            if (!tmp) { free(entries); free(txt); return false; }
+            entries = tmp;
+        }
+        entries[tile_count++] = current_entry;
+    }
+
+    free(txt);
+
+    if (tiles_x <= 0) {
+        set_popup_warning(
+            "[ERROR] Import Worldmap from FO2\n\n"
+            "num_horizontal_tiles not found\n"
+            "in worldmap.txt."
+        );
+        free(entries);
+        return false;
+    }
+
+    if (tile_count == 0 || tile_count % tiles_x != 0) {
+        char warn[256];
+        snprintf(warn, sizeof(warn),
+            "[ERROR] Import Worldmap from FO2\n\n"
+            "Tile count (%d) is not divisible\n"
+            "by num_horizontal_tiles (%d).",
+            tile_count, tiles_x);
+        set_popup_warning(warn);
+        free(entries);
+        return false;
+    }
+
+    *out_tiles_x = tiles_x;
+    *out_tiles_y = tile_count / tiles_x;
+    *out_entries = entries;
+    *out_count   = tile_count;
+    return true;
+}
+
+
+static void decode_msk_to_surface(const uint8_t* msk_buf,
+    Surface* dst, int dst_x, int dst_y, int tile_w, int tile_h)
+{
+    const uint8_t* bin_ptr = msk_buf;
+    uint8_t bitmask = 128;
+    uint8_t white = 1;
+
+    for (int pxl_y = 0; pxl_y < tile_h; pxl_y++) {
+        for (int pxl_x = 0; pxl_x < tile_w; pxl_x++) {
+            uint8_t buff = *bin_ptr;
+            bool mask_1_or_0 = (buff & bitmask);
+            if (mask_1_or_0) {
+                dst->pxls[(dst_y + pxl_y) * dst->w + (dst_x + pxl_x)] = white;
+            }
+            bitmask >>= 1;
+            if (bitmask == 0) {
+                ++bin_ptr;
+                bitmask = 128;
+            }
+        }
+        if (bitmask < 128) {
+            ++bin_ptr;
+            bitmask = 128;
+        }
+    }
+}
+
+
+bool import_wmap_from_fo2(const char* data_path, const char* base_name,
+                          LF* F_Prop, image_data* img_data, shader_info* shaders,
+                          int* out_msk_skipped)
+{
+    if (out_msk_skipped) *out_msk_skipped = 0;
+    printf("import_wmap_from_fo2(): data_path='%s' base_name='%s'\n", data_path, base_name);
+
+    // Resolve paths case-insensitively (Fallout 2 archives extract as ALL CAPS)
+    char worldmap_path[MAX_PATH];
+    char intrface_lst_path[MAX_PATH];
+    char intrface_dir[MAX_PATH];
+    char msk_dir[MAX_PATH];
+
+    if (!resolve_path_icase(data_path, "data/worldmap.txt", worldmap_path, MAX_PATH)) {
+        set_popup_warning(
+            "[ERROR] Import Worldmap from FO2\n\n"
+            "worldmap.txt not found in\n"
+            "the selected data folder."
+        );
+        return false;
+    }
+    if (!resolve_path_icase(data_path, "art/intrface/intrface.lst", intrface_lst_path, MAX_PATH)) {
+        set_popup_warning(
+            "[ERROR] Import Worldmap from FO2\n\n"
+            "art/intrface/intrface.lst not found\n"
+            "in the selected data folder."
+        );
+        return false;
+    }
+
+    printf("  worldmap resolved: '%s'\n", worldmap_path);
+    printf("  intrface.lst resolved: '%s'\n", intrface_lst_path);
+
+    // Resolve the intrface directory and data directory
+    resolve_path_icase(data_path, "art/intrface", intrface_dir, MAX_PATH);
+    resolve_path_icase(data_path, "data", msk_dir, MAX_PATH);
+    printf("  intrface_dir: '%s'\n", intrface_dir);
+    printf("  msk_dir: '%s'\n", msk_dir);
+
+    // Parse worldmap.txt
+    int tiles_x = 0, tiles_y = 0, tile_count = 0;
+    wmap_tile_entry* tile_entries = nullptr;
+    if (!parse_worldmap_txt(worldmap_path, &tiles_x, &tiles_y, &tile_entries, &tile_count)) {
+        printf("  parse_worldmap_txt FAILED\n");
+        return false;
+    }
+    printf("  parsed: %dx%d tiles, %d total\n", tiles_x, tiles_y, tile_count);
+
+    // Load intrface.lst and build line index for O(1) lookup
+    char* lst_txt = io_load_txt_file(intrface_lst_path);
+    if (!lst_txt) {
+        set_popup_warning(
+            "[ERROR] Import Worldmap from FO2\n\n"
+            "Unable to load intrface.lst."
+        );
+        free(tile_entries);
+        return false;
+    }
+
+    printf("  intrface.lst loaded OK\n");
+
+    // Count lines and build pointer array
+    int lst_line_capacity = 512;
+    int lst_line_count = 0;
+    char** lst_lines = (char**)malloc(lst_line_capacity * sizeof(char*));
+
+    char* lp = lst_txt;
+    while (lp && *lp) {
+        if (lst_line_count >= lst_line_capacity) {
+            lst_line_capacity *= 2;
+            lst_lines = (char**)realloc(lst_lines, lst_line_capacity * sizeof(char*));
+        }
+        lst_lines[lst_line_count++] = lp;
+
+        char* eol = strchr(lp, '\n');
+        if (eol) {
+            // Null-terminate this line (strip \r if present)
+            if (eol > lp && *(eol - 1) == '\r') *(eol - 1) = '\0';
+            *eol = '\0';
+        }
+
+        // Strip comments (";") and trailing whitespace from the line
+        char* comment = strchr(lp, ';');
+        if (comment) *comment = '\0';
+        // Trim trailing spaces/tabs
+        int len = strlen(lp);
+        while (len > 0 && (lp[len - 1] == ' ' || lp[len - 1] == '\t')) {
+            lp[--len] = '\0';
+        }
+
+        lp = eol ? eol + 1 : nullptr;
+    }
+
+    printf("  intrface.lst: %d lines\n", lst_line_count);
+    // Print first tile's art_idx and the filename it maps to
+    if (tile_count > 0) {
+        int idx0 = tile_entries[0].art_idx;
+        printf("  tile 0: art_idx=%d -> '%s' (lst has %d lines)\n",
+               idx0, (idx0 >= 0 && idx0 < lst_line_count) ? lst_lines[idx0] : "OUT OF RANGE", lst_line_count);
+    }
+
+    // Validate all FRM files exist before loading
+    bool all_found = true;
+    char missing_msg[1024] = "[ERROR] Import Worldmap from FO2\n\nMissing FRM files:\n";
+    int missing_count = 0;
+
+    for (int i = 0; i < tile_count; i++) {
+        int idx = tile_entries[i].art_idx;
+        if (idx < 0 || idx >= lst_line_count) {
+            char buf[128];
+            snprintf(buf, sizeof(buf), "  Tile %d: art_idx=%d out of range\n", i, idx);
+            if (strlen(missing_msg) + strlen(buf) < sizeof(missing_msg) - 1)
+                strcat(missing_msg, buf);
+            all_found = false;
+            missing_count++;
+            continue;
+        }
+
+        char frm_path[MAX_PATH];
+        if (!resolve_path_icase(intrface_dir, lst_lines[idx], frm_path, MAX_PATH)) {
+            char buf[128];
+            snprintf(buf, sizeof(buf), "  %s\n", lst_lines[idx]);
+            if (strlen(missing_msg) + strlen(buf) < sizeof(missing_msg) - 1)
+                strcat(missing_msg, buf);
+            all_found = false;
+            missing_count++;
+        }
+    }
+
+    if (!all_found) {
+        printf("  %d FRM files missing!\n", missing_count);
+        set_popup_warning(missing_msg);
+        free(lst_lines);
+        free(lst_txt);
+        free(tile_entries);
+        return false;
+    }
+    printf("  all FRM files validated OK\n");
+
+    // Allocate stitched FRM surface
+    int full_w = tiles_x * WMAP_TILE_W;
+    int full_h = tiles_y * WMAP_TILE_H;
+    Surface* stitched = Create_8Bit_Surface(full_w, full_h, shaders->FO_pal);
+    if (!stitched) {
+        set_popup_warning(
+            "[ERROR] Import Worldmap from FO2\n\n"
+            "Unable to allocate stitched FRM surface."
+        );
+        free(lst_lines);
+        free(lst_txt);
+        free(tile_entries);
+        return false;
+    }
+
+    // Load and stitch FRM tiles
+    for (int i = 0; i < tile_count; i++) {
+        int x = i % tiles_x;
+        int y = i / tiles_x;
+
+        char frm_path[MAX_PATH];
+        resolve_path_icase(intrface_dir, lst_lines[tile_entries[i].art_idx], frm_path, MAX_PATH);
+
+        int file_size = 0;
+        uint8_t* frm_buf = load_entire_file(frm_path, &file_size);
+        if (!frm_buf) {
+            char warn[MAX_PATH + 64];
+            snprintf(warn, sizeof(warn),
+                "[ERROR] Import Worldmap from FO2\n\n"
+                "Failed to load FRM tile:\n%s", frm_path);
+            set_popup_warning(warn);
+            FreeSurface(stitched);
+            free(lst_lines);
+            free(lst_txt);
+            free(tile_entries);
+            return false;
+        }
+
+        FRM_Header* hdr = (FRM_Header*)frm_buf;
+        B_Endian::flip_header_endian(hdr);
+
+        FRM_Frame* frame = (FRM_Frame*)(frm_buf + sizeof(FRM_Header));
+        B_Endian::flip_frame_endian(frame);
+
+        if (frame->Frame_Width != WMAP_TILE_W || frame->Frame_Height != WMAP_TILE_H) {
+            char warn[256];
+            snprintf(warn, sizeof(warn),
+                "[ERROR] Import Worldmap from FO2\n\n"
+                "FRM tile %s has unexpected\n"
+                "dimensions: %dx%d (expected %dx%d).",
+                lst_lines[tile_entries[i].art_idx],
+                frame->Frame_Width, frame->Frame_Height,
+                WMAP_TILE_W, WMAP_TILE_H);
+            set_popup_warning(warn);
+            free(frm_buf);
+            FreeSurface(stitched);
+            free(lst_lines);
+            free(lst_txt);
+            free(tile_entries);
+            return false;
+        }
+
+        uint8_t* frame_pixels = frame->frame_start;
+        int dst_offset = (y * WMAP_TILE_H * full_w) + (x * WMAP_TILE_W);
+        for (int row = 0; row < WMAP_TILE_H; row++) {
+            memcpy(&stitched->pxls[dst_offset + row * full_w],
+                   &frame_pixels[row * WMAP_TILE_W], WMAP_TILE_W);
+        }
+
+        free(frm_buf);
+    }
+
+    // Load and stitch MSK tiles (optional)
+    bool any_msk = false;
+    for (int i = 0; i < tile_count; i++) {
+        if (tile_entries[i].walk_mask_name[0] != '\0') {
+            any_msk = true;
+            break;
+        }
+    }
+
+    Surface* msk_full = nullptr;
+    if (any_msk) {
+        msk_full = Create_8Bit_Surface(full_w, full_h, nullptr);
+        if (!msk_full) {
+            set_popup_warning(
+                "[ERROR] Import Worldmap from FO2\n\n"
+                "Unable to allocate MSK surface."
+            );
+            FreeSurface(stitched);
+            free(lst_lines);
+            free(lst_txt);
+            free(tile_entries);
+            return false;
+        }
+
+        for (int i = 0; i < tile_count; i++) {
+            if (tile_entries[i].walk_mask_name[0] == '\0') continue;
+
+            int x = i % tiles_x;
+            int y = i / tiles_x;
+
+            char msk_filename[64];
+            snprintf(msk_filename, sizeof(msk_filename), "%s.msk", tile_entries[i].walk_mask_name);
+
+            char msk_path[MAX_PATH];
+            if (!resolve_path_icase(msk_dir, msk_filename, msk_path, MAX_PATH)) {
+                printf("Warning: MSK file not found: %s/%s\n", msk_dir, msk_filename);
+                if (out_msk_skipped) (*out_msk_skipped)++;
+                continue;
+            }
+
+            int msk_size = 0;
+            uint8_t* msk_buf = load_entire_file(msk_path, &msk_size);
+            if (!msk_buf) {
+                printf("Warning: Failed to load MSK file: %s\n", msk_path);
+                if (out_msk_skipped) (*out_msk_skipped)++;
+                continue;
+            }
+
+            decode_msk_to_surface(msk_buf, msk_full,
+                x * WMAP_TILE_W, y * WMAP_TILE_H,
+                WMAP_TILE_W, WMAP_TILE_H);
+
+            free(msk_buf);
+        }
+    }
+
+    // Initialize OpenGL
+    if (!init_wmap_opengl(stitched, msk_full, F_Prop, img_data, shaders)) {
+        FreeSurface(stitched);
+        if (msk_full) FreeSurface(msk_full);
+        free(lst_lines);
+        free(lst_txt);
+        free(tile_entries);
+        return false;
+    }
+
+    // Populate wmap_info
+    F_Prop->wmap = (wmap_info*)calloc(1, sizeof(wmap_info));
+    if (!F_Prop->wmap) {
+        set_popup_warning(
+            "[ERROR] Import Worldmap from FO2\n\n"
+            "Unable to allocate wmap_info."
+        );
+        free(lst_lines);
+        free(lst_txt);
+        free(tile_entries);
+        return false;
+    }
+    F_Prop->wmap->version = 2;
+    strncpy(F_Prop->wmap->base_name, base_name, sizeof(F_Prop->wmap->base_name) - 1);
+    F_Prop->wmap->base_name[sizeof(F_Prop->wmap->base_name) - 1] = '\0';
+    F_Prop->wmap->tiles_x = tiles_x;
+    F_Prop->wmap->tiles_y = tiles_y;
+    F_Prop->wmap->has_msk = any_msk;
+    F_Prop->wmap->save_path[0] = '\0';  // user must Save As
+
+    printf("import_wmap_from_fo2(): imported %dx%d tiles (%dx%d pixels), msk=%s\n",
+           tiles_x, tiles_y, full_w, full_h, any_msk ? "yes" : "no");
+
+    // Cleanup
+    free(lst_lines);
+    free(lst_txt);
+    free(tile_entries);
     return true;
 }

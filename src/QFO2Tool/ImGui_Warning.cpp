@@ -45,3 +45,8 @@ void show_popup_warnings()//const char* modal_name, const char* str)
         ImGui::EndPopup();
     }
 }
+
+const char* get_popup_warning_text()
+{
+    return warn_str;
+}

@@ -24,7 +24,7 @@ struct wmap_header {
 
 struct wmap_info {
     int  version;
-    char base_name[8];
+    char base_name[64];     // project display name (not used for export)
     int  tiles_x;
     int  tiles_y;
     bool has_msk;
@@ -44,3 +44,9 @@ bool new_wmap_project(LF* F_Prop, image_data* img_data, shader_info* shaders,
 
 bool load_wmap_project(const char* wmap_path, LF* F_Prop,
                        image_data* img_data, shader_info* shaders);
+
+bool import_wmap_from_fo2(const char* data_path, const char* base_name,
+                          LF* F_Prop, image_data* img_data, shader_info* shaders,
+                          int* out_msk_skipped);
+
+bool resolve_path_icase(const char* base, const char* suffix, char* out, int out_size);

@@ -546,7 +546,7 @@ bool io_create_backup_dir(char* dir)
 
 //loads a text file into a buffer
 //returns the buffer
-char* io_load_txt_file(char* full_path)
+char* io_load_txt_file(const char* full_path)
 {
     if (io_file_exists(full_path) == false) {
         return nullptr;

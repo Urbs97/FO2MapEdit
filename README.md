@@ -9,10 +9,13 @@ Forked from [msk2bmpGUI](https://github.com/QuantumApprentice/msk2bmpGUI) by Qua
 ## Features
 
 ### Image Loading & Conversion
-- Load standard image formats (PNG, BMP, JPG) and Fallout FRM files via file dialog or drag & drop
+- Load standard image formats (PNG, BMP, JPG, GIF) and Fallout FRM/FR0-FR5 files via file dialog or drag & drop
+- Load MSK mask files and `.wmap` worldmap project files
+- Import an existing worldmap directly from a Fallout 2 installation (parses `worldmap.txt`, stitches FRM tiles and MSK masks into a single editable project)
 - Palettize images to the Fallout 256-color palette using Euclidean distance color matching with optional Floyd-Steinberg dithering
 - Real-time palette rendering via OpenGL fragment shaders
 - Display multi-frame FRM animations in all 6 orientations
+- Drag & drop a folder of images to load them as sequential animation frames, with automatic directional grouping (NE, E, SE, SW, W, NW subfolders)
 
 ### Worldmap Tile Export
 - Split a source image into a grid of 350x300 FRM tiles for the Fallout 2 overworld map
@@ -38,6 +41,7 @@ Forked from [msk2bmpGUI](https://github.com/QuantumApprentice/msk2bmpGUI) by Qua
 
 Detailed step-by-step guides are included in this repository:
 
+- [**Importing & Loading Files**](docs/TUTORIAL_Import_Project.md) — loading images, opening `.wmap` projects, importing a worldmap from a Fallout 2 installation, drag & drop animation loading
 - [**Worldmap Tiles & Masks**](docs/TUTORIAL_Map_and_Mask_Export.md) — exporting overworld FRM/MSK tiles, `.wmap` project files, file format reference
 
 ---
