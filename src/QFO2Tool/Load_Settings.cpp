@@ -297,10 +297,6 @@ void store_config_info(struct config_data *config, struct user_info *usr_info)
     {
         snprintf(usr_info->default_load_path, sizeof(usr_info->default_save_path), "%s", config->val_buffer);
     }
-    if (strncmp(config->key_buffer, "Save_Full_MSK_Warn", sizeof(config->val_buffer)) == 0)
-    {   //handle boolean
-        usr_info->save_full_MSK_warning = (config->val_buffer[0] == '1');
-    }
     if (strncmp(config->key_buffer, "Show_Image_Stats", sizeof(config->val_buffer)) == 0)
     {   //handle boolean
         usr_info->show_image_stats = (config->val_buffer[0] == '1');
@@ -355,12 +351,7 @@ void write_cfg_file(struct user_info* usr_info, char* exe_path)
     fwrite("\r\nDefault_Load_Path=", strlen("\r\nDefault_Load_Path="), 1, config_file_ptr);
     fwrite(usr_info->default_load_path, strlen(usr_info->default_load_path), 1, config_file_ptr);
 
-    //TODO: might need to write a boolean handler?
-    fwrite("\r\nSave_Full_MSK_Warn=", strlen("\r\nSave_Full_MSK_Warn="), 1, config_file_ptr);
     char buffer[2];
-    snprintf(buffer, 2, "%d", usr_info->save_full_MSK_warning);
-    fwrite(buffer, strlen(buffer), 1, config_file_ptr);
-
     fwrite("\r\nShow_Image_Stats=", strlen("\r\nShow_Image_Stats="), 1, config_file_ptr);
     snprintf(buffer, 2, "%d", usr_info->show_image_stats);
     fwrite(buffer, strlen(buffer), 1, config_file_ptr);
@@ -422,4 +413,18 @@ void add_recent_file(struct user_info *usr_info, const char* file_path)
     if (existing_index < 0 && usr_info->recent_files_count < MAX_RECENT_FILES) {
         usr_info->recent_files_count++;
     }
+}
+
+void remove_recent_file(struct user_info *usr_info, int index)
+{
+    if (index < 0 || index >= usr_info->recent_files_count) {
+        return;
+    }
+
+    for (int i = index; i < usr_info->recent_files_count - 1; i++) {
+        memcpy(usr_info->recent_files[i], usr_info->recent_files[i + 1], MAX_PATH);
+    }
+
+    usr_info->recent_files_count--;
+    usr_info->recent_files[usr_info->recent_files_count][0] = '\0';
 }

@@ -41,6 +41,9 @@ struct variables {
     ImFont* Font;
     int global_font_size = 32;
     int window_number_focus = -1;
+
+    bool undo_requested = false;
+    bool redo_requested = false;
 };
 
 bool checkbox_handler(const char* text, bool* alpha);

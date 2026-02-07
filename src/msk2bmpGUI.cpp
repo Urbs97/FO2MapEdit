@@ -102,6 +102,7 @@ static void glfw_error_callback(int error, const char* description)
 
 // Set to true when edit mode is active — prevents Escape from closing the app
 static bool g_edit_mode_active = false;
+static bool g_reset_imgui_ini = false;
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -520,9 +521,14 @@ int main(int argc, char** argv)
 
     // Cleanup
     //TODO: test if freeing manually vs freeing by hand? is faster/same
+    const char* ini_path = ImGui::GetIO().IniFilename;
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    if (g_reset_imgui_ini && ini_path) {
+        std::remove(ini_path);
+    }
 
     glfwDestroyWindow(window);
     glfwTerminate();
@@ -811,6 +817,16 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                 if (ImGui::Button("Export Worldmap Tiles")) {
                     F_Prop->show_squares = true;
                     F_Prop->show_tiles = false;
+                    // Ensure edit_data is initialized before export
+                    if (!F_Prop->edit_data.ANM_dir) {
+                        prep_image_SURFACE(
+                            F_Prop,
+                            pxlFMT_FO_Pal,
+                            My_Variables->color_match_algo,
+                            &F_Prop->editing_enabled, alpha_off
+                        );
+                    }
+                    commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
                     F_Prop->edit_data.type = TILE;
                     image_data* ed = &F_Prop->edit_data;
                     int dir = ed->display_orient_num;
@@ -824,7 +840,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                         shaders->render_PAL_shader,
                         &shaders->giant_triangle,
                         ed);
-                    commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
                     open_wmap_export = true;
                 }
                 if (open_wmap_export) {
@@ -903,7 +918,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                 {
                     char png_popup_id[32];
                     snprintf(png_popup_id, sizeof(png_popup_id), "save_as_PNG##%02d", counter);
-                    if (ImGui::Button("Save as PNG")) {
+                    if (ImGui::Button("Export as PNG")) {
                         ImGui::OpenPopup(png_popup_id);
                     }
                     bool open = true;
@@ -962,6 +977,10 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                                                mw, mh, 1);
                         }
 
+                        // Sync zoom/pan from edit back to preview
+                        F_Prop->img_data.scale  = F_Prop->edit_data.scale;
+                        F_Prop->img_data.offset = F_Prop->edit_data.offset;
+
                         F_Prop->editing_enabled = false;
                         F_Prop->edit_MSK = false;
                         F_Prop->active_layer = 0;
@@ -978,10 +997,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                     // Layer panel replaces old mask switching buttons
                     draw_layer_panel(F_Prop, shaders, ed, &edit_MSK_srfc);
 
-                    // Load MSK file button (shown when Mask layer is selected)
-                    if (F_Prop->active_layer == 1) {
-                        ImDialog_load_MSK(F_Prop, ed, &usr_info, &My_Variables->shaders);
-                    }
                 }
 
                 if (ImGui::Button("Reset Image")) {
@@ -1327,11 +1342,51 @@ void Open_Files(struct user_info* usr_info, int* counter, Palette* pxlFMT, struc
     }
 }
 
+static void ShowShortcutsWindow(bool* p_open)
+{
+    ImGui::SetNextWindowSize(ImVec2(480, 400), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Shortcuts", p_open);
+    if (ImGui::BeginTable("shortcuts_table", 3,
+            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+    {
+        ImGui::TableSetupColumn("Category");
+        ImGui::TableSetupColumn("Shortcut");
+        ImGui::TableSetupColumn("Action");
+        ImGui::TableHeadersRow();
+
+        struct { const char* category; const char* shortcut; const char* action; } entries[] = {
+            { "File",      "Ctrl+O",                "Open file" },
+            { "Edit",      "Ctrl+Z",                "Undo" },
+            { "Edit",      "Ctrl+Y",                "Redo" },
+            { "Animation", "Space",                  "Play/Pause animation" },
+            { "Animation", "Left Arrow",             "Previous frame" },
+            { "Animation", "Right Arrow",            "Next frame" },
+            { "Animation", "Up Arrow",               "Next orientation" },
+            { "Animation", "Down Arrow",             "Previous orientation" },
+            { "View",      "Ctrl+Mouse Wheel",       "Zoom in/out" },
+            { "View",      "Right Mouse Drag",       "Pan image" },
+            { "Editing",   "Escape",                 "Cancel stroke" },
+            { "Editing",   "Right Click (in stroke)", "Cancel stroke" },
+            { "General",   "Escape",                 "Close application" },
+        };
+
+        for (auto& e : entries) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::TextUnformatted(e.category);
+            ImGui::TableNextColumn(); ImGui::TextUnformatted(e.shortcut);
+            ImGui::TableNextColumn(); ImGui::TextUnformatted(e.action);
+        }
+
+        ImGui::EndTable();
+    }
+    ImGui::End();
+}
+
 static void ShowMainMenuBar(int* counter, struct variables* My_Variables)
 {
+    static bool show_shortcuts = false;
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            ImGui::MenuItem("(demo menu)", NULL, false, false);
             if (ImGui::MenuItem("New (not yet implemented)", "", false, false)) {
                 /*TODO: add a new file option w/blank surfaces*/ }
             if (ImGui::MenuItem("Open", "Ctrl+O")) {
@@ -1340,33 +1395,13 @@ static void ShowMainMenuBar(int* counter, struct variables* My_Variables)
             if (ImGui::MenuItem("Set Fallout2.exe Path")) {
                 Set_Default_Game_Path(&usr_info, My_Variables->exe_directory);
             }
-            if (ImGui::MenuItem("Toggle \"Save Full MSK\" warning")) {
-                if (usr_info.save_full_MSK_warning) {
-                    usr_info.save_full_MSK_warning = false;
-                }
-                else {
-                    usr_info.save_full_MSK_warning = true;
-                }
-            }
-            if (ImGui::MenuItem("Toggle Image Stats")) {
-                if (usr_info.show_image_stats) {
-                    usr_info.show_image_stats = false;
-                    My_Variables->F_Prop[*counter].show_stats = false;
-                }
-                else {
-                    usr_info.show_image_stats = true;
-                    My_Variables->F_Prop[*counter].show_stats = true;
-                }
-            }
             //TODO: implement "Open Recent" menu
             //if (ImGui::BeginMenu("Open Recent")) {}
             ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("Edit - WIP")) {
-            //TODO: implement undo tree :: all are disabled for now (..., false, false)
-            if (ImGui::MenuItem("(not yet implemented)", "", false, false)) {}
-            if (ImGui::MenuItem("Undo",  "CTRL+Z", false, false)) {}
-            if (ImGui::MenuItem("Redo",  "CTRL+Y", false, false)) {}
+        if (ImGui::BeginMenu("Edit")) {
+            if (ImGui::MenuItem("Undo",  "CTRL+Z")) { My_Variables->undo_requested = true; }
+            if (ImGui::MenuItem("Redo",  "CTRL+Y")) { My_Variables->redo_requested = true; }
             ImGui::Separator();
             if (ImGui::MenuItem("Cut",   "CTRL+X", false, false)) {}
             if (ImGui::MenuItem("Copy",  "CTRL+C", false, false)) {}
@@ -1374,7 +1409,7 @@ static void ShowMainMenuBar(int* counter, struct variables* My_Variables)
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Config")) {
-            if (ImGui::MenuItem("Toggle Auto Mode")) {
+            if (ImGui::MenuItem("Auto Export", nullptr, usr_info.auto_export == auto_all)) {
                 if (usr_info.auto_export != 0) {
                     usr_info.auto_export = 0;
                     usr_info.default_game_path[0] = '\0';
@@ -1383,24 +1418,34 @@ static void ShowMainMenuBar(int* counter, struct variables* My_Variables)
                     usr_info.auto_export = true;
                 }
             }
-            if (ImGui::MenuItem("Reset ImGui.ini (not yet implemented)", "", false, false)) {
-                char buff[MAX_PATH];
-                snprintf(buff, MAX_PATH, "%s%s", My_Variables->exe_directory, "/imgui.ini");
-                FILE* file_ptr = fopen(buff, "rb");
-                if (file_ptr) {
-                    fclose(file_ptr);
-                    //TODO: delete file? copy default settings as string?
-                }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "ON:  Export tiles directly to your Fallout 2 directory\n"
+                    "     without confirmation prompts.\n"
+                    "OFF: Prompt for save location and confirmation\n"
+                    "     on each export.");
+            }
+            if (ImGui::MenuItem("Reset ImGui.ini")) {
+                g_reset_imgui_ini = true;
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(g_reset_imgui_ini
+                    ? "Restart the application to apply the reset."
+                    : "Reset window layout to defaults.\n"
+                      "Requires an application restart.");
             }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Help")) {
-            if (ImGui::MenuItem("Shortcuts -- WIP","",false,false)) {
-
+            if (ImGui::MenuItem("Shortcuts", "", show_shortcuts)) {
+                show_shortcuts = !show_shortcuts;
             }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
+    }
+    if (show_shortcuts) {
+        ShowShortcutsWindow(&show_shortcuts);
     }
     set_game_path_POPUP(&usr_info);
     game_path_set_POPUP(&usr_info);
@@ -1479,6 +1524,7 @@ void main_window_bttns(variables* My_Variables, int* counter)
     }
     ImGui::Separator();
 
+    char recent_file_warning[MAX_PATH + 64] = {};
     if (usr_info.recent_files_count > 0) {
         ImGui::Text("Recent Files:");
         for (int i = 0; i < usr_info.recent_files_count; i++) {
@@ -1492,6 +1538,11 @@ void main_window_bttns(variables* My_Variables, int* counter)
                 if (existing >= 0) {
                     focus_file_window(existing);
                     add_recent_file(&usr_info, full_path);
+                } else if (!io_file_exists(full_path)) {
+                    snprintf(recent_file_warning, sizeof(recent_file_warning), "File not found:\n%s", full_path);
+                    remove_recent_file(&usr_info, i);
+                    ImGui::PopID();
+                    break;
                 } else {
                     F_Prop = &My_Variables->F_Prop[*counter];
                     F_Prop->file_open_window = File_Type_Check(F_Prop, &My_Variables->shaders, &F_Prop->img_data, full_path);
@@ -1504,8 +1555,20 @@ void main_window_bttns(variables* My_Variables, int* counter)
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("%s", full_path);
             }
+            if (ImGui::BeginPopupContextItem()) {
+                if (ImGui::Selectable("Remove")) {
+                    remove_recent_file(&usr_info, i);
+                    ImGui::EndPopup();
+                    ImGui::PopID();
+                    break;
+                }
+                ImGui::EndPopup();
+            }
             ImGui::PopID();
         }
+    }
+    if (recent_file_warning[0]) {
+        set_popup_warning(recent_file_warning);
     }
 }
 

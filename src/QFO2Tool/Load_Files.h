@@ -71,7 +71,6 @@ char* Program_Directory();
 void dropped_files_callback(GLFWwindow* window, int count, const char** paths);
 
 bool ImDialog_load_files(LF* F_Prop, image_data *img_data, user_info *usr_info, shader_info *shader, LF* all_F_Prop, int open_count);
-bool ImDialog_load_MSK(LF* F_Prop, image_data* img_data, user_info* usr_info, shader_info* shaders);
 
 bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data, const char* file_name);
 bool prep_extension(LF* F_Prop, user_info* usr_info, const char* file_name);

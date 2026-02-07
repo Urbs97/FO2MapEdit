@@ -216,16 +216,20 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos,
         }
     }
 
-    // --- Handle Ctrl+Z undo (only when no active stroke) ---
-    if (!stroke_state->stroke_active && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z) && ImGui::IsWindowFocused()) {
+    // --- Handle Ctrl+Z undo or menu undo (only when no active stroke) ---
+    bool undo_trigger = ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z) && ImGui::IsWindowFocused();
+    if (My_Variables->undo_requested) { undo_trigger = true; My_Variables->undo_requested = false; }
+    if (!stroke_state->stroke_active && undo_trigger) {
         if (stroke_undo(stroke_state)) {
             recomposite(shaders, edit_data, edit_struct, srfc_ptr, texture, dir, num, My_Variables->CurrentTime_ms);
             return;
         }
     }
 
-    // --- Handle Ctrl+Y redo (only when no active stroke) ---
-    if (!stroke_state->stroke_active && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y) && ImGui::IsWindowFocused()) {
+    // --- Handle Ctrl+Y redo or menu redo (only when no active stroke) ---
+    bool redo_trigger = ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y) && ImGui::IsWindowFocused();
+    if (My_Variables->redo_requested) { redo_trigger = true; My_Variables->redo_requested = false; }
+    if (!stroke_state->stroke_active && redo_trigger) {
         if (stroke_redo(stroke_state)) {
             recomposite(shaders, edit_data, edit_struct, srfc_ptr, texture, dir, num, My_Variables->CurrentTime_ms);
             return;

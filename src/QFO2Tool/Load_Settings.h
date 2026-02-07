@@ -34,7 +34,6 @@ struct user_info {
     fo2_files game_files;
 
     int  auto_export = not_set;           // 0=not set, 1=auto all the way, 2=manual
-    bool save_full_MSK_warning;
     bool show_image_stats;          //TODO: remove, replace with window specific bool
     bool create_new_LST;
     size_t length;
@@ -62,4 +61,5 @@ void parse_comment  (char *file_data, size_t size, struct config_data *config_da
 void parse_value    (char *file_data, size_t size, struct config_data *config_data, struct user_info *user_info);
 void store_config_info(struct config_data *config_data, struct user_info *user_info);
 
-void add_recent_file(struct user_info *usr_info, const char* file_path);
+void add_recent_file   (struct user_info *usr_info, const char* file_path);
+void remove_recent_file(struct user_info *usr_info, int index);
