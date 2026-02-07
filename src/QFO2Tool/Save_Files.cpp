@@ -821,15 +821,13 @@ static bool surface_has_data(Surface* srfc) {
 }
 
 //called 1st
-bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info, Surface* msk_srfc)
+bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info, Surface* msk_srfc, const char* preset_name)
 {
     //TODO: move this to initialize at program start?
     init_IFD();
 
+    bool is_wmap = (preset_name != nullptr);
     bool has_game_path = (usr_info->default_game_path[0] != '\0');
-    if (has_game_path) {
-        ImGui::Text("Auto-exporting to:\n%s\n\nDisable via Config > Auto Export", usr_info->default_game_path);
-    }
 
     Surface* src;
     img_type type;
@@ -890,20 +888,28 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     selected = tile_grid(src, selected, &e);
     ImGui::PopStyleVar();
 
-    ImGui::Text(
-        "World map tiles (FRM) and mask tiles (MSK)\n"
-        "can technically have any name you choose.\n"
-        "The only restriction is the total length\n"
-        "of the name can't be more than 8 characters.\n"
-        "This includes any sequential numbers\n"
-        "attached to the base-name.\n\n"
-        "This program automatically appends 2 digits\n"
-        "to the end of the base-name defined here.\n"
-    );
     static char save_name[23] = "WRLDMP";
-    ImGui::InputText(
-        "Name\n(max 6 characters)",
-        save_name, 7);
+
+    if (preset_name) {
+        // Name comes from .wmap project — show it read-only
+        strncpy(save_name, preset_name, 7);
+        save_name[7] = '\0';
+        ImGui::Text("Tile base name: %s", save_name);
+    } else {
+        ImGui::Text(
+            "World map tiles (FRM) and mask tiles (MSK)\n"
+            "can technically have any name you choose.\n"
+            "The only restriction is the total length\n"
+            "of the name can't be more than 8 characters.\n"
+            "This includes any sequential numbers\n"
+            "attached to the base-name.\n\n"
+            "This program automatically appends 2 digits\n"
+            "to the end of the base-name defined here.\n"
+        );
+        ImGui::InputText(
+            "Name\n(max 6 characters)",
+            save_name, 7);
+    }
 
     static bool success   = false;
     static bool overwrite = false;
@@ -911,9 +917,15 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     static char msk_save_folder[MAX_PATH];
     static char save_path[MAX_PATH];
 
-    if (has_game_path) {
-        // Auto-export: build paths directly from game directory
-        if (ImGui::Button("Auto Export Worldmap Tiles")) {
+    if (is_wmap) {
+        // Worldmap project: always export to FO2 installation folder
+        if (!has_game_path) {
+            ImGui::TextWrapped(
+                "FO2 Installation Folder not set.\n"
+                "Please set it via File > Set Fallout2.exe Path.");
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button("Export Worldmap Tiles")) {
             snprintf(save_folder, MAX_PATH, "%s%s", usr_info->default_game_path, "/data/art/intrface/");
             char* path = io_path_check(save_folder);
             if (path != save_folder) {
@@ -931,8 +943,11 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
                 io_make_dir(msk_save_folder);
             }
         }
+        if (!has_game_path) {
+            ImGui::EndDisabled();
+        }
     } else {
-        // Manual export: use file dialog
+        // Non-wmap TILE export: use file dialog
         char* folder = usr_info->default_save_path;
         if (ImGui::Button(output_type)) {
             ifd::FileDialog::Instance().Open("FileSaveDialog", "Save Folder", "", false, folder);
@@ -990,7 +1005,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
         success = save_tiles_SURFACE(save_folder, save_name, save_path,
                     selected, src, type, usr_info, sv_info, overwrite);
         if (success && export_msk_tiles && msk_srfc) {
-            char* msk_folder = (has_game_path && msk_save_folder[0] != '\0')
+            char* msk_folder = (is_wmap && msk_save_folder[0] != '\0')
                                 ? msk_save_folder : save_folder;
             success = save_tiles_SURFACE(msk_folder, save_name, save_path,
                         selected, msk_srfc, MSK, usr_info, sv_info, overwrite);
@@ -999,14 +1014,12 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     if (success) {
         int t_x = src->w / MAP_TILE_W;
         int t_y = src->h / MAP_TILE_H;
-        write_wmap_file(save_folder, save_name, t_x, t_y,
-                        export_msk_tiles && msk_srfc);
 
         // Engine opens "data\\worldmap.txt" via fileOpen(), which
         // resolves through the data root at {game}/data/, producing
         // {game}/data/data/worldmap.txt — same path as MSK files.
         // For manual export, write next to the FRM tiles.
-        if (has_game_path) {
+        if (is_wmap) {
             char data_data[MAX_PATH];
             snprintf(data_data, MAX_PATH, "%s/data/data/",
                      usr_info->default_game_path);

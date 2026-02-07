@@ -18,7 +18,7 @@ struct Save_Info {
 };
 void init_IFD();
 bool ImDialog_save_FRM_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info);
-bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info, Surface* msk_srfc = nullptr);
+bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info, Surface* msk_srfc = nullptr, const char* preset_name = nullptr);
 bool save_PNG_popup_INTERNAL(image_data* img_data, user_info* usr_info);
 void save_as_GIF(image_data* img_data, struct user_info* usr_nfo);
 void save_MSK_tile(uint8_t* texture_buffer, FILE* File_ptr, int width, int height);

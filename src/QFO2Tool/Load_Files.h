@@ -10,7 +10,7 @@
 #include "Load_Settings.h"
 #include "shader_class.h"
 
-
+struct wmap_info;
 
 //File info
 struct LF {
@@ -35,12 +35,13 @@ struct LF {
     bool show_image_render = false;
     bool editing_enabled = false;
     bool palettized = false;
-    bool image_is_tileable = false;
     bool edit_MSK = false;
     img_type pre_MSK_type = UNK;
 
     int  active_layer      = 0;     // 0 = map, 1 = mask
     bool msk_layer_visible = true;  // visibility toggle for MSK overlay
+
+    wmap_info* wmap = nullptr;      // non-null = this slot is a worldmap project
 };
 
 struct shader_info {

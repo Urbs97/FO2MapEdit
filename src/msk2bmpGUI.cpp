@@ -64,6 +64,9 @@ bool show_demo_window = false;
 
 #include "timer_functions.h"
 #include "ImGui_Warning.h"
+#include "Worldmap_Project.h"
+
+#include <ImFileDialog.h>
 
 //remove
 #include "B_Endian.h"
@@ -71,6 +74,13 @@ bool show_demo_window = false;
 // Our state
 user_info usr_info;
 static struct dropped_files all_dropped_files = {0};
+
+// File->New Worldmap Project state
+static bool     g_new_wmap_pending = false;
+static Surface* g_new_wmap_source  = nullptr;
+static char     g_new_wmap_base_name[8] = "WRLDMP";
+static int      g_new_wmap_tiles_x = 0;
+static int      g_new_wmap_tiles_y = 0;
 
 // Function declarations
 void Show_Preview_Window(variables *My_Variables, LF* F_Prop, int counter);
@@ -768,22 +778,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
     sprintf(b, "%02d", counter);
     std::string name = a + "###preview" + b;
 
-    // Check image size to match tile size (350x300 pixels)
-    bool wrong_size = false;
-    ANM_Dir* anm_dir = NULL;
-    if (img_data->ANM_dir) {
-        anm_dir = &img_data->ANM_dir[img_data->display_orient_num];
-        if (anm_dir->num_frames < 2) {
-            if (anm_dir->frame_data == NULL) {
-                wrong_size = false;
-            } else {
-                wrong_size = (anm_dir->frame_data[0]->w % 350 != 0)
-                           || (anm_dir->frame_data[0]->h % 300 != 0);
-                F_Prop->image_is_tileable = true;
-            }
-        }
-    }
-
     if (ImGui::Begin(name.c_str(), (&F_Prop->file_open_window), 0)) {
         //set contextual menu for preview window
         if (ImGui::IsWindowFocused()) {
@@ -811,7 +805,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                 ImGui::Combo("##color_match", &My_Variables->color_match_algo, items, IM_ARRAYSIZE(items));
             }
 
-            if (F_Prop->image_is_tileable) {
+            if (F_Prop->wmap) {
                 if (!F_Prop->palettized) ImGui::BeginDisabled();
                 static bool open_wmap_export = false;
                 if (ImGui::Button("Export Worldmap Tiles")) {
@@ -945,7 +939,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
 
                         // Auto-create MSK layer for tileable images
                         image_data* ed = &F_Prop->edit_data;
-                        if (F_Prop->image_is_tileable && !ed->MSK_srfc) {
+                        if (F_Prop->wmap && !ed->MSK_srfc) {
                             ed->MSK_srfc = Create_8Bit_Surface(ed->width, ed->height, NULL);
                             ed->MSK_texture = init_texture(
                                 ed->MSK_srfc,
@@ -993,7 +987,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
             if (F_Prop->editing_enabled) {
                 image_data* ed = &F_Prop->edit_data;
 
-                if (F_Prop->image_is_tileable) {
+                if (F_Prop->wmap) {
                     // Layer panel replaces old mask switching buttons
                     draw_layer_panel(F_Prop, shaders, ed, &edit_MSK_srfc);
 
@@ -1022,7 +1016,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
 
             }
 
-            if (!F_Prop->image_is_tileable && img_data->type == FRM) {
+            if (!F_Prop->wmap && img_data->type == FRM) {
                 static bool open_save = false;
                 image_data* ed = &F_Prop->edit_data;
                 if (ImGui::Button("Export FRM")) {
@@ -1052,13 +1046,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
             ImGui::Separator();
         }
 
-        //warn if wrong size for map tile
-        if (wrong_size) {
-            ImGui::Text("This image is the wrong size to make a tile...");
-            ImGui::Text("Size is %dx%d", anm_dir->frame_data[0]->w, anm_dir->frame_data[0]->h);
-            ImGui::Text("Tileable Map images need to be a multiple of 350x300 pixels");
-            F_Prop->image_is_tileable = true;
-        }
         //TODO: show image name for each frame for new animations
         //      this would require attaching the name to each surface
         ImGui::Text(F_Prop->c_name);
@@ -1114,7 +1101,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
         } else {
             // --- Preview mode ---
             // Show MSK visibility toggle in preview if MSK data exists
-            if (img_data->MSK_srfc && F_Prop->image_is_tileable) {
+            if (img_data->MSK_srfc && F_Prop->wmap) {
                 ImGui::Text("Layers");
                 ImGui::SameLine();
                 bool vis = F_Prop->msk_layer_visible;
@@ -1390,15 +1377,181 @@ static void ShowShortcutsWindow(bool* p_open)
     ImGui::End();
 }
 
+static void NewWmapProject_Dialogs(int* counter, struct variables* My_Variables)
+{
+    // Handle file picker result for New Worldmap Project
+    if (ifd::FileDialog::Instance().IsDone("NewWmapImageDialog")) {
+        if (ifd::FileDialog::Instance().HasResult()) {
+            std::string path = ifd::FileDialog::Instance().GetResult().u8string();
+
+            // Load as RGBA
+            Surface* rgba = Load_File_to_RGBA(path.c_str());
+            if (!rgba) {
+                set_popup_warning(
+                    "[ERROR] New Worldmap Project\n\n"
+                    "Unable to load the selected image."
+                );
+            } else if (rgba->w % WMAP_TILE_W != 0 || rgba->h % WMAP_TILE_H != 0) {
+                set_popup_warning(
+                    "[ERROR] New Worldmap Project\n\n"
+                    "Image dimensions must be multiples\n"
+                    "of 350x300 pixels."
+                );
+                FreeSurface(rgba);
+            } else {
+                g_new_wmap_source  = rgba;
+                g_new_wmap_tiles_x = rgba->w / WMAP_TILE_W;
+                g_new_wmap_tiles_y = rgba->h / WMAP_TILE_H;
+                strncpy(g_new_wmap_base_name, "WRLDMP", 7);
+                g_new_wmap_pending = true;
+                ImGui::OpenPopup("New Worldmap Project");
+            }
+        }
+        ifd::FileDialog::Instance().Close();
+    }
+
+    // Popup modal for New Worldmap Project
+    if (g_new_wmap_pending) {
+        ImGui::OpenPopup("New Worldmap Project");
+    }
+    if (ImGui::BeginPopupModal("New Worldmap Project", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("Image size: %dx%d pixels", g_new_wmap_source ? g_new_wmap_source->w : 0,
+                     g_new_wmap_source ? g_new_wmap_source->h : 0);
+        ImGui::Text("Grid: %d x %d tiles", g_new_wmap_tiles_x, g_new_wmap_tiles_y);
+        ImGui::Separator();
+
+        ImGui::Text("Base name (max 6 characters):");
+        ImGui::InputText("##wmap_base_name", g_new_wmap_base_name, 7);
+
+        ImGui::Separator();
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            if (g_new_wmap_source) {
+                // Palettize the RGBA source to 8-bit indexed
+                Surface* indexed = PAL_Color_Convert(g_new_wmap_source, My_Variables->FO_Palette, 0);
+                FreeSurface(g_new_wmap_source);
+                g_new_wmap_source = nullptr;
+
+                if (indexed) {
+                    LF* F_Prop = &My_Variables->F_Prop[*counter];
+                    bool ok = new_wmap_project(F_Prop, &F_Prop->img_data,
+                                               &My_Variables->shaders,
+                                               indexed, g_new_wmap_base_name,
+                                               g_new_wmap_tiles_x, g_new_wmap_tiles_y);
+                    FreeSurface(indexed);
+                    if (ok) {
+                        // Set display name
+                        static char wmap_name[] = "Worldmap Project";
+                        F_Prop->c_name = wmap_name;
+                        (*counter)++;
+                    }
+                }
+            }
+            g_new_wmap_pending = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            if (g_new_wmap_source) {
+                FreeSurface(g_new_wmap_source);
+                g_new_wmap_source = nullptr;
+            }
+            g_new_wmap_pending = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    // Handle Open Worldmap Project dialog result
+    if (ifd::FileDialog::Instance().IsDone("OpenWmapDialog")) {
+        if (ifd::FileDialog::Instance().HasResult()) {
+            std::string path = ifd::FileDialog::Instance().GetResult().u8string();
+
+            // Update default load path
+            strncpy(usr_info.default_load_path, path.c_str(), MAX_PATH);
+            char* ptr = strrchr(usr_info.default_load_path, PLATFORM_SLASH);
+            if (ptr) *ptr = '\0';
+
+            // Check if already open
+            int existing = find_open_file(My_Variables->F_Prop, *counter, path.c_str());
+            if (existing >= 0) {
+                focus_file_window(existing);
+                add_recent_file(&usr_info, path.c_str());
+            } else {
+                LF* F_Prop = &My_Variables->F_Prop[*counter];
+                if (File_Type_Check(F_Prop, &My_Variables->shaders, &F_Prop->img_data, path.c_str())) {
+                    add_recent_file(&usr_info, path.c_str());
+                    (*counter)++;
+                }
+            }
+        }
+        ifd::FileDialog::Instance().Close();
+    }
+
+    // Handle Save As dialog result
+    if (ifd::FileDialog::Instance().IsDone("WmapSaveDialog")) {
+        if (ifd::FileDialog::Instance().HasResult()) {
+            std::string save_path = ifd::FileDialog::Instance().GetResult().u8string();
+
+            // Ensure .wmap extension
+            if (save_path.size() < 5 || save_path.substr(save_path.size() - 5) != ".wmap") {
+                save_path += ".wmap";
+            }
+
+            int focus = My_Variables->window_number_focus;
+            if (focus >= 0 && My_Variables->F_Prop[focus].wmap) {
+                if (save_wmap_project(save_path.c_str(), &My_Variables->F_Prop[focus])) {
+                    add_recent_file(&usr_info, save_path.c_str());
+                }
+
+                // Update default save path
+                strncpy(usr_info.default_save_path, save_path.c_str(), MAX_PATH);
+                char* ptr = strrchr(usr_info.default_save_path, '/');
+#ifdef QFO2_WINDOWS
+                char* bptr = strrchr(usr_info.default_save_path, '\\');
+                if (bptr > ptr) ptr = bptr;
+#endif
+                if (ptr) *ptr = '\0';
+            }
+        }
+        ifd::FileDialog::Instance().Close();
+    }
+}
+
 static void ShowMainMenuBar(int* counter, struct variables* My_Variables)
 {
     static bool show_shortcuts = false;
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New (not yet implemented)", "", false, false)) {
-                /*TODO: add a new file option w/blank surfaces*/ }
-            if (ImGui::MenuItem("Open", "Ctrl+O")) {
-                Open_Files(&usr_info, counter, My_Variables->FO_Palette, My_Variables);
+            if (ImGui::MenuItem("New Worldmap Project")) {
+                init_IFD();
+                ifd::FileDialog::Instance().Open("NewWmapImageDialog",
+                    "Select Source Image",
+                    "Image (*.png;*.bmp;*.jpg){.png,.PNG,.bmp,.BMP,.jpg,.JPG,.jpeg,.JPEG}",
+                    false, usr_info.default_load_path);
+            }
+            if (ImGui::MenuItem("Open Worldmap Project", "Ctrl+O")) {
+                init_IFD();
+                ifd::FileDialog::Instance().Open("OpenWmapDialog",
+                    "Open Worldmap Project",
+                    "Worldmap Project (*.wmap){.wmap,.WMAP}",
+                    false, usr_info.default_load_path);
+            }
+            // File->Save: enabled only when focused window is a worldmap project
+            {
+                int focus = My_Variables->window_number_focus;
+                bool can_save = (focus >= 0 && My_Variables->F_Prop[focus].wmap != nullptr);
+                if (ImGui::MenuItem("Save Project", "Ctrl+S", false, can_save)) {
+                    LF* fp = &My_Variables->F_Prop[focus];
+                    if (fp->wmap->save_path[0] != '\0') {
+                        save_wmap_project(fp->wmap->save_path, fp);
+                    } else {
+                        init_IFD();
+                        ifd::FileDialog::Instance().Save("WmapSaveDialog",
+                            "Save Worldmap Project",
+                            "Worldmap Project (*.wmap){.wmap,.WMAP}",
+                            usr_info.default_save_path);
+                    }
+                }
             }
             if (ImGui::MenuItem("Set Fallout2.exe Path")) {
                 Set_Default_Game_Path(&usr_info, My_Variables->exe_directory);
@@ -1417,23 +1570,6 @@ static void ShowMainMenuBar(int* counter, struct variables* My_Variables)
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Config")) {
-            bool auto_active = (usr_info.auto_export == auto_all) || (usr_info.default_game_path[0] != '\0');
-            if (ImGui::MenuItem("Auto Export", nullptr, auto_active)) {
-                if (auto_active) {
-                    usr_info.auto_export = 0;
-                    usr_info.default_game_path[0] = '\0';
-                }
-                else {
-                    usr_info.auto_export = auto_all;
-                }
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "ON:  Export tiles directly to your Fallout 2 directory\n"
-                    "     without confirmation prompts.\n"
-                    "OFF: Prompt for save location and confirmation\n"
-                    "     on each export.");
-            }
             if (ImGui::MenuItem("Reset ImGui.ini")) {
                 g_reset_imgui_ini = true;
             }
@@ -1459,6 +1595,24 @@ static void ShowMainMenuBar(int* counter, struct variables* My_Variables)
     set_game_path_POPUP(&usr_info);
     game_path_set_POPUP(&usr_info);
     game_path_NOT_set_POPUP();
+    NewWmapProject_Dialogs(counter, My_Variables);
+
+    // Ctrl+S shortcut for saving worldmap projects
+    if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
+        int focus = My_Variables->window_number_focus;
+        if (focus >= 0 && My_Variables->F_Prop[focus].wmap) {
+            LF* fp = &My_Variables->F_Prop[focus];
+            if (fp->wmap->save_path[0] != '\0') {
+                save_wmap_project(fp->wmap->save_path, fp);
+            } else {
+                init_IFD();
+                ifd::FileDialog::Instance().Save("WmapSaveDialog",
+                    "Save Worldmap Project",
+                    "Worldmap Project (*.wmap){.wmap,.WMAP}",
+                    usr_info.default_save_path);
+            }
+        }
+    }
 }
 
 bool save_FRM_popup(LF* F_Prop)
@@ -1514,7 +1668,8 @@ bool save_TILE_popup(LF* F_Prop)
     ImGui::Begin("Export FRM Tile", &open_window);
         if (open_window) {
             Surface* msk = img_data->MSK_srfc;
-            open_window = ImDialog_save_TILE_SURFACE(img_data, &usr_info, sv_info, msk);
+            const char* preset = F_Prop->wmap ? F_Prop->wmap->base_name : nullptr;
+            open_window = ImDialog_save_TILE_SURFACE(img_data, &usr_info, sv_info, msk, preset);
         }
     ImGui::End();
 

@@ -5,12 +5,6 @@
 #define MAX_KEY  32
 #define MAX_RECENT_FILES 10
 
-enum export_auto {
-    not_set  = 0,
-    auto_all = 1,
-    manual   = 2,
-};
-
 enum {
     CANCEL = 0,
     YES    = 1,
@@ -33,7 +27,6 @@ struct user_info {
 
     fo2_files game_files;
 
-    int  auto_export = not_set;           // 0=not set, 1=auto all the way, 2=manual
     bool show_image_stats;          //TODO: remove, replace with window specific bool
     bool create_new_LST;
     size_t length;
