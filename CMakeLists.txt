@@ -19,11 +19,11 @@ add_compile_options(
 #PROJECT_NAME is auto set when name is passed as 1st arg
 #https://cmake.org/cmake/help/latest/command/project.html#project
 project(
-  QFO2Solution VERSION 1.2.1
+  FO2MapEdit VERSION 1.2.1
   # ${PROJECT_NAME} VERSION 0.1.0
   # DESCRIPTION "${PROJECT_NAME}"
 )
-set(EXECUTABLE_NAME "QFO2Tool")
+set(EXECUTABLE_NAME "FO2MapEdit")
 add_executable(${EXECUTABLE_NAME})
 
 
@@ -139,7 +139,7 @@ target_link_libraries(
   ${EXECUTABLE_NAME} PRIVATE
   glad
   imgui_docking
-  QFO2ToolLib
+  FO2MapEditLib
   STB
   glfw
   ImFileDialog

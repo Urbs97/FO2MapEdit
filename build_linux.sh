@@ -105,9 +105,9 @@ echo $'Dear ImGui Built\n'
 echo "Building Qs FO2Tool..."
 c++ -DQFO2_LINUX \
     "${CPP_ARGS[@]}" \
-    -o "$build/QFO2Tool" "$project_dir/build_linux.cpp" \
+    -o "$build/FO2MapEdit" "$project_dir/build_linux.cpp" \
     "$build"/*.o 
-echo $'QFO2Tool Built\n'
+echo $'FO2MapEdit Built\n'
 
 echo "Copying resources"
 # cp -a "$src/resources" "$build"

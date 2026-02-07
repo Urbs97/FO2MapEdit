@@ -1,6 +1,6 @@
 # Creating and Exporting Worldmap Tiles & Masks for the Fallout 2 Engine
 
-A step-by-step guide for using QFO2Tool to create worldmap tile art and collision masks, then export them into a modded Fallout 2 installation.
+A step-by-step guide for using FO2MapEdit to create worldmap tile art and collision masks, then export them into a modded Fallout 2 installation.
 
 ---
 
@@ -39,7 +39,7 @@ Fallout 2/
 
 ## 2. Preparing Your Source Image
 
-Your source image dimensions should be multiples of **350 x 300** pixels. QFO2Tool will split the image into a grid of 350x300 tiles automatically.
+Your source image dimensions should be multiples of **350 x 300** pixels. FO2MapEdit will split the image into a grid of 350x300 tiles automatically.
 
 | Source Image Size | Tiles Produced |
 |-------------------|----------------|
@@ -51,7 +51,7 @@ Your source image dimensions should be multiples of **350 x 300** pixels. QFO2To
 ### Palette Considerations
 
 - Fallout 2 images are **8-bit indexed** (256 colors max).
-- QFO2Tool palettizes your image using the built-in Fallout palette (`resources/palette/fo_color.pal`).
+- FO2MapEdit palettizes your image using the built-in Fallout palette (`resources/palette/fo_color.pal`).
 - The palettization uses **Euclidean distance color matching** with optional **Floyd-Steinberg dithering** to find the closest palette color for each pixel.
 - **Palette index 0** is reserved for transparency.
 - For best results, author your artwork with the Fallout palette in mind, or at least use a limited color range that maps well to it.
@@ -62,7 +62,7 @@ Your source image dimensions should be multiples of **350 x 300** pixels. QFO2To
 
 ### Step 1: Create a New Worldmap Project
 
-Go to **File > "New Worldmap Project"** and select your source image. QFO2Tool accepts standard image formats (PNG, BMP, JPG). The image dimensions must be exact multiples of 350x300 pixels, if they aren't, an error is shown.  
+Go to **File > "New Worldmap Project"** and select your source image. FO2MapEdit accepts standard image formats (PNG, BMP, JPG). The image dimensions must be exact multiples of 350x300 pixels, if they aren't, an error is shown.  
 
 A dialog appears showing the image size, the calculated tile grid (e.g., "Grid: 4 x 5 tiles"), and a **base name** field (max 6 characters, default: `WRLDMP`). Click **OK** to create the project. The image is automatically palettized to the Fallout 256-color palette during creation.
 
@@ -130,7 +130,7 @@ Open the `.wmap` file the same way you would open any other image:
 - **Drag and drop** the `.wmap` file into the application window, or
 - Use the **File** menu and select the `.wmap` file (it appears in the file type filter).
 
-QFO2Tool will read the embedded pixel data from the project file and reconstruct the full-resolution worldmap image. If the project includes MSK mask data, that is loaded as well.
+FO2MapEdit will read the embedded pixel data from the project file and reconstruct the full-resolution worldmap image. If the project includes MSK mask data, that is loaded as well.
 
 The result is identical to having the original source image loaded, the **"Export Worldmap Tiles"** button is immediately available, and you can enter edit mode and re-export. If the project includes MSK data, the mask layer is carried into edit mode automatically, you can switch to the Mask layer and paint on top of the existing mask data without starting from scratch.
 

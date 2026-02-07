@@ -1,4 +1,4 @@
-add_library(QFO2ToolLib
+add_library(FO2MapEditLib
   town_map_tiles.h
   town_map_tiles.cpp
   B_Endian.h
@@ -58,25 +58,25 @@ add_library(QFO2ToolLib
 )
 
 #these need to be located after add_library()
-#target (QFO2ToolLib) needs to be declared
+#target (FO2MapEditLib) needs to be declared
 #_BEFORE_ being added to compile defs
 # Windows compile stuff
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 target_compile_definitions(
-  QFO2ToolLib
+  FO2MapEditLib
   PUBLIC QFO2_WINDOWS
 )
 
 # Linux compile stuff
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 target_compile_definitions(
-  QFO2ToolLib
+  FO2MapEditLib
   PUBLIC QFO2_LINUX
 )
 endif()
 
 target_include_directories(
-  QFO2ToolLib PUBLIC
+  FO2MapEditLib PUBLIC
   ../dependencies/GLAD/include
   ../dependencies/tinyfiledialogs
   ../dependencies/imgui-1.90.8-docking

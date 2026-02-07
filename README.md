@@ -1,4 +1,4 @@
-# QFO2Tool — Q's Fallout 2 Image Editor
+# FO2MapEdit — Fallout 2 Map & Image Editor
 
 A C++17 desktop GUI application for editing Fallout 2 image assets — FRM sprites, MSK mask tiles, overworld map tiles, and town map tiles. Built with Dear ImGui (docking branch), GLFW, OpenGL 3.3, and GLAD.
 
@@ -60,7 +60,7 @@ cmake -S . -B build
 cmake --build build
 ```
 
-The executable is `build/QFO2Tool`. Resources are copied to `build/resources/` automatically.
+The executable is `build/FO2MapEdit`. Resources are copied to `build/resources/` automatically.
 
 You may need to uninstall `libtbb-dev` if it conflicts with the CMake build.
 
@@ -79,6 +79,8 @@ Open `msk2bmpGUI.sln` in Visual Studio and build from the IDE.
 
 ---
 
-## Licenses
+## License
 
-Licenses for QFO2Tool and its vendored dependencies are in the [Licenses](Licenses/) folder.
+This project is licensed under the [GNU General Public License v3.0](LICENSE). Portions of this software were originally licensed under the MIT License.
+
+Licenses for vendored dependencies are in the [Licenses](Licenses/) folder.
