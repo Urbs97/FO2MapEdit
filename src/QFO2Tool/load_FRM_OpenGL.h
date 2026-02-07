@@ -78,6 +78,7 @@ struct image_data {
 };
 
 //FRM loading
+uint8_t* load_entire_file(const char* file_name, int* file_size);
 bool framebuffer_init(GLuint* texture, GLuint* framebuffer, int w, int h);
 bool load_FRM_OpenGL(const char* file_name, image_data* img_data, shader_info* shaders);
 

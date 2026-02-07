@@ -25,6 +25,7 @@
 #include "FRM_Convert.h"
 #include "MSK_Convert.h"
 #include "Edit_Image.h"
+#include "Worldmap_Project.h"
 
 #include "display_FRM_OpenGL.h"
 
@@ -149,17 +150,19 @@ bool drag_drop_POPUP(variables* My_Variables, LF* F_Prop, image_paths* images_ar
 bool Supported_Format(const std::filesystem::path &file)
 {
     // array of compatible filetype extensions
-    constexpr static NATIVE_STRING_TYPE supported[13][6]{
+    constexpr static NATIVE_STRING_TYPE supported[14][6]{
 #ifdef QFO2_WINDOWS
         L".FRM", L".MSK", L".PNG",
         L".JPG", L".JPEG", L".BMP",
         L".GIF",
-        L".FR0", L".FR1", L".FR2", L".FR3", L".FR4", L".FR5"
+        L".FR0", L".FR1", L".FR2", L".FR3", L".FR4", L".FR5",
+        L".WMAP"
 #elif defined(QFO2_LINUX)
         ".FRM", ".MSK",
         ".PNG", ".BMP", ".JPG", ".JPEG",
         ".GIF",
-        ".FR0",".FR1", ".FR2", ".FR3", ".FR4", ".FR5"
+        ".FR0",".FR1", ".FR2", ".FR3", ".FR4", ".FR5",
+        ".WMAP"
 #endif
     };
     int k = sizeof(supported) / (6 * sizeof(NATIVE_STRING_TYPE));
@@ -733,14 +736,15 @@ bool ImDialog_load_files(LF* F_Prop, image_data *img_data, user_info *usr_info, 
     static char load_name[MAX_PATH];
     if (ImGui::Button("Load File")) {
         const char* ext_filter;
-            ext_filter = "FRM/MSK and image files"
+            ext_filter = "FRM/MSK/WMAP and image files"
             "(*.png;"
             // "*.apng;"
-            "*.jpg;*.jpeg;*.frm;*.fr0-5;*.msk;)"
+            "*.jpg;*.jpeg;*.frm;*.fr0-5;*.msk;*.wmap;)"
             "{.fr0,.FR0,.fr1,.FR1,.fr2,.FR2,.fr3,.FR3,.fr4,.FR4,.fr5,.FR5,"
                 ".png,.jpg,.jpeg,"
                 ".frm,.FRM,"
                 ".msk,.MSK,"
+                ".wmap,.WMAP,"
             "}";
 
         char* folder = usr_info->default_load_path;
@@ -849,6 +853,13 @@ bool File_Type_Check(LF *F_Prop, shader_info *shaders, image_data *img_data, con
             &shaders->giant_triangle,
             img_data->framebuffer,
             img_data->MSK_texture, 350, 300);
+    }
+    else if (io_strncmp(F_Prop->extension, "WMAP", 5) == 0) {
+        F_Prop->file_open_window = load_wmap_project(
+            F_Prop->Opened_File, F_Prop, img_data, shaders);
+        if (!F_Prop->file_open_window) {
+            return false;
+        }
     }
     // TODO: add another type for known generic image types?
     else {  //all other more common (generic) image types

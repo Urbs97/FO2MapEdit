@@ -27,3 +27,4 @@
 #include "src/QFO2Tool/Stroke_State.cpp"
 #include "src/QFO2Tool/tiles_pattern.cpp"
 #include "src/QFO2Tool/Proto_Files.cpp"
+#include "src/QFO2Tool/Worldmap_Project.cpp"

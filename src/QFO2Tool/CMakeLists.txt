@@ -53,6 +53,8 @@ add_library(QFO2ToolLib
   tiles_pattern.cpp
   Proto_Files.h
   Proto_Files.cpp
+  Worldmap_Project.h
+  Worldmap_Project.cpp
 )
 
 #these need to be located after add_library()

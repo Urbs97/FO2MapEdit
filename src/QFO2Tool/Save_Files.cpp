@@ -15,6 +15,7 @@
 #include "Save_Files.h"
 
 #include "B_Endian.h"
+#include "Worldmap_Project.h"
 #include "imgui.h"
 #include "Load_Settings.h"
 #include "MSK_Convert.h"
@@ -946,6 +947,11 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
         }
     }
     if (success) {
+        int t_x = src->w / MAP_TILE_W;
+        int t_y = src->h / MAP_TILE_H;
+        write_wmap_file(save_folder, save_name, t_x, t_y,
+                        export_msk_tiles && msk_srfc);
+
         free(selected);
         selected        = NULL;
         save_folder[0]  = '\0';
