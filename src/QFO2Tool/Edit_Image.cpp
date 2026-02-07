@@ -54,10 +54,16 @@ static void recomposite(shader_info* shaders, image_data* edit_data, ANM_Dir* ed
             edit_data, edit_struct[dir].frame_data[num], time_ms
         );
     }
-    draw_PAL_to_framebuffer(shaders->FO_pal,
-                            shaders->render_PAL_shader,
-                            &shaders->giant_triangle,
-                            edit_data);
+    if (edit_data->MSK_srfc) {
+        draw_PAL_to_framebuffer(shaders->FO_pal,
+                                shaders->render_PAL_shader,
+                                &shaders->giant_triangle,
+                                edit_data);
+    } else {
+        draw_texture_to_framebuffer(
+            shaders->FO_pal, shaders->render_FRM_shader, &shaders->giant_triangle,
+            edit_data->framebuffer, edit_data->FRM_texture, edit_data->width, edit_data->height);
+    }
 }
 
 //TODO: maybe pass the dithering choice through?
@@ -267,10 +273,16 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos,
             );
         }
 
-        draw_PAL_to_framebuffer(shaders->FO_pal,
-                                shaders->render_PAL_shader,
-                                &shaders->giant_triangle,
-                                edit_data);
+        if (edit_data->MSK_srfc) {
+            draw_PAL_to_framebuffer(shaders->FO_pal,
+                                    shaders->render_PAL_shader,
+                                    &shaders->giant_triangle,
+                                    edit_data);
+        } else {
+            draw_texture_to_framebuffer(
+                shaders->FO_pal, shaders->render_FRM_shader, &shaders->giant_triangle,
+                edit_data->framebuffer, edit_data->FRM_texture, edit_data->width, edit_data->height);
+        }
     }
 
 }
