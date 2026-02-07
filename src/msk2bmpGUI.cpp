@@ -701,6 +701,21 @@ void commit_MSK_edits(Surface* edit_MSK_srfc, image_data* edit_data)
            edit_MSK_srfc->w * edit_MSK_srfc->h);
 }
 
+void commit_map_edits(ANM_Dir* edit_struct, image_data* edit_data)
+{
+    if (!edit_struct || !edit_data->ANM_dir) return;
+    for (int dir = 0; dir < 6; dir++) {
+        int num_frames = edit_data->ANM_dir[dir].num_frames;
+        if (!edit_struct[dir].frame_data) continue;
+        for (int frame = 0; frame < num_frames; frame++) {
+            Surface* src = edit_struct[dir].frame_data[frame];
+            Surface* dst = edit_data->ANM_dir[dir].frame_data[frame];
+            if (!src || !dst) continue;
+            memcpy(dst->pxls, src->pxls, src->w * src->h);
+        }
+    }
+}
+
 // Layer panel for MSK editing — allows switching between Map and Mask layers
 void draw_layer_panel(LF* F_Prop, shader_info* shaders, image_data* edit_data, Surface* edit_MSK_srfc)
 {
@@ -828,6 +843,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                             nullptr, alpha_off
                         );
                     }
+                    commit_map_edits(edit_struct, &F_Prop->edit_data);
                     commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
                     F_Prop->edit_data.type = TILE;
                     image_data* ed = &F_Prop->edit_data;
@@ -959,6 +975,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                     }
                 } else {
                     if (ImGui::Button("Disable Editing")) {
+                        commit_map_edits(edit_struct, &F_Prop->edit_data);
                         commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
 
                         // Copy MSK edits to img_data for preview overlay
@@ -977,6 +994,19 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                             SURFACE_to_texture(F_Prop->img_data.MSK_srfc,
                                                F_Prop->img_data.MSK_texture,
                                                mw, mh, 1);
+                        }
+
+                        // Copy map edits to img_data for preview
+                        if (F_Prop->edit_data.ANM_dir && F_Prop->img_data.ANM_dir) {
+                            for (int d = 0; d < 6; d++) {
+                                int nf = F_Prop->edit_data.ANM_dir[d].num_frames;
+                                for (int f = 0; f < nf; f++) {
+                                    Surface* src = F_Prop->edit_data.ANM_dir[d].frame_data[f];
+                                    Surface* dst = F_Prop->img_data.ANM_dir[d].frame_data[f];
+                                    if (!src || !dst) continue;
+                                    memcpy(dst->pxls, src->pxls, src->w * src->h);
+                                }
+                            }
                         }
 
                         // Sync zoom/pan from edit back to preview
@@ -1036,6 +1066,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                             nullptr, alpha_off
                         );
                     }
+                    commit_map_edits(edit_struct, &F_Prop->edit_data);
                     open_save = true;
                 }
                 if (open_save) {
