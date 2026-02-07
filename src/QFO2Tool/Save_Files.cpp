@@ -806,16 +806,10 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     //TODO: move this to initialize at program start?
     init_IFD();
 
-    // ImGui::Text(
-    //     "Tiles (map/town/msk) are only located\n"
-    //     "in specific places in the game files.\n\n"
-    //     "For rapid testing in game, you can export tiles\n"
-    //     "automatically and bypass this screen.\n"
-    //     "by setting the modded Fallout 2 directory.\n\n"
-    //     "Yes --- Auto:   (set Fallout 2 directory)\n"
-    //     "No  --- Manual: (select a folder)\n\n"
-    //     "You can change this setting in the config menu."
-    // );
+    bool has_game_path = (usr_info->default_game_path[0] != '\0');
+    if (has_game_path) {
+        ImGui::Text("Auto-exporting to:\n%s\n\nDisable via Config > Auto Export", usr_info->default_game_path);
+    }
 
     Surface* src;
     img_type type;
@@ -882,67 +876,94 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
         "Name\n(max 6 characters)",
         save_name, 7);
 
-    char* folder = usr_info->default_save_path;
-    if (ImGui::Button(output_type)) {
-        ifd::FileDialog::Instance().Open("FileSaveDialog", "Save Folder", "", false, folder);
-    }
-
     static bool success   = false;
     static bool overwrite = false;
     static char save_folder[MAX_PATH];
+    static char msk_save_folder[MAX_PATH];
     static char save_path[MAX_PATH];
-    if (ImGui::BeginPopupModal("Match found"))
-    {
-        char* dup_name = strrchr(save_path, PLATFORM_SLASH)+1;
-        ImGui::Text(
-            "%s already exists,\n\n", dup_name
-        );
-        if (ImGui::Button("Overwrite?")) {
-            ImGui::CloseCurrentPopup();
+
+    if (has_game_path) {
+        // Auto-export: build paths directly from game directory
+        if (ImGui::Button("Auto Export Worldmap Tiles")) {
+            snprintf(save_folder, MAX_PATH, "%s%s", usr_info->default_game_path, "/data/art/intrface/");
+            char* path = io_path_check(save_folder);
+            if (path != save_folder) {
+                strncpy(save_folder, path, MAX_PATH);
+            }
+            success = io_make_dir(save_folder);
             overwrite = true;
-            success   = true;
+
+            if (success && export_msk_tiles && msk_srfc) {
+                snprintf(msk_save_folder, MAX_PATH, "%s%s", usr_info->default_game_path, "/data/data/");
+                char* msk_path = io_path_check(msk_save_folder);
+                if (msk_path != msk_save_folder) {
+                    strncpy(msk_save_folder, msk_path, MAX_PATH);
+                }
+                io_make_dir(msk_save_folder);
+            }
         }
-        if (ImGui::Button("Select a different folder?")) {
-            ImGui::CloseCurrentPopup();
-            save_folder[0] = '\0';
-            save_path[0]   = '\0';
-            overwrite      = false;
-            success        = false;
-            ifd::FileDialog::Instance().Open("FileSaveDialog", "Save File", "", false, folder);
+    } else {
+        // Manual export: use file dialog
+        char* folder = usr_info->default_save_path;
+        if (ImGui::Button(output_type)) {
+            ifd::FileDialog::Instance().Open("FileSaveDialog", "Save Folder", "", false, folder);
         }
 
-        if (ImGui::Button("Cancel")) {
-            ImGui::CloseCurrentPopup();
-            free(selected);
-            selected         = NULL;
-            save_folder[0]   = '\0';
-            save_path[0]     = '\0';
-            overwrite        = false;
-            success          = false;
-            export_msk_tiles = false;
+        if (ImGui::BeginPopupModal("Match found"))
+        {
+            char* dup_name = strrchr(save_path, PLATFORM_SLASH)+1;
+            ImGui::Text(
+                "%s already exists,\n\n", dup_name
+            );
+            if (ImGui::Button("Overwrite?")) {
+                ImGui::CloseCurrentPopup();
+                overwrite = true;
+                success   = true;
+            }
+            if (ImGui::Button("Select a different folder?")) {
+                ImGui::CloseCurrentPopup();
+                save_folder[0] = '\0';
+                save_path[0]   = '\0';
+                overwrite      = false;
+                success        = false;
+                ifd::FileDialog::Instance().Open("FileSaveDialog", "Save File", "", false, folder);
+            }
+
+            if (ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+                free(selected);
+                selected         = NULL;
+                save_folder[0]   = '\0';
+                save_path[0]     = '\0';
+                overwrite        = false;
+                success          = false;
+                export_msk_tiles = false;
+                ImGui::EndPopup();
+                return false;
+            }
+
             ImGui::EndPopup();
-            return false;
+            return true;
         }
 
-        ImGui::EndPopup();
-        return true;
-    }
-
-    if (ifd::FileDialog::Instance().IsDone("FileSaveDialog")) {
-        if (ifd::FileDialog::Instance().HasResult()) {
-            std::string temp = ifd::FileDialog::Instance().GetResult().u8string();
-            strncpy(save_folder, temp.c_str(), temp.length()+1);
-            strncpy(usr_info->default_save_path, temp.c_str(), temp.length()+1);
-            success = true;
+        if (ifd::FileDialog::Instance().IsDone("FileSaveDialog")) {
+            if (ifd::FileDialog::Instance().HasResult()) {
+                std::string temp = ifd::FileDialog::Instance().GetResult().u8string();
+                strncpy(save_folder, temp.c_str(), temp.length()+1);
+                strncpy(usr_info->default_save_path, temp.c_str(), temp.length()+1);
+                success = true;
+            }
+            ifd::FileDialog::Instance().Close();
         }
-        ifd::FileDialog::Instance().Close();
     }
 
     if (strlen(save_folder) > 0 && success) {
         success = save_tiles_SURFACE(save_folder, save_name, save_path,
                     selected, src, type, usr_info, sv_info, overwrite);
         if (success && export_msk_tiles && msk_srfc) {
-            success = save_tiles_SURFACE(save_folder, save_name, save_path,
+            char* msk_folder = (has_game_path && msk_save_folder[0] != '\0')
+                                ? msk_save_folder : save_folder;
+            success = save_tiles_SURFACE(msk_folder, save_name, save_path,
                         selected, msk_srfc, MSK, usr_info, sv_info, overwrite);
         }
     }
@@ -953,12 +974,13 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
                         export_msk_tiles && msk_srfc);
 
         free(selected);
-        selected        = NULL;
-        save_folder[0]  = '\0';
-        save_path[0]    = '\0';
-        overwrite       = false;
-        success         = false;
-        export_msk_tiles = false;
+        selected            = NULL;
+        save_folder[0]      = '\0';
+        msk_save_folder[0]  = '\0';
+        save_path[0]        = '\0';
+        overwrite           = false;
+        success             = false;
+        export_msk_tiles    = false;
         return false;
     }
 
@@ -996,180 +1018,6 @@ uint8_t *blend_PAL_texture(image_data* img_data)
     }
     free(texture_buffer);
     return blend_buffer;
-}
-
-// Split the img_data into tiles
-// Save each tile with a formatted name
-// Name format -- CreateFileName()
-// User options: Split_to_Tiles_OpenGL()
-//       1) set /Fallout 2/ directory location
-//           and export all tiles to correct folder
-//           under that location automatically
-//       2) export directly to the folder the user
-//           points to, all tiles, automatically
-//       3) ask user if folders/directories need
-//           to be created
-//       4) give user ability to change default
-//           game path from menubar (also here?)
-//       5) game path or last used save path is
-//           stored in user_info & msk2bmpGUI.cfg file
-//TODO: replace with something that doesn't suck
-//TODO: delete
-bool export_auto(user_info* usr_info, char* exe_path, char* save_path, img_type save_type)
-{
-    char dest[3][27]{
-        {"/data/art/intrface"},     //WRLDMPxx.FRM
-        {"/data/data"},             //wrldmpXX.msk
-        {"/data/art/tiles"},        //town map tiles
-        };
-    int choice;
-    // choice = tinyfd_messageBox("Set Default Game Path...",
-    //                                "Do you want to set your default Fallout 2 game path?\n"
-    //                                "(Automatically overwrites game files)",
-    //                                "yesnocancel", "question", 2);
-    if (choice == 0)
-    {                   // cancel
-        return false;
-    }
-    if (choice == 1)
-    {                   // Set default FO2 directory, auto_export = true
-        usr_info->auto_export = 1;
-        char* current_save_path;
-        // current_save_path = tinyfd_selectFolderDialog(
-        //     "Select your modded Fallout 2 base directory...",
-        //     usr_info->default_save_path);
-        if (!current_save_path)
-        {
-            return false;
-        }
-        // TODO: maybe check if fallout2.exe is in the default game path set here?
-        if (save_path) {        //generate new save_path from current_save_path + dest[], return in buffer
-            snprintf(save_path, MAX_PATH, "%s%s", current_save_path, dest[save_type]);
-        }
-        strncpy(usr_info->default_game_path, current_save_path, MAX_PATH);
-
-        //if default_save_path isn't set, set it using default_game_path
-        if (!strcmp(usr_info->default_save_path, "\0"))
-        {
-            strncpy(usr_info->default_save_path, usr_info->default_game_path, MAX_PATH);
-        }
-
-        bool file_exists = check_and_write_cfg_file(usr_info, exe_path);
-        if (!file_exists)
-        {
-        //TODO: replace printf()'s with popup windows
-            printf("error opening cfg file: %s\n", strerror(errno));
-        }
-    }
-    if (choice == 2)
-    {                   // Manual - chosen instead of selecting default path from previous popup
-        char* current_save_path;
-        // current_save_path = tinyfd_selectFolderDialog(
-        //     "Select directory to save to...",
-        //     usr_info->default_save_path);
-        if (!current_save_path)
-        {
-            return false;
-        }
-        if (save_path) {        //generate new save_path from current_save_path and return in buffer
-            strncpy(save_path, current_save_path, MAX_PATH);
-        }
-        // store current_save_path in default_save_path for future use
-        strncpy(usr_info->default_save_path, current_save_path, MAX_PATH);
-
-        bool file_exists = check_and_write_cfg_file(usr_info, exe_path);
-        if (!file_exists)
-        {
-        //TODO: replace printf()'s with popup windows
-            printf("error opening cfg file: %s\n", strerror(errno));
-        }
-    }
-    return true;
-}
-
-//TODO: delete
-bool export_manual(user_info *usr_info, char *save_path, char* exe_path)
-{
-    usr_info->auto_export = 2;
-
-    char* current_save_path;
-    // current_save_path = tinyfd_selectFolderDialog(
-    //     "Select directory to save to...",
-    //     usr_info->default_save_path);
-    if (!current_save_path) {
-        return false;
-    }
-    //generate new save_path from current_save_path and return in buffer
-    strncpy(save_path, current_save_path, MAX_PATH);
-
-    // store current_save_path in default_save_path for future use
-    strncpy(usr_info->default_save_path, current_save_path, MAX_PATH);
-
-    bool file_exists = check_and_write_cfg_file(usr_info, exe_path);
-    if (!file_exists)
-    {
-        //TODO: replace printf()'s with popup windows
-        printf("error opening cfg file: %s\n", strerror(errno));
-    }
-
-    return true;
-}
-
-//TODO: re-implement this with ImFileDialog()?
-//TODO: delete? replacing with checkboxes in tile export functions
-//      probably need to do the same for worldmap & msk functions
-bool auto_export_question(user_info* usr_info, char* exe_path, char* save_path, img_type save_type)
-{
-    char dest[3][24] {
-        {"/data/art/intrface"},     //WRLDMPxx.FRM
-        {"/data/data"},             //wrldmpXX.msk
-        {"/data/art/tiles"},        //town map tiles
-    };
-    if (usr_info->auto_export == not_set) {       // ask user if they want auto/manual
-        int auto_choice;
-        // auto_choice = tinyfd_messageBox(
-        //     //TODO: simplify this text
-        //             "Automatic? or Manual?",
-        //             "Tiles (map/town/msk) are only located\n"
-        //             "in specific places in the game files.\n\n"
-        //             "For rapid testing in game, you can export tiles\n"
-        //             "automatically and bypass this screen.\n"
-        //             "by setting the modded Fallout 2 directory.\n\n"
-        //             "Yes --- Auto:   (set Fallout 2 directory)\n"
-        //             "No  --- Manual: (select a folder)\n\n"
-        //             "You can change this setting in the config menu.",
-        //             "yesnocancel", "question", 2);
-        if (auto_choice == CANCEL) {            // cancel
-            return false;
-        }
-        if (auto_choice == YES) {               // Auto - chosen from previous popup
-            if (!strcmp(usr_info->default_game_path, "") || (usr_info->auto_export == not_set))
-            {
-                return export_auto(usr_info, exe_path, save_path, save_type);
-            }
-            else
-            {
-                snprintf(save_path, MAX_PATH, "%s%s", usr_info->default_game_path, dest[save_type]);
-                return true;
-            }
-        }
-        if (auto_choice == NO) {                // Manual
-            return export_manual(usr_info, save_path, exe_path);
-        }
-    }
-    if (usr_info->auto_export == auto_all) {                   // Auto   - set by user
-        if (!strcmp(usr_info->default_game_path, "")) {
-            return export_auto(usr_info, exe_path, save_path, save_type);
-        }
-        else {
-            snprintf(save_path, MAX_PATH, "%s%s", usr_info->default_game_path, dest[save_type]);
-            return true;
-        }
-    }
-    if (usr_info->auto_export == manual) {                   // Manual - set by user
-        return export_manual(usr_info, save_path, exe_path);
-    }
-    return false; // again, shouldn't be able to reach this line
 }
 
 void save_folder_dialog(user_info* usr)

@@ -1409,13 +1409,14 @@ static void ShowMainMenuBar(int* counter, struct variables* My_Variables)
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Config")) {
-            if (ImGui::MenuItem("Auto Export", nullptr, usr_info.auto_export == auto_all)) {
-                if (usr_info.auto_export != 0) {
+            bool auto_active = (usr_info.auto_export == auto_all) || (usr_info.default_game_path[0] != '\0');
+            if (ImGui::MenuItem("Auto Export", nullptr, auto_active)) {
+                if (auto_active) {
                     usr_info.auto_export = 0;
                     usr_info.default_game_path[0] = '\0';
                 }
                 else {
-                    usr_info.auto_export = true;
+                    usr_info.auto_export = auto_all;
                 }
             }
             if (ImGui::IsItemHovered()) {

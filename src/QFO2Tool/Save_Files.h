@@ -25,9 +25,6 @@ void save_MSK_tile(uint8_t* texture_buffer, FILE* File_ptr, int width, int heigh
 
 uint8_t* blend_PAL_texture(image_data* img_data);
 
-bool auto_export_question(user_info *usr_info, char *exe_path, char *save_path, img_type save_type);
-bool export_auto(user_info *usr_info, char *exe_path, char *save_path, img_type save_type);
-
 void Set_Default_Game_Path(user_info* user_info, char* exe_path);
 
 tt_arr_handle* export_TMAP_tiles_POPUP(user_info* usr_info, Surface* srfc, Rect* offset, export_state* state);
