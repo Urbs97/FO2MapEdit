@@ -17,6 +17,7 @@ struct Save_Info {
     int action_frame = 0;
 };
 void init_IFD();
+bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info, Save_Info* sv_info, bool overwrite);
 bool ImDialog_save_FRM_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info);
 bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info, Surface* msk_srfc = nullptr, const char* preset_name = nullptr);
 bool save_PNG_popup_INTERNAL(image_data* img_data, user_info* usr_info);

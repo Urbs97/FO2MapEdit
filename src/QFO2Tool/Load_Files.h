@@ -42,6 +42,8 @@ struct LF {
     bool msk_layer_visible = true;  // visibility toggle for MSK overlay
 
     wmap_info* wmap = nullptr;      // non-null = this slot is a worldmap project
+    bool show_close_confirm = false;      // pending "unsaved changes" dialog for tab close
+    bool pending_commit_and_save = false; // commit edit_struct → edit_data, then save
 };
 
 struct shader_info {

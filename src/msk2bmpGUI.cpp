@@ -122,10 +122,28 @@ static void glfw_error_callback(int error, const char* description)
 static bool g_edit_mode_active = false;
 static bool g_reset_imgui_ini = false;
 
+// Unsaved-edits confirmation state
+static bool g_show_quit_confirm = false;
+static bool g_any_file_editing  = false;
+static bool g_quit_after_save   = false;
+static GLFWwindow* g_main_window = nullptr;
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS && !g_edit_mode_active) {
-        glfwSetWindowShouldClose(window, true);
+        if (g_any_file_editing) {
+            g_show_quit_confirm = true;
+        } else {
+            glfwSetWindowShouldClose(window, true);
+        }
+    }
+}
+
+void window_close_callback(GLFWwindow* window)
+{
+    if (g_any_file_editing) {
+        glfwSetWindowShouldClose(window, GLFW_FALSE);
+        g_show_quit_confirm = true;
     }
 }
 
@@ -164,7 +182,9 @@ int main(int argc, char** argv)
     GLFWwindow* window = glfwCreateWindow(1280, 720, "FO2MapEdit", nullptr, nullptr);
     if (window == nullptr) {return 1;}
 
+    g_main_window = window;
     glfwSetKeyCallback(window, key_callback);
+    glfwSetWindowCloseCallback(window, window_close_callback);
     glfwSetDropCallback(window, dropped_files_callback);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(true); // Enable vsync
@@ -516,6 +536,51 @@ int main(int argc, char** argv)
         // Update global edit mode flag so Escape key doesn't close app during editing
         g_edit_mode_active = My_Variables.edit_image_focused;
 
+        // Track whether any open file has unsaved edits
+        g_any_file_editing = false;
+        for (int i = 0; i < counter; i++) {
+            if (My_Variables.F_Prop[i].file_open_window && My_Variables.F_Prop[i].editing_enabled) {
+                g_any_file_editing = true;
+                break;
+            }
+        }
+
+        // Two-phase quit: after "Save & Quit" disables editing, wait for cleanup then close
+        if (g_quit_after_save && !g_any_file_editing) {
+            glfwSetWindowShouldClose(g_main_window, GLFW_TRUE);
+            g_quit_after_save = false;
+        }
+
+        // Quit confirmation dialog when files have unsaved edits
+        if (g_show_quit_confirm) {
+            ImGui::OpenPopup("Unsaved Changes##quit");
+            g_show_quit_confirm = false;
+        }
+        if (ImGui::BeginPopupModal("Unsaved Changes##quit", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("There are files with unsaved edits.");
+            ImGui::Separator();
+            if (ImGui::Button("Save & Quit")) {
+                for (int i = 0; i < counter; i++) {
+                    LF* fp = &My_Variables.F_Prop[i];
+                    if (!fp->file_open_window || !fp->editing_enabled) continue;
+                    fp->pending_commit_and_save = true;
+                    fp->editing_enabled = false;
+                }
+                g_quit_after_save = true;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Quit without saving")) {
+                ImGui::CloseCurrentPopup();
+                glfwSetWindowShouldClose(g_main_window, GLFW_TRUE);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
         // Rendering
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -782,6 +847,36 @@ void draw_layer_panel(LF* F_Prop, shader_info* shaders, image_data* edit_data, S
     ImGui::Separator();
 }
 
+// Commit edit surfaces to edit_data and copy to img_data, then save the project.
+// edit_struct/edit_MSK_srfc are only valid for the file that owns the static edit state.
+static void commit_and_save_edits(LF* F_Prop, LF* edit_state_owner,
+                                  ANM_Dir edit_struct[6], Surface* edit_MSK_srfc)
+{
+    if (F_Prop == edit_state_owner) {
+        commit_map_edits(edit_struct, &F_Prop->edit_data);
+        commit_MSK_edits(edit_MSK_srfc, &F_Prop->edit_data);
+        if (F_Prop->edit_data.ANM_dir && F_Prop->img_data.ANM_dir) {
+            for (int d = 0; d < 6; d++) {
+                int nf = F_Prop->edit_data.ANM_dir[d].num_frames;
+                for (int f = 0; f < nf; f++) {
+                    Surface* src = F_Prop->edit_data.ANM_dir[d].frame_data[f];
+                    Surface* dst = F_Prop->img_data.ANM_dir[d].frame_data[f];
+                    if (!src || !dst) continue;
+                    memcpy(dst->pxls, src->pxls, src->w * src->h);
+                }
+            }
+        }
+    }
+    if (F_Prop->wmap && F_Prop->wmap->save_path[0] != '\0') {
+        save_wmap_project(F_Prop->wmap->save_path, F_Prop);
+    }
+    else if (F_Prop->img_data.type == FRM && F_Prop->Opened_File[0] != '\0') {
+        Save_Info sv_info;
+        sv_info.s_type = all_dirs;
+        save_FRM_SURFACE(F_Prop->Opened_File, &F_Prop->img_data, &usr_info, &sv_info, true);
+    }
+}
+
 //TODO: store image/editing info in the window itself
 void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter)
 {
@@ -800,6 +895,8 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
     char b[3];
     sprintf(b, "%02d", counter);
     std::string name = a + "###preview" + b;
+
+    bool was_open = F_Prop->file_open_window;
 
     if (ImGui::Begin(name.c_str(), (&F_Prop->file_open_window), 0)) {
         //set contextual menu for preview window
@@ -1191,7 +1288,53 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
     }
     show_popup_warnings();
 
+    // Intercept tab close when editing is active
+    if (was_open && !F_Prop->file_open_window && F_Prop->editing_enabled) {
+        F_Prop->file_open_window = true;   // keep window alive
+        F_Prop->show_close_confirm = true;
+    }
+
+    // Tab close confirmation popup
+    char close_popup_id[48];
+    snprintf(close_popup_id, sizeof(close_popup_id), "Unsaved Changes##close%02d", counter);
+
+    if (F_Prop->show_close_confirm) {
+        ImGui::OpenPopup(close_popup_id);
+        F_Prop->show_close_confirm = false;
+    }
+    if (ImGui::BeginPopupModal(close_popup_id, NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("You have unsaved edits.");
+        ImGui::Separator();
+        if (ImGui::Button("Save & Close")) {
+            commit_and_save_edits(F_Prop, edit_state_owner, edit_struct, &edit_MSK_srfc);
+            F_Prop->editing_enabled = false;
+            F_Prop->edit_MSK = false;
+            F_Prop->active_layer = 0;
+            F_Prop->file_open_window = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Close without saving")) {
+            F_Prop->editing_enabled = false;
+            F_Prop->edit_MSK = false;
+            F_Prop->active_layer = 0;
+            F_Prop->file_open_window = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
     ImGui::End();
+
+    // Commit edits and save before cleanup frees the statics
+    if (F_Prop->pending_commit_and_save && !F_Prop->editing_enabled) {
+        commit_and_save_edits(F_Prop, edit_state_owner, edit_struct, &edit_MSK_srfc);
+        F_Prop->pending_commit_and_save = false;
+    }
 
     // Cleanup when editing is disabled — only for the window that owns the statics
     if (!F_Prop->editing_enabled && F_Prop == edit_state_owner) {
