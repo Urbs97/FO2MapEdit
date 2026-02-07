@@ -199,6 +199,15 @@ bool save_PNG_popup_INTERNAL(image_data* img_data, user_info* usr_info)
     save_inf.usr_nfo = usr_info;
 
 
+    // Count total frames across all directions
+    int total_frames = 0;
+    for (int d = 0; d < 6; d++) {
+        if (img_data->ANM_dir[d].num_frames > 0) {
+            total_frames += img_data->ANM_dir[d].num_frames;
+        }
+    }
+    bool single_frame = (total_frames <= 1);
+
     ImGui::Text(
         "This will export as PNG format.\n"
         "Images are saved with a formatted name.\n"
@@ -209,9 +218,13 @@ bool save_PNG_popup_INTERNAL(image_data* img_data, user_info* usr_info)
     );
 
     static int e;
-    ImGui::RadioButton("Current Frame", &e, 0);
-    // ImGui::RadioButton("Single Direction", &e, 1);
-    ImGui::RadioButton("All Frames",    &e, 2);
+    if (single_frame) {
+        e = 0;
+    } else {
+        ImGui::RadioButton("Current Frame", &e, 0);
+        // ImGui::RadioButton("Single Direction", &e, 1);
+        ImGui::RadioButton("All Frames",    &e, 2);
+    }
 
 
     ImDialog_save_PNG(&save_inf);

@@ -911,7 +911,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                 if (!F_Prop->img_data.ANM_dir) ImGui::BeginDisabled();
                 {
                     char png_popup_id[32];
-                    snprintf(png_popup_id, sizeof(png_popup_id), "save_as_PNG##%02d", counter);
+                    snprintf(png_popup_id, sizeof(png_popup_id), "Export as PNG##%02d", counter);
                     if (ImGui::Button("Export as PNG")) {
                         ImGui::OpenPopup(png_popup_id);
                     }
