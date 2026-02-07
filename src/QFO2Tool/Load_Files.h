@@ -38,6 +38,9 @@ struct LF {
     bool image_is_tileable = false;
     bool edit_MSK = false;
     img_type pre_MSK_type = UNK;
+
+    int  active_layer      = 0;     // 0 = map, 1 = mask
+    bool msk_layer_visible = true;  // visibility toggle for MSK overlay
 };
 
 struct shader_info {

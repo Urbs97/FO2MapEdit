@@ -132,6 +132,14 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
                 dst->width,
                 dst->height,
                 dst->type);
+            if (src->MSK_srfc) {
+                dst->MSK_srfc = Copy8BitSurface(src->MSK_srfc);
+                dst->MSK_texture = init_texture(
+                    dst->MSK_srfc,
+                    dst->width,
+                    dst->height,
+                    MSK);
+            }
         }
         if (src->type == MSK) {
             //MSK just needs a surface copy,

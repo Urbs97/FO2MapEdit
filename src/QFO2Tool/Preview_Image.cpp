@@ -29,10 +29,15 @@ void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, b
         My_Variables->CurrentTime_ms
     );
 
-    draw_texture_to_framebuffer(
-        shaders->FO_pal, shaders->render_FRM_shader, &shaders->giant_triangle,
-        img_data->framebuffer, img_data->FRM_texture, img_data->width, img_data->height
-    );
+    if (img_data->MSK_srfc) {
+        draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
+                                &shaders->giant_triangle, img_data);
+    } else {
+        draw_texture_to_framebuffer(
+            shaders->FO_pal, shaders->render_FRM_shader, &shaders->giant_triangle,
+            img_data->framebuffer, img_data->FRM_texture, img_data->width, img_data->height
+        );
+    }
 
     //handle frame display by orientation and number
     int orient  = img_data->display_orient_num;

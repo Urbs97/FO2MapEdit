@@ -126,7 +126,7 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos,
     ImVec2 mouse_pos = My_Variables->new_mouse_pos;
     int x_offset;
     int y_offset;
-    if (edit_data->type == MSK) {
+    if (edit_MSK) {
         x_offset = 0;
         y_offset = 0;
     } else {
@@ -355,10 +355,10 @@ void brush_size_handler(variables* My_Variables)
 
 void draw_frame_boundary(image_data* edit_data, ImVec2 img_pos, bool edit_MSK)
 {
-    // MSK files: frame == canvas, nothing to dim
-    if (edit_data->type == MSK) return;
-    // Editing MSK layer: covers full canvas
+    // Editing MSK layer: covers full canvas, nothing to dim
     if (edit_MSK) return;
+    // MSK files opened directly: frame == canvas
+    if (edit_data->type == MSK) return;
 
     int dir = edit_data->display_orient_num;
     int num = edit_data->display_frame_num;
@@ -412,7 +412,7 @@ void draw_pixel_grid(image_data* edit_data, ImVec2 img_pos, bool edit_MSK)
 
     int dir = edit_data->display_orient_num;
     int img_w, img_h;
-    if (edit_data->type == MSK || edit_MSK) {
+    if (edit_MSK || edit_data->type == MSK) {
         img_w = edit_data->width;
         img_h = edit_data->height;
     } else {

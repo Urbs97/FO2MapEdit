@@ -177,10 +177,19 @@ void PAL_SURFACE_to_sub_texture(uint8_t* pxls, GLuint texture,
     //FRM/MSK are aligned to 1-byte
     glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
     //bind blank background to FRM_texture for display, then paint data onto texture
-    uint8_t * blank = (uint8_t*)calloc(1, total_width*total_height);
+    //use static buffer to avoid calloc/free every frame
+    static uint8_t* blank = NULL;
+    static int blank_size = 0;
+    int needed = total_width * total_height;
+    if (needed > blank_size) {
+        free(blank);
+        blank = (uint8_t*)calloc(1, needed);
+        blank_size = needed;
+    } else {
+        memset(blank, 0, needed);
+    }
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, total_width, total_height, 0, pxl_type, GL_UNSIGNED_BYTE, blank);
     glTexSubImage2D(GL_TEXTURE_2D, 0, x_offset, y_offset, frm_width, frm_height, GL_RED, GL_UNSIGNED_BYTE, pxls);
-    free(blank);
 }
 
 //TODO: handle the current_time break outside this code

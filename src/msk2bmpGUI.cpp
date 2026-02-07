@@ -677,6 +677,72 @@ void commit_MSK_edits(Surface* edit_MSK_srfc, image_data* edit_data)
            edit_MSK_srfc->w * edit_MSK_srfc->h);
 }
 
+// Layer panel for MSK editing — allows switching between Map and Mask layers
+void draw_layer_panel(LF* F_Prop, shader_info* shaders, image_data* edit_data, Surface* edit_MSK_srfc)
+{
+    ImGui::Separator();
+    ImGui::Text("Layers");
+
+    // Map layer (always shown)
+    {
+        bool selected = (F_Prop->active_layer == 0);
+        if (ImGui::Selectable("  Map", selected)) {
+            // Commit MSK working buffer before switching away from mask layer
+            if (F_Prop->active_layer == 1 && edit_MSK_srfc && edit_MSK_srfc->pxls) {
+                commit_MSK_edits(edit_MSK_srfc, edit_data);
+            }
+            F_Prop->active_layer = 0;
+            F_Prop->edit_MSK = false;
+        }
+    }
+
+    // Mask layer (shown only when MSK surface exists)
+    if (edit_data->MSK_srfc) {
+        // Visibility toggle on same line as Mask selectable
+        ImGui::PushID("msk_vis");
+        bool vis = F_Prop->msk_layer_visible;
+        if (ImGui::SmallButton(vis ? "V" : "-")) {
+            F_Prop->msk_layer_visible = !F_Prop->msk_layer_visible;
+            if (!F_Prop->msk_layer_visible && F_Prop->active_layer == 1) {
+                // Can't edit invisible layer — switch to map
+                F_Prop->active_layer = 0;
+                F_Prop->edit_MSK = false;
+            }
+            // Upload blank or real MSK data to the texture
+            if (F_Prop->msk_layer_visible) {
+                // Use working buffer if available, else committed data
+                Surface* src = (edit_MSK_srfc && edit_MSK_srfc->pxls) ? edit_MSK_srfc : edit_data->MSK_srfc;
+                SURFACE_to_texture(src, edit_data->MSK_texture,
+                                   src->w, src->h, 1);
+            } else {
+                // Upload zeros to hide the overlay
+                int w = edit_data->MSK_srfc->w;
+                int h = edit_data->MSK_srfc->h;
+                Surface blank_srfc = {};
+                blank_srfc.pxls = (uint8_t*)calloc(1, w * h);
+                blank_srfc.w = w;
+                blank_srfc.h = h;
+                blank_srfc.pitch = w;
+                blank_srfc.channels = 1;
+                SURFACE_to_texture(&blank_srfc, edit_data->MSK_texture, w, h, 1);
+                free(blank_srfc.pxls);
+            }
+        }
+        ImGui::PopID();
+
+        ImGui::SameLine();
+        bool selected = (F_Prop->active_layer == 1);
+        if (ImGui::Selectable("Mask", selected)) {
+            if (F_Prop->msk_layer_visible) {
+                F_Prop->active_layer = 1;
+                F_Prop->edit_MSK = true;
+            }
+        }
+    }
+
+    ImGui::Separator();
+}
+
 //TODO: store image/editing info in the window itself
 void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter)
 {
@@ -689,6 +755,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
     static Surface edit_MSK_srfc;
     static bool edit_msk_copied = false;
     static StrokeState stroke_state;
+    static LF* edit_state_owner = nullptr;  // tracks which F_Prop owns the statics
 
     std::string a = F_Prop->c_name;
     char b[3];
@@ -860,12 +927,44 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                             );
                         }
                         F_Prop->editing_enabled = true;
+
+                        // Auto-create MSK layer for tileable images
+                        image_data* ed = &F_Prop->edit_data;
+                        if (F_Prop->image_is_tileable && !ed->MSK_srfc) {
+                            ed->MSK_srfc = Create_8Bit_Surface(ed->width, ed->height, NULL);
+                            ed->MSK_texture = init_texture(
+                                ed->MSK_srfc,
+                                ed->MSK_srfc->w,
+                                ed->MSK_srfc->h,
+                                MSK
+                            );
+                        }
                     }
                 } else {
                     if (ImGui::Button("Disable Editing")) {
                         commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
+
+                        // Copy MSK edits to img_data for preview overlay
+                        if (F_Prop->edit_data.MSK_srfc) {
+                            int mw = F_Prop->edit_data.MSK_srfc->w;
+                            int mh = F_Prop->edit_data.MSK_srfc->h;
+                            // Create img_data MSK surface/texture if needed
+                            if (!F_Prop->img_data.MSK_srfc) {
+                                F_Prop->img_data.MSK_srfc = Create_8Bit_Surface(mw, mh, NULL);
+                                F_Prop->img_data.MSK_texture = init_texture(
+                                    F_Prop->img_data.MSK_srfc, mw, mh, MSK);
+                            }
+                            memcpy(F_Prop->img_data.MSK_srfc->pxls,
+                                   F_Prop->edit_data.MSK_srfc->pxls,
+                                   mw * mh);
+                            SURFACE_to_texture(F_Prop->img_data.MSK_srfc,
+                                               F_Prop->img_data.MSK_texture,
+                                               mw, mh, 1);
+                        }
+
                         F_Prop->editing_enabled = false;
                         F_Prop->edit_MSK = false;
+                        F_Prop->active_layer = 0;
                         My_Variables->edit_image_focused = false;
                     }
                 }
@@ -876,39 +975,12 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                 image_data* ed = &F_Prop->edit_data;
 
                 if (F_Prop->image_is_tileable) {
-                    //loads MSK file to current slot
-                    ImDialog_load_MSK(F_Prop, ed, &usr_info, &My_Variables->shaders);
+                    // Layer panel replaces old mask switching buttons
+                    draw_layer_panel(F_Prop, shaders, ed, &edit_MSK_srfc);
 
-                    if (!F_Prop->edit_MSK) {
-                        if (ed->MSK_srfc) {
-                            if (ImGui::Button("Edit MSK Layer...")) {
-                                F_Prop->edit_MSK = true;
-                                F_Prop->pre_MSK_type = ed->type;
-                                ed->type = MSK;
-                            }
-                        } else {
-                            if (ImGui::Button("Create MSK Layer...")) {
-                                F_Prop->edit_MSK = true;
-                                F_Prop->pre_MSK_type = ed->type;
-                                ed->type = MSK;
-
-                                int width =  ed->width;
-                                int height = ed->height;
-                                ed->MSK_srfc = Create_8Bit_Surface(width, height, NULL);
-                                ed->MSK_texture = init_texture(
-                                    ed->MSK_srfc,
-                                    ed->MSK_srfc->w,
-                                    ed->MSK_srfc->h,
-                                    MSK
-                                );
-                            }
-                        }
-                    } else {
-                        if (ImGui::Button("Cancel Editing Mask...")) {
-                            commit_MSK_edits(&edit_MSK_srfc, ed);
-                            F_Prop->edit_MSK = false;
-                            ed->type = F_Prop->pre_MSK_type;
-                        }
+                    // Load MSK file button (shown when Mask layer is selected)
+                    if (F_Prop->active_layer == 1) {
+                        ImDialog_load_MSK(F_Prop, ed, &usr_info, &My_Variables->shaders);
                     }
                 }
 
@@ -942,11 +1014,11 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                     open_save = true;
                 }
                 if (open_save) {
+                    if (F_Prop->active_layer == 1) {
+                        open_save = save_MSK_popup(F_Prop);
+                    } else
                     if (ed->type == FRM) {
                         open_save = save_FRM_popup(F_Prop);
-                    } else
-                    if (ed->type == MSK) {
-                        open_save = save_MSK_popup(F_Prop);
                     } else
                     if (ed->type == TILE) {
                         open_save = save_TILE_popup(F_Prop);
@@ -982,6 +1054,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
                 // Initialize edit structures on demand
                 if (!edit_struct[0].frame_data) {
                     init_edit_struct_ANM(edit_struct, edit_data, My_Variables->FO_Palette);
+                    edit_state_owner = F_Prop;
                 }
                 if (!edit_MSK_srfc.pxls) {
                     init_MSK_surface(&edit_MSK_srfc, edit_data->width, edit_data->height);
@@ -1017,6 +1090,33 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
             }
         } else {
             // --- Preview mode ---
+            // Show MSK visibility toggle in preview if MSK data exists
+            if (img_data->MSK_srfc && F_Prop->image_is_tileable) {
+                ImGui::Text("Layers");
+                ImGui::SameLine();
+                bool vis = F_Prop->msk_layer_visible;
+                if (ImGui::SmallButton(vis ? "V##prev_vis" : "-##prev_vis")) {
+                    F_Prop->msk_layer_visible = !F_Prop->msk_layer_visible;
+                    if (F_Prop->msk_layer_visible) {
+                        SURFACE_to_texture(img_data->MSK_srfc, img_data->MSK_texture,
+                                           img_data->MSK_srfc->w, img_data->MSK_srfc->h, 1);
+                    } else {
+                        int w = img_data->MSK_srfc->w;
+                        int h = img_data->MSK_srfc->h;
+                        Surface blank_srfc = {};
+                        blank_srfc.pxls = (uint8_t*)calloc(1, w * h);
+                        blank_srfc.w = w;
+                        blank_srfc.h = h;
+                        blank_srfc.pitch = w;
+                        blank_srfc.channels = 1;
+                        SURFACE_to_texture(&blank_srfc, img_data->MSK_texture, w, h, 1);
+                        free(blank_srfc.pxls);
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::Text("Mask Overlay");
+            }
+
             if (img_data->type == FRM) {
                 //show the original image for previewing
                 //TODO: finish setting up usr.info.show_image_stats in settings config in menu
@@ -1044,17 +1144,30 @@ void Show_Preview_Window(struct variables *My_Variables, LF* F_Prop, int counter
 
     ImGui::End();
 
-    // Cleanup when editing is disabled
-    if (!F_Prop->editing_enabled) {
+    // Cleanup when editing is disabled — only for the window that owns the statics
+    if (!F_Prop->editing_enabled && F_Prop == edit_state_owner) {
         stroke_state_cleanup(&stroke_state);
         free(edit_MSK_srfc.pxls);
         edit_MSK_srfc.pxls = NULL;
         for (int i = 0; i < 6; i++)
         {
+            // Free individual Surface objects before freeing the pointer array
+            if (edit_struct[i].frame_data) {
+                image_data* ed = &F_Prop->edit_data;
+                int num_frames = (ed->ANM_dir && ed->ANM_dir[i].num_frames > 0)
+                                 ? ed->ANM_dir[i].num_frames : 0;
+                for (int f = 0; f < num_frames; f++) {
+                    if (edit_struct[i].frame_data[f]) {
+                        FreeSurface(edit_struct[i].frame_data[f]);
+                        edit_struct[i].frame_data[f] = NULL;
+                    }
+                }
+            }
             free(edit_struct[i].frame_data);
             edit_struct[i].frame_data = NULL;
         }
         edit_msk_copied = false;
+        edit_state_owner = nullptr;
     }
 
     // Preview tiles from red boxes

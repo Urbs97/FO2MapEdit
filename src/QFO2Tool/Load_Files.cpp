@@ -682,6 +682,7 @@ bool ImDialog_load_MSK(LF* F_Prop, image_data* img_data, user_info* usr_info, sh
     }
     if (load_MSK) {
         F_Prop->edit_MSK = true;
+        F_Prop->active_layer = 1;
         load_MSK = false;
         load_name[0] = '\0';
     }
