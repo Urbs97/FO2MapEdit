@@ -30,23 +30,23 @@ char* generate_PNG_name(char* name, int src_dir, int num) {
         *ptr = '\0';
     }
     const char* dir = nullptr;
-    switch (src_dir) {
-        case NE:
+    switch (static_cast<Direction>(src_dir)) {
+        case Direction::NE:
             dir = "NE";
             break;
-        case E:
+        case Direction::E:
             dir = "E";
             break;
-        case SE:
+        case Direction::SE:
             dir = "SE";
             break;
-        case SW:
+        case Direction::SW:
             dir = "SW";
             break;
-        case W:
+        case Direction::W:
             dir = "W";
             break;
-        case NW:
+        case Direction::NW:
             dir = "NW";
             break;
         default:
@@ -295,19 +295,19 @@ bool write_single_frame_FRM_SURFACE(Surface* src, FILE* dst, bool single_frame) 
 
 const char* FRx_extension(Direction dir) {
     switch (dir) {
-        case NE:
+        case Direction::NE:
             return "FR0";
-        case E:
+        case Direction::E:
             return "FR1";
-        case SE:
+        case Direction::SE:
             return "FR2";
-        case SW:
+        case Direction::SW:
             return "FR3";
-        case W:
+        case Direction::W:
             return "FR4";
-        case NW:
+        case Direction::NW:
             return "FR5";
-        case no_data:
+        case Direction::no_data:
             break;
     }
     // default
@@ -321,7 +321,7 @@ bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info
     }
 
     if (strrchr(save_name, '.') == nullptr) {
-        Direction dir = (Direction)img_data->display_orient_num;
+        Direction dir = static_cast<Direction>(img_data->display_orient_num);
         const char* ext = FRx_extension(dir);
         char buff[MAX_PATH];
         strncpy(buff, save_name, MAX_PATH);
@@ -357,7 +357,7 @@ bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info
     ANM_Dir* anm_dir = img_data->ANM_dir;
 
     int dir = img_data->display_orient_num;
-    int fpo = sv_info->s_type == single_frm ? 1 : anm_dir[dir].num_frames;
+    int fpo = sv_info->s_type == Save_Type::single_frm ? 1 : anm_dir[dir].num_frames;
 
     FRM_Header header;
     header.version = 4;
@@ -380,7 +380,7 @@ bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info
     // I figure out what a 0,0 positioned FRM will look
     // like in the mapper/game engine?
     int s = 0;
-    if (sv_info->s_type == single_dir) {
+    if (sv_info->s_type == Save_Type::single_dir) {
         num_dir = 1;
         count = anm_dir[dir].num_frames;
         s = 0;
@@ -390,7 +390,7 @@ bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info
             int h = anm_dir[dir].frame_data[i]->h;
             s += w * h;
         }
-    } else if (sv_info->s_type == all_dirs) {
+    } else if (sv_info->s_type == Save_Type::all_dirs) {
         s = 0;
         num_dir = 6;
         count = anm_dir[dir].num_frames;
@@ -445,17 +445,17 @@ bool ImDialog_save_FRM_SURFACE(image_data* img_data, user_info* usr_info, Save_I
 
     static char save_name[MAX_PATH];
     const char* save_type = nullptr;
-    if (sv_info->s_type == single_frm) {
+    if (sv_info->s_type == Save_Type::single_frm) {
         save_type = "Export only selected \nframe as FRM.";
-    } else if (sv_info->s_type == single_dir) {
+    } else if (sv_info->s_type == Save_Type::single_dir) {
         save_type = "Export all frames in \nselected direction as FRx.";
-    } else if (sv_info->s_type == all_dirs) {
+    } else if (sv_info->s_type == Save_Type::all_dirs) {
         save_type = "Export all frames in \nall directions as FRM.";
     }
 
     const char* ext_filter = nullptr;
     if (ImGui::Button(save_type)) {
-        if (sv_info->s_type == single_dir) {
+        if (sv_info->s_type == Save_Type::single_dir) {
             ext_filter = "FRx file (single direction only)"
                          "(*.fr0;*.fr1;*.fr2;.fr3;*.fr4;*.fr5;)"
                          "{.FR0,.fr0,.FR1,.fr1,.FR2,.fr2,.FR3,.fr3,.FR4,.fr4,.FR5,.fr5,}";
@@ -578,7 +578,9 @@ bool check_and_write_cfg_file(user_info* user_info, char* exe_path) {
 }
 
 // Fallout map tile size hardcoded in engine to 350x300 pixels WxH
-enum { MAP_TILE_W = (350), MAP_TILE_H = (300), MAP_TILE_SIZE = (350 * 300) };
+static constexpr int MAP_TILE_W = 350;
+static constexpr int MAP_TILE_H = 300;
+static constexpr int MAP_TILE_SIZE = 350 * 300;
 
 // Create a filename based on the directory and export file type
 // img_type type: UNK = -1, MSK = 0, FRM = 1, FR0 = 2, FRx = 3, OTHER = 4
@@ -586,12 +588,12 @@ void create_tile_name(char* dst, char* name, img_type save_type, char* path, int
     char ext[2][4] = {{"MSK"}, {"FRM"}};
 
     //-------create file path string based on path, tile_num, save_type
-    snprintf(dst, MAX_PATH, "%s/%s%02d.%s", path, name, tile_num, ext[save_type]);
+    snprintf(dst, MAX_PATH, "%s/%s%02d.%s", path, name, tile_num, ext[static_cast<int>(save_type)]);
 
     // Lowercase the filename for MSK files to match vanilla convention.
     // Fallout 2 engine expects lowercase mask names (e.g. wrldmp00.msk)
     // and case matters on Linux/Proton.
-    if (save_type == MSK) {
+    if (save_type == img_type::MSK) {
         char* slash = strrchr(dst, '/');
         if (slash != nullptr) {
             for (char* p = slash + 1; *p != 0; p++) {
@@ -617,8 +619,8 @@ bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path, const
     int num_tiles_x = img_w / MAP_TILE_W;
     int num_tiles_y = img_h / MAP_TILE_H;
 
-    if (type == TILE) {
-        type = FRM;
+    if (type == img_type::TILE) {
+        type = img_type::FRM;
     }
 
     FRM_Header header = {};
@@ -694,13 +696,13 @@ bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path, const
                 tile_row_pntr += MAP_TILE_W;
             }
             // FRM = 1, MSK = 0
-            if (type == FRM) {
+            if (type == img_type::FRM) {
                 fwrite(&header, sizeof(FRM_Header), 1, File_ptr);
                 fwrite(&frame_data, sizeof(FRM_Frame), 1, File_ptr);
                 fwrite(&tile_buffer, MAP_TILE_SIZE, 1, File_ptr);
             }
             ///////////////////////////////////////////////////////////////////////////
-            if (type == MSK) {
+            if (type == img_type::MSK) {
                 save_MSK_tile(tile_buffer, File_ptr, MAP_TILE_W, MAP_TILE_H);
             }
             fclose(File_ptr);
@@ -764,15 +766,15 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     bool has_game_path = (usr_info->default_game_path[0] != '\0');
 
     Surface* src = nullptr;
-    img_type type;
+    img_type type = img_type::FRM;
     const char* output_type = nullptr;
-    if (img_data->type == MSK) {
+    if (img_data->type == img_type::MSK) {
         src = img_data->MSK_srfc;
-        type = MSK;
+        type = img_type::MSK;
         output_type = "Save worldmap MSK tiles";
     } else {
         src = img_data->ANM_dir[0].frame_data[0];
-        type = FRM;
+        type = img_type::FRM;
         output_type = "Save worldmap FRM tiles";
     }
 
@@ -803,7 +805,8 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     int num_tiles_x = src->w / MAP_TILE_W;
     int num_tiles_y = src->h / MAP_TILE_H;
     float button_size = 50.0F;
-    ImVec2 scaled = {num_tiles_x * button_size, num_tiles_y * button_size};
+    ImVec2 scaled = {static_cast<float>(num_tiles_x) * button_size,
+                     static_cast<float>(num_tiles_y) * button_size};
     ImVec2 img_pos = ImGui::GetCursorScreenPos();
 
     // image split into selectable tiles here?
@@ -931,8 +934,8 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
         if (success && export_msk_tiles && (msk_srfc != nullptr)) {
             char* msk_folder =
                 (is_wmap && msk_save_folder[0] != '\0') ? msk_save_folder : save_folder;
-            success = save_tiles_SURFACE(msk_folder, save_name, save_path, selected, msk_srfc, MSK,
-                                         usr_info, sv_info, overwrite);
+            success = save_tiles_SURFACE(msk_folder, save_name, save_path, selected, msk_srfc,
+                                         img_type::MSK, usr_info, sv_info, overwrite);
         }
     }
     if (success) {

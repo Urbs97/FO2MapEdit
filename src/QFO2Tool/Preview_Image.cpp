@@ -42,7 +42,7 @@ void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, b
     int height = img_data->ANM_bounding_box[orient].y2 - img_data->ANM_bounding_box[orient].y1;
     ImVec2 uv_min = My_Variables->uv_min; // (0.0f,0.0f)
     ImVec2 uv_max = My_Variables->uv_max; // (1.0f,1.0f)
-    ImVec2 size = ImVec2((float)(width * scale), (float)(height * scale));
+    ImVec2 size = ImVec2(static_cast<float>(width) * scale, static_cast<float>(height) * scale);
 
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     // image I'm trying to pan and zoom with
@@ -79,7 +79,7 @@ void Preview_MSK_Image(variables* My_Variables, struct image_data* img_data, boo
     int height = img_data->height;
     ImVec2 uv_min = My_Variables->uv_min; // (0.0f,0.0f)
     ImVec2 uv_max = My_Variables->uv_max; // (1.0f,1.0f)
-    ImVec2 size = ImVec2((float)(width * scale), (float)(height * scale));
+    ImVec2 size = ImVec2(static_cast<float>(width) * scale, static_cast<float>(height) * scale);
 
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     // image I'm trying to pan and zoom with
@@ -99,8 +99,8 @@ void Preview_MSK_Image(variables* My_Variables, struct image_data* img_data, boo
     }
 }
 
-#define tile_grid_w (128.0)
-#define tile_grid_h (96.0)
+#define tile_grid_w (128.0f)
+#define tile_grid_h (96.0f)
 
 // TODO: refactor this
 void Preview_Image(variables* My_Variables, struct image_data* img_data, bool show_stats) {
@@ -115,7 +115,7 @@ void Preview_Image(variables* My_Variables, struct image_data* img_data, bool sh
     int height = img_data->height;
     ImVec2 uv_min = My_Variables->uv_min; // (0.0f,0.0f)
     ImVec2 uv_max = My_Variables->uv_max; // (1.0f,1.0f)
-    ImVec2 size = ImVec2((float)(width * scale), (float)(height * scale));
+    ImVec2 size = ImVec2(static_cast<float>(width) * scale, static_cast<float>(height) * scale);
 
     if (img_data->ANM_dir[img_data->display_orient_num].frame_data == nullptr) {
         ImGui::Text("No Image Data");

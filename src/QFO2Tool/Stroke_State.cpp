@@ -46,7 +46,7 @@ void stroke_cancel(StrokeState* state) {
     // Restore pixels from snapshot
     if ((state->pre_stroke_snapshot != nullptr) && (state->pre_stroke_target != nullptr)) {
         memcpy(state->pre_stroke_target->pxls, state->pre_stroke_snapshot->pxls,
-               state->pre_stroke_target->w * state->pre_stroke_target->h);
+               static_cast<size_t>(state->pre_stroke_target->w) * state->pre_stroke_target->h);
         FreeSurface(state->pre_stroke_snapshot);
     }
     state->pre_stroke_snapshot = nullptr;
@@ -68,7 +68,8 @@ bool stroke_undo(StrokeState* state) {
     state->redo_stack.push_back(redo_entry);
 
     // Restore pixels to the target surface
-    memcpy(entry.target->pxls, entry.snapshot->pxls, entry.target->w * entry.target->h);
+    memcpy(entry.target->pxls, entry.snapshot->pxls,
+           static_cast<size_t>(entry.target->w) * entry.target->h);
 
     FreeSurface(entry.snapshot);
     return true;
@@ -92,7 +93,8 @@ bool stroke_redo(StrokeState* state) {
     state->undo_stack.push_back(undo_entry);
 
     // Restore pixels to the target surface
-    memcpy(entry.target->pxls, entry.snapshot->pxls, entry.target->w * entry.target->h);
+    memcpy(entry.target->pxls, entry.snapshot->pxls,
+           static_cast<size_t>(entry.target->w) * entry.target->h);
 
     FreeSurface(entry.snapshot);
     return true;

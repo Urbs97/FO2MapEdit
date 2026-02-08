@@ -18,9 +18,9 @@ struct tile_name_arr {
 bool append_TMAP_tiles_LST(user_info* usr_nfo, tt_arr_handle* handle, export_state* state);
 tile_name_arr* make_name_list_arr(char* new_tiles_list);
 
-char* save_NEW_FRM_tiles_LST(tt_arr_handle* handle, char* save_path, export_state* state);
+char* save_NEW_FRM_tiles_LST(tt_arr_handle* handle, char* game_path, export_state* state);
 char* load_LST_file(char* game_path, const char* LST_path, const char* LST_file);
-char* append_FRM_tiles_LST(char* tiles_lst_path, tt_arr_handle* handle, export_state* state);
+char* append_FRM_tiles_LST(char* old_FRM_LST, tt_arr_handle* handle, export_state* state);
 bool load_FRM_tiles_LST(user_info* usr_nfo, export_state* cur_state);
 void set_false(export_state* cur_state);
 char* check_FRM_LST_names(char* tiles_lst, tt_arr_handle* handle, export_state* state);

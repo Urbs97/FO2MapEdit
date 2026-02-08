@@ -69,7 +69,7 @@ uint8_t* load_entire_file(const char* file_name, int* file_size) {
         fclose(File_ptr);
         return nullptr;
     }
-    file_length = ftell(File_ptr);
+    file_length = static_cast<int>(ftell(File_ptr));
     fseek(File_ptr, 0, SEEK_SET);
 
     if (file_length < 1) {
@@ -141,25 +141,25 @@ void calculate_bounding_box(rectangle* bounding_box, rectangle* FRM_bounding_box
 
 Direction assign_direction_FRM(const char* direction) {
     if (io_strncmp(direction, "FR0\n", sizeof("FR0\n")) == 0) {
-        return NE;
+        return Direction::NE;
     }
     if (io_strncmp(direction, "FR1\0", sizeof("FR1\0")) == 0) {
-        return E;
+        return Direction::E;
     }
     if (io_strncmp(direction, "FR2\0", sizeof("FR2\0")) == 0) {
-        return SE;
+        return Direction::SE;
     }
     if (io_strncmp(direction, "FR3\0", sizeof("FR3\0")) == 0) {
-        return SW;
+        return Direction::SW;
     }
     if (io_strncmp(direction, "FR4\0", sizeof("FR4\0")) == 0) {
-        return W;
+        return Direction::W;
     }
     if (io_strncmp(direction, "FR5\0", sizeof("FR5\0")) == 0) {
-        return NW;
+        return Direction::NW;
     }
     // default
-    return NE;
+    return Direction::NE;
 }
 
 bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* shaders) {
@@ -173,11 +173,11 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
 
     int num_orients = ((header->Frame_0_Offset[1]) != 0U) ? 6 : 1;
     int num_frames = header->Frames_Per_Orient;
-    Direction dir = no_data;
+    Direction dir = Direction::no_data;
     const char* ext_ptr = strrchr(file, '.') + 1;
     if (num_orients < 6) {
         dir = assign_direction_FRM(ext_ptr);
-        img_data->display_orient_num = dir;
+        img_data->display_orient_num = static_cast<int>(dir);
     }
 
     img_data->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir) * 6);
@@ -198,11 +198,11 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
     int buff_offset = sizeof(FRM_Header);
     for (int i = 0; i < num_orients; i++) {
         if (num_orients < 6) {
-            i = dir;
+            i = static_cast<int>(dir);
         }
 
         anm_dir[i].num_frames = num_frames;
-        anm_dir[i].orientation = (Direction)i;
+        anm_dir[i].orientation = static_cast<Direction>(i);
 
         // TODO: change to ptr assignment after malloc-ing entire memory above ^^
         anm_dir[i].frame_data = (Surface**)malloc(sizeof(Surface*) * num_frames);
@@ -223,7 +223,7 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
                               "Unable to allocate memory for anm_dir[i].frame_data");
             printf("Unable to allocate memory for anm_dir[%d].bounding_box: %d", i, __LINE__);
             for (int i = 0; i < 6; i++) {
-                free(anm_dir[i].frame_data);
+                free(static_cast<void*>(anm_dir[i].frame_data));
             }
             free(anm_dir);
             free(buffer);
@@ -249,7 +249,7 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
                                   "Unable to allocate memory for Surface.");
                 printf("Unable to allocate memory for Surface: %d", __LINE__);
                 for (int i = 0; i < 6; i++) {
-                    free(anm_dir[i].frame_data);
+                    free(static_cast<void*>(anm_dir[i].frame_data));
                     free(anm_dir[i].frame_box);
                 }
                 free(anm_dir);
@@ -258,18 +258,19 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
                 return false;
             }
 
-            memcpy(img->pxls, frame_start->frame_start, w * h);
+            memcpy(img->pxls, frame_start->frame_start, static_cast<size_t>(w) * h);
 
             anm_dir[i].frame_data[j] = img;
             anm_dir[i].frame_data[j]->x = frame_start->Shift_Offset_x;
             anm_dir[i].frame_data[j]->y = frame_start->Shift_Offset_y;
 
-            buff_offset += frame_start->Frame_Size + sizeof(FRM_Frame);
+            buff_offset +=
+                static_cast<int>(frame_start->Frame_Size) + static_cast<int>(sizeof(FRM_Frame));
         }
         img_data->ANM_bounding_box[i] = FRM_bounding_box;
     }
 
-    int this_dir = (num_orients < 6) ? dir : 0;
+    int this_dir = (num_orients < 6) ? static_cast<int>(dir) : 0;
     img_data->width =
         img_data->ANM_bounding_box[this_dir].x2 - img_data->ANM_bounding_box[this_dir].x1;
     img_data->height =

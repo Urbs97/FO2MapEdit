@@ -38,7 +38,7 @@ struct FRM_Frame {
 
 struct FRM_Dir {
     int num_frames = 0;
-    Direction orientation = no_data;
+    Direction orientation = Direction::no_data;
     FRM_Frame** frame_data = nullptr;
     rectangle* bounding_box = {};
 };
@@ -54,7 +54,7 @@ struct image_data {
 
     ANM_Dir* save_ptr = nullptr;
 
-    img_type type = UNK;
+    img_type type = img_type::UNK;
     uint8_t* FRM_data = nullptr; // duplicate of FRM_hdr?
     uint8_t* MSK_data = nullptr;
     Surface* MSK_srfc = nullptr;

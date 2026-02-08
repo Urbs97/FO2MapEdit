@@ -15,6 +15,11 @@ class Shader {
     Shader(const char* vertexPath, const char* fragmentPath);
     // destructor to clean up GL program
     ~Shader();
+    // non-copyable, non-movable (rule of five)
+    Shader(const Shader&) = delete;
+    Shader& operator=(const Shader&) = delete;
+    Shader(Shader&&) = delete;
+    Shader& operator=(Shader&&) = delete;
     // use/activate shader
     void use() const;
     void setBool(const std::string& name, bool value) const;

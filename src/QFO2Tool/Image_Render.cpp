@@ -16,7 +16,7 @@ void image_render(variables* My_Variables, image_data* img_data) {
     int height = img_data->height;
     ImVec2 uv_min = My_Variables->uv_min; // (0.0f,0.0f)
     ImVec2 uv_max = My_Variables->uv_max; // (1.0f,1.0f)
-    ImVec2 size = ImVec2((float)(width * scale), (float)(height * scale));
+    ImVec2 size = ImVec2(static_cast<float>(width) * scale, static_cast<float>(height) * scale);
 
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     // image I'm trying to pan with

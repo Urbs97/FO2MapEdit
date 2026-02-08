@@ -50,7 +50,7 @@ bool copy_it_all_ANM(image_data* src, image_data* dst) {
         if (num_orients < 6) {
             i = dst->display_orient_num;
         }
-        dst_dir[i].orientation = (Direction)i;
+        dst_dir[i].orientation = static_cast<Direction>(i);
         dst_dir[i].num_frames = num_frames;
 
         if (src->ANM_dir[i].frame_data == nullptr) {
@@ -119,10 +119,10 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
     dst->playback_speed = src->playback_speed;
 
 #pragma region copy_it_all
-    if (src->type == FRM || src->type == MSK) {
+    if (src->type == img_type::FRM || src->type == img_type::MSK) {
         dst->type = src->type;
 
-        if (src->type == FRM) {
+        if (src->type == img_type::FRM) {
             // FRM needs full tree copy
             // uses dst.FRM_texture
             dst->FRM_size = src->FRM_size;
@@ -131,10 +131,11 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
                                             dst->width, dst->height, dst->type);
             if (src->MSK_srfc != nullptr) {
                 dst->MSK_srfc = Copy8BitSurface(src->MSK_srfc);
-                dst->MSK_texture = init_texture(dst->MSK_srfc, dst->width, dst->height, MSK);
+                dst->MSK_texture =
+                    init_texture(dst->MSK_srfc, dst->width, dst->height, img_type::MSK);
             }
         }
-        if (src->type == MSK) {
+        if (src->type == img_type::MSK) {
             // MSK just needs a surface copy,
             // uses dst.MSK_texture
             dst->MSK_data = src->MSK_data;
@@ -146,7 +147,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
             dst->ANM_bounding_box[dir].y2 = src->height;
         }
     }
-    if (src->type == OTHER) {
+    if (src->type == img_type::OTHER) {
         dst->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir) * 6);
         if (dst->ANM_dir == nullptr) {
             // TODO: log out to file
@@ -190,7 +191,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
         dst->ANM_bounding_box[dir].x2 = dst->width;
         dst->ANM_bounding_box[dir].y2 = dst->height;
 
-        dst->ANM_dir[dir].orientation = NE;
+        dst->ANM_dir[dir].orientation = Direction::NE;
 
         dst->FRM_hdr = (FRM_Header*)calloc(1, sizeof(FRM_Header));
         if (dst->FRM_hdr == nullptr) {
@@ -201,7 +202,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
             return;
         }
 
-        dst->type = FRM;
+        dst->type = img_type::FRM;
 
         dst->FRM_texture =
             init_texture(dst->ANM_dir[dir].frame_data[0], dst->width, dst->height, dst->type);
@@ -245,9 +246,9 @@ GLuint init_texture(Surface* src, int w, int h, img_type type) {
         return 0U;
     }
 
-    int alignment = 1;     // FRM & MSK
-    int pxl_type = GL_RED; // FRM & MSK //6403
-    if (type == OTHER) {   // everything else
+    int alignment = 1;             // FRM & MSK
+    int pxl_type = GL_RED;         // FRM & MSK //6403
+    if (type == img_type::OTHER) { // everything else
         alignment = 4;
         pxl_type = GL_RGBA; // 6408
     }

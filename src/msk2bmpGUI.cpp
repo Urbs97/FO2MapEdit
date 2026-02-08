@@ -752,7 +752,7 @@ void init_edit_struct_ANM(ANM_Dir *edit_struct, image_data *edit_data,
       printf("Unable to create 8bit surface: %d\n", __LINE__);
       return;
     }
-    edit_data->ANM_dir[0].orientation = NE;
+    edit_data->ANM_dir[0].orientation = Direction::NE;
     edit_data->save_ptr = edit_struct;
     return;
   }
@@ -927,9 +927,9 @@ static void commit_and_save_edits(LF *F_Prop, LF *edit_state_owner,
   }
   if (F_Prop->wmap && F_Prop->wmap->save_path[0] != '\0') {
     save_wmap_project(F_Prop->wmap->save_path, F_Prop);
-  } else if (F_Prop->img_data.type == FRM && F_Prop->Opened_File[0] != '\0') {
+  } else if (F_Prop->img_data.type == img_type::FRM && F_Prop->Opened_File[0] != '\0') {
     Save_Info sv_info;
-    sv_info.s_type = all_dirs;
+    sv_info.s_type = Save_Type::all_dirs;
     save_FRM_SURFACE(F_Prop->Opened_File, &F_Prop->img_data, &usr_info,
                      &sv_info, true);
   }
@@ -977,7 +977,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
       image_data *edit_data = &F_Prop->edit_data;
 
       bool alpha_off = false;
-      if (img_data->type == OTHER) {
+      if (img_data->type == img_type::OTHER) {
         alpha_off = checkbox_handler("Alpha Enabled", &F_Prop->alpha);
         const char *items[] = {"Euclidan Color Matching", "Not Implemented..."};
         ImGui::SameLine();
@@ -1000,7 +1000,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
           }
           commit_map_edits(edit_struct, &F_Prop->edit_data);
           commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
-          F_Prop->edit_data.type = TILE;
+          F_Prop->edit_data.type = img_type::TILE;
           image_data *ed = &F_Prop->edit_data;
           int dir = ed->display_orient_num;
           animate_SURFACE_to_sub_texture(ed, ed->ANM_dir[dir].frame_data[0],
@@ -1027,14 +1027,14 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
       }
 
       if (!F_Prop->editing_enabled) {
-        if (img_data->type == MSK) {
+        if (img_data->type == img_type::MSK) {
           if (ImGui::Button("Edit MSK file")) {
             prep_image_SURFACE(F_Prop, pxlFMT_FO_Pal,
                                My_Variables->color_match_algo,
                                &F_Prop->editing_enabled, alpha_off);
             F_Prop->edit_MSK = true;
           }
-        } else if (img_data->type == OTHER && !F_Prop->palettized) {
+        } else if (img_data->type == img_type::OTHER && !F_Prop->palettized) {
           if (ImGui::Button("Palettize Image")) {
             F_Prop->palettized = true;
             for (int i = 0; i < 6; i++) {
@@ -1063,7 +1063,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         }
       }
 
-      if (img_data->type == OTHER &&
+      if (img_data->type == img_type::OTHER &&
           img_data->ANM_dir[img_data->display_orient_num].num_frames > 1) {
         if (ImGui::Button("Convert Animation to FRM for Editing")) {
           F_Prop->show_image_render = crop_animation_SURFACE(
@@ -1072,7 +1072,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         }
       }
 
-      if (img_data->type != OTHER) {
+      if (img_data->type != img_type::OTHER) {
         if (!F_Prop->img_data.ANM_dir)
           ImGui::BeginDisabled();
         {
@@ -1092,10 +1092,10 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
           ImGui::EndDisabled();
       }
 
-      if (img_data->type != MSK) {
+      if (img_data->type != img_type::MSK) {
         if (!F_Prop->editing_enabled) {
           if (ImGui::Button("Enable Editing")) {
-            if (img_data->type == FRM) {
+            if (img_data->type == img_type::FRM) {
               prep_image_SURFACE(F_Prop, pxlFMT_FO_Pal,
                                  My_Variables->color_match_algo,
                                  &F_Prop->editing_enabled, alpha_off);
@@ -1107,7 +1107,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
             if (F_Prop->wmap && !ed->MSK_srfc) {
               ed->MSK_srfc = Create_8Bit_Surface(ed->width, ed->height, NULL);
               ed->MSK_texture = init_texture(ed->MSK_srfc, ed->MSK_srfc->w,
-                                             ed->MSK_srfc->h, MSK);
+                                             ed->MSK_srfc->h, img_type::MSK);
             }
           }
         } else {
@@ -1123,7 +1123,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
               if (!F_Prop->img_data.MSK_srfc) {
                 F_Prop->img_data.MSK_srfc = Create_8Bit_Surface(mw, mh, NULL);
                 F_Prop->img_data.MSK_texture =
-                    init_texture(F_Prop->img_data.MSK_srfc, mw, mh, MSK);
+                    init_texture(F_Prop->img_data.MSK_srfc, mw, mh, img_type::MSK);
               }
               memcpy(F_Prop->img_data.MSK_srfc->pxls,
                      F_Prop->edit_data.MSK_srfc->pxls, mw * mh);
@@ -1193,7 +1193,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         }
       }
 
-      if (!F_Prop->wmap && img_data->type == FRM) {
+      if (!F_Prop->wmap && img_data->type == img_type::FRM) {
         static bool open_save = false;
         image_data *ed = &F_Prop->edit_data;
         if (ImGui::Button("Export FRM")) {
@@ -1208,9 +1208,9 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         if (open_save) {
           if (F_Prop->active_layer == 1) {
             open_save = save_MSK_popup(F_Prop);
-          } else if (ed->type == FRM) {
+          } else if (ed->type == img_type::FRM) {
             open_save = save_FRM_popup(F_Prop);
-          } else if (ed->type == TILE) {
+          } else if (ed->type == img_type::TILE) {
             open_save = save_TILE_popup(F_Prop);
           }
         }
@@ -1299,7 +1299,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         ImGui::Text("Mask Overlay");
       }
 
-      if (img_data->type == FRM) {
+      if (img_data->type == img_type::FRM) {
         // show the original image for previewing
         // TODO: finish setting up usr.info.show_image_stats in settings config
         // in menu
@@ -1308,10 +1308,10 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
 
         // gui video controls
         Gui_Video_Controls(img_data, img_data->type);
-      } else if (img_data->type == MSK) {
+      } else if (img_data->type == img_type::MSK) {
         Preview_MSK_Image(My_Variables, img_data,
                           (F_Prop->show_stats || usr_info.show_image_stats));
-      } else if (img_data->type == OTHER) {
+      } else if (img_data->type == img_type::OTHER) {
         Preview_Image(My_Variables, img_data,
                       (F_Prop->show_stats || usr_info.show_image_stats));
         // Draw red squares for possible overworld map tiling
@@ -1502,8 +1502,8 @@ void Preview_Tiles_Window(variables *My_Variables, LF *F_Prop, int counter) {
   sprintf(window_id, "%02d", counter);
   std::string name = image_name + " Preview...###render" + window_id;
 
-  if (edit_data->type != TILE) {
-    edit_data->type = TILE;
+  if (edit_data->type != img_type::TILE) {
+    edit_data->type = img_type::TILE;
   }
 
   // shortcuts

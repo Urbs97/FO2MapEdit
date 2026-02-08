@@ -9,7 +9,7 @@ void animate_SURFACE_to_sub_texture(image_data* img_data, Surface* edit_srfc,
 void SURFACE_to_texture(Surface* src, GLuint texture, int width, int height, int alignment);
 void PAL_SURFACE_to_sub_texture(uint8_t* pxls, GLuint texture, int x_offset, int y_offset,
                                 int frm_width, int frm_height, int total_width, int total_height);
-void draw_FRM_to_framebuffer(shader_info* shaders, int width, int height, GLuint framebuffer,
+void draw_FRM_to_framebuffer(shader_info* shader_i, int width, int height, GLuint framebuffer,
                              GLuint texture);
 void draw_PAL_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
                              struct image_data* img_data);

@@ -66,8 +66,8 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
 
     // loop over all frames in all directions
     for (int i = 0; i < 6; i++) {
-        if (src->ANM_dir[i].orientation < 0) {
-            dst->ANM_dir[i].orientation = no_data;
+        if (src->ANM_dir[i].orientation == Direction::no_data) {
+            dst->ANM_dir[i].orientation = Direction::no_data;
             continue;
         }
         dst->ANM_dir[i].orientation = src->ANM_dir[i].orientation;
@@ -88,7 +88,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
             set_popup_warning("[ERROR] crop_animation_SURFACE()\n\n"
                               "Failed to allocate for ANM_dir[i].frame_box.");
             for (int j = 0; j < 6; j++) {
-                free(dst->ANM_dir[j].frame_data);
+                free(static_cast<void*>(dst->ANM_dir[j].frame_data));
             }
             free(dst->ANM_dir);
             return false;
@@ -118,7 +118,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
                                   "Unable to allocate Surface_32.");
                 printf("Error: unable to allocate Surface_32: %d\n", __LINE__);
                 for (int i = 0; i < 6; i++) {
-                    free(dst->ANM_dir[i].frame_data);
+                    free(static_cast<void*>(dst->ANM_dir[i].frame_data));
                 }
                 free(dst->ANM_dir[i].frame_box);
                 free(dst->ANM_dir);
@@ -131,7 +131,8 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
             for (int y = 0; y < src_height; y++) {
                 for (int x = 0; x < src_width; x++) {
                     Color rgba;
-                    int i = (src_pitch * y) + (x * sizeof(Color));
+                    int i =
+                        (src_pitch * y) + static_cast<int>(static_cast<size_t>(x) * sizeof(Color));
                     memcpy(&rgba, &surface_32->pxls[i], sizeof(Color));
 
                     if (rgba.a > src->alpha_threshold) {
@@ -160,7 +161,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
                 printf("Error: Unable to allocate frame_data[j] surface8: %d\n", __LINE__);
 
                 for (int i = 0; i < 6; i++) {
-                    free(dst->ANM_dir[i].frame_data);
+                    free(static_cast<void*>(dst->ANM_dir[i].frame_data));
                 }
                 free(dst->ANM_dir[i].frame_box);
                 free(dst->ANM_dir);
@@ -168,9 +169,9 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
             }
 
             if (j > 0) {
-                dst_frame->x = ((curr_pos.l_pxl + curr_pos.r_pxl) / 2) -
-                               ((prev_pos.l_pxl + prev_pos.r_pxl) / 2);
-                dst_frame->y = curr_pos.b_pxl - prev_pos.b_pxl;
+                dst_frame->x = static_cast<int16_t>(((curr_pos.l_pxl + curr_pos.r_pxl) / 2) -
+                                                    ((prev_pos.l_pxl + prev_pos.r_pxl) / 2));
+                dst_frame->y = static_cast<int16_t>(curr_pos.b_pxl - prev_pos.b_pxl);
             } else {
                 // set frame 0 offset
                 dst_frame->x = 0;
@@ -194,7 +195,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
                           "Failed to allocate FRM_hdr.");
         printf("Error: Failed to allocate FRM_hdr: %d\n", __LINE__);
         for (int i = 0; i < 6; i++) {
-            free(dst->ANM_dir[i].frame_data);
+            free(static_cast<void*>(dst->ANM_dir[i].frame_data));
             free(dst->ANM_dir[i].frame_box);
         }
         free(dst->ANM_dir);
@@ -202,7 +203,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
     }
 
     dst->FRM_hdr->version = 4;
-    dst->type = FRM;
+    dst->type = img_type::FRM;
     dst->width = dst->ANM_bounding_box[dir].x2 - dst->ANM_bounding_box[dir].x1;
     dst->height = dst->ANM_bounding_box[dir].y2 - dst->ANM_bounding_box[dir].y1;
 

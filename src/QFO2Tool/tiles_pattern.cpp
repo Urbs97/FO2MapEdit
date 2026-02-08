@@ -43,7 +43,7 @@ bool is_tile_blank(town_tile* tile) {
 // so we loop through the list and identify the line number
 // then assign that line number as the tile_id
 void assign_tile_id(tt_arr_handle* handle, const char* FRM_tiles_LST) {
-    int tiles_lst_len = strlen(FRM_tiles_LST);
+    int tiles_lst_len = static_cast<int>(strlen(FRM_tiles_LST));
 
     for (int i = 0; i < handle->size; i++) {
         tt_arr* node = &handle->tile[i];
@@ -65,7 +65,7 @@ void assign_tile_id(tt_arr_handle* handle, const char* FRM_tiles_LST) {
                 strt = &FRM_tiles_LST[j + 1];
                 continue;
             }
-            if (io_strncmp(strt, node->name_ptr, strlen(node->name_ptr)) != 0) {
+            if (io_strncmp(strt, node->name_ptr, static_cast<int>(strlen(node->name_ptr))) != 0) {
                 strt = &FRM_tiles_LST[j + 1];
                 continue;
             }
@@ -204,8 +204,8 @@ PAT_list check_PAT_files(user_info* usr_nfo) {
         snprintf(path_buff, MAX_PATH, "%s/data/proto/tiles/PATTERNS/%08d", game_path, ++num_patt);
     } while (io_file_exists(path_buff));
 
-    char** pattern_list = (char**)malloc(num_patt * sizeof(char*));
-    char* pattern_str = (char*)malloc(num_patt * 10);
+    char** pattern_list = (char**)malloc(static_cast<size_t>(num_patt) * sizeof(char*));
+    char* pattern_str = (char*)malloc(static_cast<size_t>(num_patt) * 10);
     char* ptr = pattern_str;
     for (int i = 0; i < num_patt; i++) {
         snprintf(ptr, MAX_PATH, "%08d", i + 1);
@@ -231,7 +231,7 @@ char* select_PAT_name(PAT_list* filenames) {
 // TODO: arena - this seems like a perfect use for memory arena
 void free_PAT_list(PAT_list* filenames) {
     free(filenames->list[0]);
-    free(filenames->list);
+    free(static_cast<void*>(filenames->list));
     filenames->list = nullptr;
     filenames->count = 0;
 }

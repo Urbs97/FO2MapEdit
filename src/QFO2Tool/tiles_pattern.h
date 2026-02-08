@@ -13,7 +13,7 @@ struct pattern {
 };
 #pragma pack(pop)
 
-void export_TMAP_tiles_pattern(user_info* usr_info, tt_arr_handle* handle, char* file_buff);
-void export_PAT_file_POPUP(user_info* usr_info, tt_arr_handle* handle, export_state* state,
+void export_TMAP_tiles_pattern(user_info* usr_info, tt_arr_handle* handle, char* save_path);
+void export_PAT_file_POPUP(user_info* usr_nfo, tt_arr_handle* handle, export_state* state,
                            bool auto_export);
 void assign_tile_id(tt_arr_handle* handle, const char* tiles_lst);

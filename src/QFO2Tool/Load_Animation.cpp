@@ -12,7 +12,7 @@ bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* 
     char folder[MAX_PATH];
     image_data* img_data = &F_Prop->img_data;
     std::sort(path_set.begin(), path_set.end());
-    int num_frames = path_set.size();
+    int num_frames = static_cast<int>(path_set.size());
 
     // folder name directions are NE/E/SE/SW/W/NW
     snprintf(folder, MAX_PATH, "%s",
@@ -58,9 +58,10 @@ bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* 
         }
     }
 
-    Surface** frame_data = img_data->ANM_dir[dir].frame_data;
+    int dir_i = static_cast<int>(dir);
+    Surface** frame_data = img_data->ANM_dir[dir_i].frame_data;
     if (frame_data != nullptr) {
-        free(frame_data);
+        free(static_cast<void*>(frame_data));
         frame_data = nullptr;
     }
     frame_data = (Surface**)calloc(1, sizeof(Surface*) * num_frames);
@@ -71,10 +72,10 @@ bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* 
         printf("Unable to allocate enough memory for frame_data: L%d\n", __LINE__);
         return false;
     }
-    img_data->ANM_dir[dir].frame_data = frame_data;
-    img_data->ANM_dir[dir].orientation = dir;
-    if (img_data->ANM_dir[dir].num_frames != num_frames) {
-        img_data->ANM_dir[dir].num_frames = num_frames;
+    img_data->ANM_dir[dir_i].frame_data = frame_data;
+    img_data->ANM_dir[dir_i].orientation = dir;
+    if (img_data->ANM_dir[dir_i].num_frames != num_frames) {
+        img_data->ANM_dir[dir_i].num_frames = num_frames;
     }
 
     // iterate over images in directory provided and assign to frame_data[]
@@ -88,19 +89,19 @@ bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* 
     }
     if (frame_data[0] == nullptr) {
         // nothing could be loaded in this folder
-        free(frame_data);
+        free(static_cast<void*>(frame_data));
         return false;
     }
 
-    F_Prop->img_data.type = OTHER;
+    F_Prop->img_data.type = img_type::OTHER;
     // TODO: refactor img_data.width/height out in favor of FRM_boundary_box?
     img_data->width = frame_data[0]->w;
     img_data->height = frame_data[0]->h;
-    img_data->display_orient_num = dir;
+    img_data->display_orient_num = dir_i;
 
-    Surface* srfc = img_data->ANM_dir[dir].frame_data[0];
+    Surface* srfc = img_data->ANM_dir[dir_i].frame_data[0];
 
-    img_data->FRM_texture = init_texture(srfc, srfc->w, srfc->h, OTHER);
+    img_data->FRM_texture = init_texture(srfc, srfc->w, srfc->h, img_type::OTHER);
 
     bool success = framebuffer_init(&img_data->render_texture, &img_data->framebuffer,
                                     img_data->width, img_data->height);
@@ -120,25 +121,25 @@ bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* 
 // If folder name is not matched, default NE is assigned
 Direction assign_direction(char* direction) {
     if (strncmp(direction, "NE\0", sizeof("NE\0")) == 0) {
-        return NE;
+        return Direction::NE;
     }
     if (strncmp(direction, "E\0", sizeof("E\0")) == 0) {
-        return E;
+        return Direction::E;
     }
     if (strncmp(direction, "SE\0", sizeof("SE\0")) == 0) {
-        return SE;
+        return Direction::SE;
     }
     if (strncmp(direction, "SW\0", sizeof("SW\0")) == 0) {
-        return SW;
+        return Direction::SW;
     }
     if (strncmp(direction, "W\0", sizeof("W\0")) == 0) {
-        return W;
+        return Direction::W;
     }
     if (strncmp(direction, "NW\0", sizeof("NW\0")) == 0) {
-        return NW;
+        return Direction::NW;
     }
     // default
-    return NE;
+    return Direction::NE;
 }
 
 void set_directions(const char** names_array, image_data* img_data) {
@@ -148,22 +149,22 @@ void set_directions(const char** names_array, image_data* img_data) {
         dir_ptr = &img_data->ANM_dir[i].orientation;
         assert(dir_ptr != nullptr && "Not FRM or OTHER?");
         switch (*dir_ptr) {
-            case (NE):
+            case (Direction::NE):
                 names_array[i] = "NE";
                 break;
-            case (E):
+            case (Direction::E):
                 names_array[i] = "E";
                 break;
-            case (SE):
+            case (Direction::SE):
                 names_array[i] = "SE";
                 break;
-            case (SW):
+            case (Direction::SW):
                 names_array[i] = "SW";
                 break;
-            case (W):
+            case (Direction::W):
                 names_array[i] = "W";
                 break;
-            case (NW):
+            case (Direction::NW):
                 names_array[i] = "NW";
                 break;
             default:
@@ -198,7 +199,7 @@ void Clear_img_data(image_data* img_data) {
                 for (int j = 0; j < img_data->ANM_dir[i].num_frames; j++) {
                     FreeSurface(img_data->ANM_dir[i].frame_data[j]);
                 }
-                free(img_data->ANM_dir[i].frame_data);
+                free(static_cast<void*>(img_data->ANM_dir[i].frame_data));
                 img_data->ANM_dir[i].frame_data = nullptr;
             }
             free(img_data->ANM_dir[i].frame_box);
@@ -207,7 +208,7 @@ void Clear_img_data(image_data* img_data) {
         free(img_data->ANM_dir);
         img_data->ANM_dir = nullptr;
     }
-    img_data->type = UNK;
+    img_data->type = img_type::UNK;
 }
 
 void Gui_Video_Controls(image_data* img_data, img_type type) {

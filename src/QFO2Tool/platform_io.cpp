@@ -310,7 +310,7 @@ char* io_path_check(char* file_name) {
     static char full_path[MAX_PATH];
     strncpy(full_path, file_name, MAX_PATH);
 
-    bool isdir = 0;
+    bool isdir = false;
     char* curr = nullptr;
     char* last = nullptr;
     while (!isdir) {
@@ -383,7 +383,7 @@ int io_file_size(const char* filename) {
         printf("Error io_file_size() %s\n", strerror(errno));
         return 0;
     }
-    return (stat_info.st_size);
+    return static_cast<int>(stat_info.st_size);
 }
 
 // makes a directory from the path provided

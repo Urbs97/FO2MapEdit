@@ -32,11 +32,11 @@ struct ANM_Frame {
     Surface* frame_start = nullptr;
 };
 
-enum Direction { no_data = -1, NE = 0, E = 1, SE = 2, SW = 3, W = 4, NW = 5 };
+enum class Direction : int8_t { no_data = -1, NE = 0, E = 1, SE = 2, SW = 3, W = 4, NW = 5 };
 
 struct ANM_Dir {
     int num_frames = 0;
-    Direction orientation = no_data;
+    Direction orientation = Direction::no_data;
     Surface** frame_data = nullptr;
     rectangle* frame_box = {};
 };

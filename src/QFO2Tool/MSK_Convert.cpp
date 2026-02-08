@@ -54,7 +54,7 @@ void Read_MSK_Tile(FILE* file, uint8_t vOutput[MAX_LINES][44]) {
     //       44*8 = 352, not sure if it works
     //       with the SDL surface the same way
     fseek(file, 0, SEEK_SET);
-    fread(vOutput, MAX_LINES * 44, 1, file);
+    fread(vOutput, static_cast<size_t>(MAX_LINES) * 44, 1, file);
 }
 
 // TODO: need to handle switching between dropped
@@ -112,7 +112,7 @@ bool ReadBmpLines(FILE* file, line_array_t vOutput) {
         return false;
     }
     fseek(file, ImageDataOffset, SEEK_SET);
-    fread(vOutput, MAX_LINES * 44, 1, file);
+    fread(vOutput, static_cast<size_t>(MAX_LINES) * 44, 1, file);
 
     return true;
 }
@@ -131,14 +131,14 @@ int BytesToInt(const char* C, int numBytes) {
 }
 
 // Fallout map tile size hardcoded in engine to 350x300 pixels WxH
-enum { TILE_W = (350), TILE_H = (300), TILE_SIZE = (350 * 300) };
+static constexpr int TILE_W = 350;
+static constexpr int TILE_H = 300;
+static constexpr int TILE_SIZE = 350 * 300;
 
 bool Load_MSK_Tile_SURFACE(char* FileName, image_data* img_data) {
     // if (img_data->FRM_data == NULL) {
     // loading to an empty? slot
-    if (load_MSK_SURFACE(FileName, img_data, TILE_W, TILE_H)) {
-        return true;
-    }
+    return load_MSK_SURFACE(FileName, img_data, TILE_W, TILE_H);
     // }
     // else {
     //     //TODO: change this to load a new file type,
@@ -148,7 +148,6 @@ bool Load_MSK_Tile_SURFACE(char* FileName, image_data* img_data) {
     //         return true;
     //     }
     // }
-    return false;
 }
 
 // load MSK FileName to uint8_t binary buffer,
@@ -212,7 +211,7 @@ bool load_MSK_SURFACE(char* FileName, image_data* img_data, int width, int heigh
             uint8_t buff = *bin_ptr;
             bool mask_1_or_0 = (buff & bitmask) != 0;
             if (mask_1_or_0) {
-                *(MSK_srfc->pxls + (pxl_y * width) + pxl_x) = white;
+                *(MSK_srfc->pxls + (static_cast<ptrdiff_t>(pxl_y) * width) + pxl_x) = white;
             }
             bitmask >>= 1;
 
@@ -227,7 +226,7 @@ bool load_MSK_SURFACE(char* FileName, image_data* img_data, int width, int heigh
         }
     }
 
-    img_data->MSK_texture = init_texture(MSK_srfc, MSK_srfc->w, MSK_srfc->h, MSK);
+    img_data->MSK_texture = init_texture(MSK_srfc, MSK_srfc->w, MSK_srfc->h, img_type::MSK);
 
     if (img_data->MSK_srfc != nullptr) {
         free(img_data->MSK_srfc);
@@ -261,10 +260,10 @@ void Convert_SURFACE_to_MSK(Surface* surface, image_data* img_data, int cutoff) 
 
     Color rgba;
     int white = 1;
-    int i = 0;
+    size_t i = 0;
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            i = (Surface_32->pitch * y) + (x * (sizeof(Color)));
+            i = (static_cast<size_t>(Surface_32->pitch) * y) + (x * sizeof(Color));
             memcpy(&rgba, Surface_32->pxls + i, sizeof(Color));
 
             if (rgba.r > cutoff || rgba.g > cutoff || rgba.b > cutoff) {
@@ -273,5 +272,5 @@ void Convert_SURFACE_to_MSK(Surface* surface, image_data* img_data, int cutoff) 
         }
     }
     img_data->MSK_data = data;
-    img_data->type = MSK;
+    img_data->type = img_type::MSK;
 }

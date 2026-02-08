@@ -126,6 +126,8 @@ void parse_key(const char* file_data, size_t size, struct config_data* config) {
                 config->key_buffer[i++] = '\0';
                 return;
             }
+            default:
+                break;
         }
         config->key_buffer[i++] = file_data[config->char_ptr++];
     }
@@ -137,6 +139,8 @@ void parse_comment(const char* file_data, size_t size, struct config_data* confi
             case '\n': {
                 return;
             }
+            default:
+                break;
         }
         config->char_ptr++;
     }
@@ -156,6 +160,8 @@ void parse_value(const char* file_data, size_t size, struct config_data* config,
             case ';': {
                 return;
             }
+            default:
+                break;
         }
         config->val_buffer[i++] = file_data[config->char_ptr++];
     }

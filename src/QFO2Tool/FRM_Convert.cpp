@@ -88,11 +88,7 @@ Surface* PAL_Color_Convert(Surface* src, Palette* pal, int color_match_algo) {
     }
     // switch to change between euclidian and sdl color match algorithms
     // TODO: get a new color match algorithm
-    if (color_match_algo == 0) {
-        Euclidian_Distance_Color_Match(Surface_32, Surface_8);
-    } else if (color_match_algo == 1) {
-        Euclidian_Distance_Color_Match(Surface_32, Surface_8);
-    }
+    Euclidian_Distance_Color_Match(Surface_32, Surface_8);
     if (Surface_32 != src) {
         FreeSurface(Surface_32);
     }

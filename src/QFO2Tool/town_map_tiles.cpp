@@ -7,17 +7,15 @@
 #include <cmath>
 #include <cstring>
 
-enum {
-    TMAP_W = (80), // width of a town-map tile
-    TMAP_H = (36)  // height of a town-map tile
-};
+constexpr uint8_t TMAP_W = 80; // width of a town-map tile
+constexpr uint8_t TMAP_H = 36; // height of a town-map tile
 
 // crop town map tiles into linked list structs
 // single tile crop using memcpy
 void crop_single_tile(uint8_t* tile_buff, uint8_t* frm_pxls, int frm_w, int frm_h, int x, int y) {
     for (int row = 0; row < 36; row++) {
-        int lft = tile_mask[row * 2];
-        int rgt = tile_mask[(row * 2) + 1];
+        int lft = tile_mask[static_cast<ptrdiff_t>(row) * 2];
+        int rgt = tile_mask[(static_cast<ptrdiff_t>(row) * 2) + 1];
         int offset = rgt - lft;
         int buf_pos = ((row) * 80) + lft;
         int pxl_pos = ((row)*frm_w + lft) + (y * frm_w) + x;
@@ -76,10 +74,10 @@ void crop_single_tileB(uint8_t* dst, uint8_t* src, int src_width, int src_height
     assert(src_tile_left > -80);
     assert(src_tile_left < src_width);
     for (int row = 0; row < 36; ++row) {
-        int row_left = tile_mask[(row * 2) + 0];
-        int row_right = tile_mask[(row * 2) + 1];
+        int row_left = tile_mask[(static_cast<ptrdiff_t>(row) * 2) + 0];
+        int row_right = tile_mask[(static_cast<ptrdiff_t>(row) * 2) + 1];
 
-        uint8_t* dst_row_ptr = dst + (row * 80);
+        uint8_t* dst_row_ptr = dst + (static_cast<ptrdiff_t>(row) * 80);
 
         int src_row = src_tile_top + row;
         if (src_row < 0 || src_row >= src_height) {
@@ -150,10 +148,10 @@ int crop_single_tile_vector_clear(uint8_t* dst, uint8_t* src, int src_width, int
     __m128i ZERO = _mm_setzero_si128();
     int copied_pixels = 0;
     for (int row = 0; row < 36; ++row) {
-        int row_left = tile_mask[(row * 2) + 0];
-        int row_right = tile_mask[(row * 2) + 1];
+        int row_left = tile_mask[(static_cast<ptrdiff_t>(row) * 2) + 0];
+        int row_right = tile_mask[(static_cast<ptrdiff_t>(row) * 2) + 1];
 
-        uint8_t* dst_row_ptr = dst + (row * 80);
+        uint8_t* dst_row_ptr = dst + (static_cast<ptrdiff_t>(row) * 80);
 
         // clear the row with transparent pixels
         __m128i* dst_row_vec_ptr = (__m128i*)dst_row_ptr;
@@ -200,19 +198,15 @@ int crop_single_tile_vector_clear(uint8_t* dst, uint8_t* src, int src_width, int
     return copied_pixels;
 }
 
-enum {
-    pxl_per_row_x = (128), //  ((80+80-32)    /1) tile per repeat
-    pxl_per_row_y = (32),  //  ((36+36+36-12) /3) tiles per repeat
-    pxl_per_col_x = (64),  //  ((80+80-32)    /2) tiles per repeat
-    pxl_per_col_y = (48)   //  ((36+36+36-12) /2) tiles per repeat
-};
+constexpr uint8_t pxl_per_row_x = 128; //  ((80+80-32)    /1) tile per repeat
+constexpr uint8_t pxl_per_row_y = 32;  //  ((36+36+36-12) /3) tiles per repeat
+constexpr uint8_t pxl_per_col_x = 64;  //  ((80+80-32)    /2) tiles per repeat
+constexpr uint8_t pxl_per_col_y = 48;  //  ((36+36+36-12) /2) tiles per repeat
 
-enum {
-    col_offset_x = (48),  //  move one column to the right
-    col_offset_y = (-12), //  move one column up
-    row_offset_x = (32),  //  move one row to the right
-    row_offset_y = (24)   //  move one row down
-};
+constexpr int8_t col_offset_x = 48;  //  move one column to the right
+constexpr int8_t col_offset_y = -12; //  move one column up
+constexpr int8_t row_offset_x = 32;  //  move one row to the right
+constexpr int8_t row_offset_y = 24;  //  move one row down
 
 // array version (stores tile position)
 tt_arr_handle* crop_export_TMAP_tiles(Rect* offset, Surface* src, char* save_fldr,
@@ -234,8 +228,8 @@ tt_arr_handle* crop_export_TMAP_tiles(Rect* offset, Surface* src, char* save_fld
     int col_cnt = col_lft + col_rgt;
 
     uint8_t* frm_pxls = src->pxls;
-    tt_arr_handle* handle =
-        (tt_arr_handle*)malloc(sizeof(tt_arr_handle) + (row_cnt * col_cnt * (sizeof(tt_arr))));
+    tt_arr_handle* handle = (tt_arr_handle*)malloc(
+        sizeof(tt_arr_handle) + (static_cast<size_t>(row_cnt) * col_cnt * sizeof(tt_arr)));
     tt_arr* towntiles = handle->tile;
     tt_arr* tile = towntiles;
     int tile_num = 0;
@@ -286,7 +280,7 @@ tt_arr_handle* crop_export_TMAP_tiles(Rect* offset, Surface* src, char* save_fld
             //       if blank, tile[row*col_cnt + col].tileID = 1;
             //       then move to next tile
 
-            memcpy(tile->frm_data, tile_buff, TMAP_W * TMAP_H);
+            memcpy(tile->frm_data, tile_buff, static_cast<size_t>(TMAP_W) * TMAP_H);
             tile->tile_id = 0;
 
             // TODO: make this a separate process
@@ -310,7 +304,7 @@ void save_TMAP_tile_FRM(char* save_path, uint8_t* pxls, char* name) {
     header.version = 4; // not sure why 4? but vanilla game frm tiles have this
     header.FPS = 1;
     header.Frames_Per_Orient = 1;
-    header.Frame_Area = (80 * 36) + sizeof(FRM_Frame);
+    header.Frame_Area = (80 * 36) + static_cast<int>(sizeof(FRM_Frame));
     B_Endian::flip_header_endian(&header);
     FRM_Frame frame = {0};
     frame.Frame_Height = 36;
@@ -344,6 +338,6 @@ void save_TMAP_tile_FRM(char* save_path, uint8_t* pxls, char* name) {
     }
     fwrite(&header, sizeof(FRM_Header), 1, file_ptr);
     fwrite(&frame, sizeof(FRM_Frame), 1, file_ptr);
-    fwrite(pxls, 80 * 36, 1, file_ptr);
+    fwrite(pxls, static_cast<size_t>(80) * 36, 1, file_ptr);
     fclose(file_ptr);
 }

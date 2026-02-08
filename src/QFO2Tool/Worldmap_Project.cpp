@@ -139,8 +139,8 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc, LF* F_Prop, i
     img_data->ANM_dir[0].num_frames = 1;
     img_data->width = stitched->w;
     img_data->height = stitched->h;
-    img_data->type = FRM;
-    img_data->display_orient_num = NE;
+    img_data->type = img_type::FRM;
+    img_data->display_orient_num = static_cast<int>(Direction::NE);
     img_data->display_frame_num = 0;
 
     // allocate frame_box
@@ -149,7 +149,7 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc, LF* F_Prop, i
         set_popup_warning("[ERROR] init_wmap_opengl()\n\n"
                           "Unable to allocate memory for frame_box.");
         printf("Error: init_wmap_opengl(), frame_box alloc failed : L%d\n", __LINE__);
-        free(img_data->ANM_dir[0].frame_data);
+        free(static_cast<void*>(img_data->ANM_dir[0].frame_data));
         free(img_data->ANM_dir);
         img_data->ANM_dir = nullptr;
         return false;
@@ -160,7 +160,7 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc, LF* F_Prop, i
     img_data->ANM_bounding_box[0] = {0, 0, stitched->w, stitched->h};
 
     // create OpenGL texture + framebuffer
-    img_data->FRM_texture = init_texture(stitched, stitched->w, stitched->h, FRM);
+    img_data->FRM_texture = init_texture(stitched, stitched->w, stitched->h, img_type::FRM);
 
     framebuffer_init(&img_data->render_texture, &img_data->framebuffer, stitched->w, stitched->h);
 
@@ -171,13 +171,14 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc, LF* F_Prop, i
                                 img_data->FRM_texture, stitched->w, stitched->h);
 
     // synthetic FRM_Header + FRM_Frame buffer so copy_it_all_ANM() works in edit mode
-    int synth_size = sizeof(FRM_Header) + sizeof(FRM_Frame) + (stitched->w * stitched->h);
+    int synth_size = static_cast<int>(sizeof(FRM_Header) + sizeof(FRM_Frame) +
+                                      (static_cast<size_t>(stitched->w) * stitched->h));
     uint8_t* synth_buf = (uint8_t*)calloc(1, synth_size);
     if (synth_buf != nullptr) {
         FRM_Header* hdr = (FRM_Header*)synth_buf;
         hdr->version = 4;
         hdr->Frames_Per_Orient = 1;
-        hdr->Frame_Area = sizeof(FRM_Frame) + (stitched->w * stitched->h);
+        hdr->Frame_Area = static_cast<int>(sizeof(FRM_Frame)) + (stitched->w * stitched->h);
 
         FRM_Frame* frame = (FRM_Frame*)(synth_buf + sizeof(FRM_Header));
         frame->Frame_Width = stitched->w;
@@ -192,7 +193,7 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc, LF* F_Prop, i
     // set up MSK texture if present
     if (msk_srfc != nullptr) {
         img_data->MSK_srfc = msk_srfc;
-        img_data->MSK_texture = init_texture(msk_srfc, msk_srfc->w, msk_srfc->h, MSK);
+        img_data->MSK_texture = init_texture(msk_srfc, msk_srfc->w, msk_srfc->h, img_type::MSK);
     }
 
     F_Prop->palettized = true;
@@ -320,8 +321,8 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop, image_data* img_data,
         return false;
     }
 
-    int full_w = hdr.tiles_x * WMAP_TILE_W;
-    int full_h = hdr.tiles_y * WMAP_TILE_H;
+    int full_w = static_cast<int>(hdr.tiles_x) * WMAP_TILE_W;
+    int full_h = static_cast<int>(hdr.tiles_y) * WMAP_TILE_H;
 
     // Read FRM pixel data
     Surface* stitched = Create_8Bit_Surface(full_w, full_h, shaders->FO_pal);
@@ -480,7 +481,7 @@ bool resolve_path_icase(const char* base, const char* suffix, char* out, int out
         while ((entry = io_scan_dir(dir_stream)) != nullptr) {
             if (strcasecmp(entry, tok) == 0) {
                 // Append the correctly-cased entry
-                int len = strlen(resolved);
+                int len = static_cast<int>(strlen(resolved));
                 snprintf(resolved + len, MAX_PATH - len, "/%s", entry);
                 found = true;
                 break;
@@ -733,13 +734,21 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
     // Count lines and build pointer array
     int lst_line_capacity = 512;
     int lst_line_count = 0;
-    char** lst_lines = (char**)malloc(lst_line_capacity * sizeof(char*));
+    char** lst_lines = static_cast<char**>(malloc(lst_line_capacity * sizeof(char*)));
 
     char* lp = lst_txt;
     while ((lp != nullptr) && (*lp != 0)) {
         if (lst_line_count >= lst_line_capacity) {
             lst_line_capacity *= 2;
-            lst_lines = (char**)realloc(lst_lines, lst_line_capacity * sizeof(char*));
+            char** tmp = static_cast<char**>(
+                realloc(static_cast<void*>(lst_lines), lst_line_capacity * sizeof(char*)));
+            if (tmp == nullptr) {
+                free(static_cast<void*>(lst_lines));
+                free(lst_txt);
+                free(tile_entries);
+                return false;
+            }
+            lst_lines = tmp;
         }
         lst_lines[lst_line_count++] = lp;
 
@@ -758,7 +767,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
             *comment = '\0';
         }
         // Trim trailing spaces/tabs
-        int len = strlen(lp);
+        int len = static_cast<int>(strlen(lp));
         while (len > 0 && (lp[len - 1] == ' ' || lp[len - 1] == '\t')) {
             lp[--len] = '\0';
         }
@@ -808,7 +817,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
     if (!all_found) {
         printf("  %d FRM files missing!\n", missing_count);
         set_popup_warning(missing_msg);
-        free(lst_lines);
+        free(static_cast<void*>(lst_lines));
         free(lst_txt);
         free(tile_entries);
         return false;
@@ -822,7 +831,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
     if (stitched == nullptr) {
         set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
                           "Unable to allocate stitched FRM surface.");
-        free(lst_lines);
+        free(static_cast<void*>(lst_lines));
         free(lst_txt);
         free(tile_entries);
         return false;
@@ -846,7 +855,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
                      frm_path);
             set_popup_warning(warn);
             FreeSurface(stitched);
-            free(lst_lines);
+            free(static_cast<void*>(lst_lines));
             free(lst_txt);
             free(tile_entries);
             return false;
@@ -869,7 +878,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
             set_popup_warning(warn);
             free(frm_buf);
             FreeSurface(stitched);
-            free(lst_lines);
+            free(static_cast<void*>(lst_lines));
             free(lst_txt);
             free(tile_entries);
             return false;
@@ -878,8 +887,8 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
         uint8_t* frame_pixels = frame->frame_start;
         int dst_offset = (y * WMAP_TILE_H * full_w) + (x * WMAP_TILE_W);
         for (int row = 0; row < WMAP_TILE_H; row++) {
-            memcpy(&stitched->pxls[dst_offset + (row * full_w)], &frame_pixels[row * WMAP_TILE_W],
-                   WMAP_TILE_W);
+            memcpy(&stitched->pxls[dst_offset + (static_cast<ptrdiff_t>(row) * full_w)],
+                   &frame_pixels[static_cast<ptrdiff_t>(row) * WMAP_TILE_W], WMAP_TILE_W);
         }
 
         free(frm_buf);
@@ -901,7 +910,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
             set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
                               "Unable to allocate MSK surface.");
             FreeSurface(stitched);
-            free(lst_lines);
+            free(static_cast<void*>(lst_lines));
             free(lst_txt);
             free(tile_entries);
             return false;
@@ -950,7 +959,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
         if (msk_full != nullptr) {
             FreeSurface(msk_full);
         }
-        free(lst_lines);
+        free(static_cast<void*>(lst_lines));
         free(lst_txt);
         free(tile_entries);
         return false;
@@ -961,7 +970,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
     if (F_Prop->wmap == nullptr) {
         set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
                           "Unable to allocate wmap_info.");
-        free(lst_lines);
+        free(static_cast<void*>(lst_lines));
         free(lst_txt);
         free(tile_entries);
         return false;
@@ -978,7 +987,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
            tiles_y, full_w, full_h, any_msk ? "yes" : "no");
 
     // Cleanup
-    free(lst_lines);
+    free(static_cast<void*>(lst_lines));
     free(lst_txt);
     free(tile_entries);
     return true;

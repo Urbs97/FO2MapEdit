@@ -74,7 +74,8 @@ void zoom_pan(image_data* img_data, ImVec2 focus_point, ImVec2 mouse_delta) {
         panning(img_data, mouse_delta);
     }
 
-    ImVec2 size = ImVec2(img_data->width * img_data->scale, img_data->height * img_data->scale);
+    ImVec2 size = ImVec2(static_cast<float>(img_data->width) * img_data->scale,
+                         static_cast<float>(img_data->height) * img_data->scale);
 
     viewport_boundary(img_data, size);
 }
@@ -88,7 +89,7 @@ void zoom(float zoom_level, ImVec2 focus_point, image_data* img_data) {
     float old_zoom = *scale;
     *scale *= zoom_level;
 
-    *scale = std::max<double>(*scale, 0.125);
+    *scale = std::max(*scale, 0.125F);
 
     // mouse position relative to window/screen code here
     ImVec2 zoom_center_offset;

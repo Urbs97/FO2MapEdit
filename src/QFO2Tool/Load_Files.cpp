@@ -227,8 +227,8 @@ std::vector<std::filesystem::path> handle_subdirectory_vec(const std::filesystem
     size_t parent_path_size = directory.native().size();
     std::sort(animation_images.begin(), animation_images.end(),
               [&parent_path_size](std::filesystem::path& a, std::filesystem::path& b) {
-                  int a_size = a.native().size();
-                  int b_size = b.native().size();
+                  int a_size = static_cast<int>(a.native().size());
+                  int b_size = static_cast<int>(b.native().size());
                   int larger_size = (a_size > b_size) ? a_size : b_size;
                   return (io_strncasecmp((a.c_str() + parent_path_size),
                                          (b.c_str() + parent_path_size), larger_size) < 0);
@@ -396,7 +396,7 @@ bool handle_directory_drop_POPUP(char* dir_name, image_paths* image_arr) {
     // handle the case with appropriately named subfolders
     //   storing each direction's animations
     //   (NE/E/SE/SW/W/NW)
-    Direction dir;
+    Direction dir = Direction::NE;
     char* name = nullptr;
     while ((name = io_scan_dir(directory)) != nullptr) {
         if (name[0] == '.') {
@@ -414,7 +414,7 @@ bool handle_directory_drop_POPUP(char* dir_name, image_paths* image_arr) {
             char* sub_dir = strrchr(buffer, PLATFORM_SLASH) + 1;
             dir = assign_direction(sub_dir);
             std::filesystem::path path(buffer);
-            image_arr[dir].animation_images = handle_subdirectory_vec(path);
+            image_arr[static_cast<int>(dir)].animation_images = handle_subdirectory_vec(path);
         }
     }
 
@@ -439,8 +439,8 @@ bool handle_directory_drop_POPUP(char* dir_name, image_paths* image_arr) {
     char* sub_dir = strrchr(dir_name, PLATFORM_SLASH) + 1;
     dir = assign_direction(sub_dir);
     std::filesystem::path path(dir_name);
-    image_arr[dir].animation_images = handle_subdirectory_vec(path);
-    if (!image_arr[dir].animation_images.empty()) {
+    image_arr[static_cast<int>(dir)].animation_images = handle_subdirectory_vec(path);
+    if (!image_arr[static_cast<int>(dir)].animation_images.empty()) {
         ImGui::OpenPopup("Drag_Drop_Folder");
         return true;
     }
@@ -699,14 +699,14 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
         if (!F_Prop->file_open_window) {
             return false;
         }
-        img_data->type = FRM;
+        img_data->type = img_type::FRM;
     } else if (io_strncmp(F_Prop->extension, "MSK", 4) == 0) { // 0 == match
         F_Prop->file_open_window = Load_MSK_Tile_SURFACE(F_Prop->Opened_File, img_data);
         if (!F_Prop->file_open_window) {
             return false;
         }
         bool success = false;
-        img_data->type = MSK;
+        img_data->type = img_type::MSK;
         success =
             framebuffer_init(&img_data->render_texture, &F_Prop->img_data.framebuffer, 350, 300);
         if (!success) {
@@ -766,7 +766,7 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
             img_data->height = srfc->h;
             img_data->ANM_dir[0].num_frames = 1;
 
-            img_data->type = OTHER;
+            img_data->type = img_type::OTHER;
 
             img_data->FRM_texture = init_texture(srfc, srfc->w, srfc->h, img_data->type);
 
@@ -774,7 +774,7 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
 
             // assign display direction to same as image slot
             // so we can see the image on load
-            img_data->display_orient_num = NE;
+            img_data->display_orient_num = static_cast<int>(Direction::NE);
             img_data->display_frame_num = 0;
 
             F_Prop->file_open_window = true;
@@ -796,7 +796,7 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
 
     if (img_data->ANM_dir != nullptr) {
         if ((img_data->ANM_dir[img_data->display_orient_num].frame_data == nullptr) &&
-            img_data->type != FRM && img_data->type != MSK) {
+            img_data->type != img_type::FRM && img_data->type != img_type::MSK) {
             // TODO: log to file
             set_popup_warning("[ERROR] File_Type_Check()\n\n"
                               "Unable to open image file.");

@@ -2,7 +2,7 @@
 
 #include "Load_Files.h"
 
-enum { ms_PER_sec = (1000) };
+constexpr uint16_t ms_PER_sec = 1000;
 
 mesh load_giant_triangle() {
     float vertices[] = {// giant triangle     uv coordinates?
@@ -112,7 +112,7 @@ void animate_OTHER_to_framebuff(Shader* shader, mesh* triangle, image_data* img_
     // shader
     shader->use();
     // draw image to framebuffer
-    glDrawArrays(GL_TRIANGLES, 0, triangle->vertexCount);
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(triangle->vertexCount));
 
     // bind framebuffer back to default
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -170,7 +170,7 @@ void PAL_SURFACE_to_sub_texture(uint8_t* pxls, GLuint texture, int x_offset, int
     glBindTexture(GL_TEXTURE_2D, texture);
     // Change alignment with glPixelStorei() (this change is global/permanent until changed back)
     // FRM/MSK are aligned to 1-byte
-    glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, static_cast<GLint>(alignment));
     // bind blank background to FRM_texture for display, then paint data onto texture
     // use static buffer to avoid calloc/free every frame
     static uint8_t* blank = nullptr;
@@ -223,7 +223,7 @@ void animate_SURFACE_to_sub_texture(image_data* img_data, Surface* edit_srfc,
     int FRM_fps = (img_data->FRM_hdr->FPS == 0 && img_data->ANM_dir[dir].num_frames > 1)
                       ? 10
                       : img_data->FRM_hdr->FPS;
-    float fps = FRM_fps * playback_speeds[img_data->playback_speed];
+    float fps = static_cast<float>(FRM_fps) * playback_speeds[img_data->playback_speed];
 
     static uint64_t last_time = 0;
     if ((fps != 0) && ((float)(current_time - last_time) / ms_PER_sec > 1 / fps)) {
@@ -259,7 +259,7 @@ void draw_FRM_to_framebuffer(shader_info* shader_i, int width, int height, GLuin
     if (err != 0) {
         printf("draw_FRM_to_framebuffer() glGetError: %d\n", err);
     }
-    glDrawArrays(GL_TRIANGLES, 0, shader_i->giant_triangle.vertexCount);
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(shader_i->giant_triangle.vertexCount));
 
     // bind framebuffer back to default
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -303,7 +303,7 @@ void draw_PAL_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
     }
 
     // draw to framebuffer
-    glDrawArrays(GL_TRIANGLES, 0, triangle->vertexCount);
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(triangle->vertexCount));
 
     // bind framebuffer back to default
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -332,7 +332,7 @@ void draw_texture_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle, G
 
     shader->setInt("Indexed_FRM", 0);
 
-    glDrawArrays(GL_TRIANGLES, 0, triangle->vertexCount);
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(triangle->vertexCount));
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -351,7 +351,7 @@ void draw_MSK_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
     glUniform1uiv(glGetUniformLocation(shader->ID, "ColorPaletteUINT"), 256, (GLuint*)pal->colors);
     shader->setInt("Indexed_FRM", 0);
 
-    glDrawArrays(GL_TRIANGLES, 0, triangle->vertexCount);
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(triangle->vertexCount));
 
     // bind framebuffer back to default
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

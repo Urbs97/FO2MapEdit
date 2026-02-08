@@ -132,7 +132,7 @@ char* make_FRM_tile_LST(tt_arr_handle* handle, uint8_t* match_buff_src) {
         int indx = tile_num / 8;
         uint8_t shift = 1 << shift_ctr;
         if ((match_buff[indx] & shift) == 0) {
-            buff_size += strlen(node->name_ptr) + 2; //+2 for /r/n
+            buff_size += static_cast<int>(strlen(node->name_ptr)) + 2; //+2 for /r/n
         }
         shift_ctr++;
         if (shift_ctr >= 8) {
@@ -228,7 +228,7 @@ char* check_FRM_LST_names(char* old_tiles_LST, tt_arr_handle* handle, export_sta
         }
     }
 
-    int tiles_lst_len = strlen(old_tiles_LST);
+    int tiles_lst_len = static_cast<int>(strlen(old_tiles_LST));
     uint8_t shift_ctr = 0;
 
     uint8_t* matches = (uint8_t*)calloc(1 + (num_tiles / 8), 1);
@@ -329,8 +329,8 @@ char* append_FRM_tiles_LST(char* old_FRM_LST, tt_arr_handle* handle, export_stat
 
     // append new_FRM_LST to the end of old_FRM_LST
     // in a new buffer large enough to fit both
-    int old_LST_size = strlen(old_FRM_LST);
-    int new_LST_size = strlen(new_FRM_LST);
+    int old_LST_size = static_cast<int>(strlen(old_FRM_LST));
+    int new_LST_size = static_cast<int>(strlen(new_FRM_LST));
     int final_size = old_LST_size + new_LST_size + 1; //+1 for null char
     char* final_FRM_LST = (char*)malloc(final_size);
     snprintf(final_FRM_LST, final_size, "%s%s", old_FRM_LST, new_FRM_LST);

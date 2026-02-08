@@ -3,14 +3,14 @@
 #include "platform_io.h"
 
 #include <cstddef>
+#include <cstdint>
 
-enum { MAX_KEY = 32, MAX_RECENT_FILES = 10 };
+constexpr int MAX_KEY = 32;
+constexpr int MAX_RECENT_FILES = 10;
 
-enum {
-    CANCEL = 0,
-    YES = 1,
-    NO = 2,
-};
+constexpr int CANCEL = 0;
+constexpr int YES = 1;
+constexpr int NO = 2;
 
 struct fo2_files {
     char* FRM_TILES_LST = nullptr;
@@ -35,7 +35,7 @@ struct user_info {
     char recent_files[MAX_RECENT_FILES][MAX_PATH]{};
 };
 
-enum img_type {
+enum class img_type : int8_t {
     UNK = -1,
     MSK = 0,
     FRM = 1,
@@ -45,15 +45,15 @@ enum img_type {
     OTHER = 4,
 };
 
-void Load_Config(struct user_info* user_info, char* exe_path);
-void write_cfg_file(struct user_info* user_info, char* exe_path);
+void Load_Config(struct user_info* usr_info, char* exe_path);
+void write_cfg_file(struct user_info* usr_info, char* exe_path);
 
-void parse_data(char* file_data, size_t size, struct user_info* user_info);
-void parse_key(const char* file_data, size_t size, struct config_data* config_data);
-void parse_comment(const char* file_data, size_t size, struct config_data* config_data);
-void parse_value(const char* file_data, size_t size, struct config_data* config_data,
-                 struct user_info* user_info);
-void store_config_info(struct config_data* config_data, struct user_info* user_info);
+void parse_data(char* file_data, size_t size, struct user_info* usr_info);
+void parse_key(const char* file_data, size_t size, struct config_data* config);
+void parse_comment(const char* file_data, size_t size, struct config_data* config);
+void parse_value(const char* file_data, size_t size, struct config_data* config,
+                 struct user_info* usr_info);
+void store_config_info(struct config_data* config, struct user_info* usr_info);
 
 void add_recent_file(struct user_info* usr_info, const char* file_path);
 void remove_recent_file(struct user_info* usr_info, int index);

@@ -45,7 +45,7 @@ of file flags: 0                    //unkown? flags_ext: 0                //unko
 #include <cstdint>
 #include <cstdio>
 
-enum material {
+enum class material : uint8_t {
     Glass = 0,
     Metal = 1,
     Plastic = 2,
@@ -57,7 +57,7 @@ enum material {
 };
 
 bool append_TMAP_PRO_tiles_LST(user_info* usr_nfo, tt_arr_handle* head, export_state* state);
-bool backup_append_LST(char* path, char* string);
+bool backup_append_LST(char* path, char* LST_file);
 
 // TODO: refactor append_tiles_lst() to work here
 // arr stands for tt_arr*
@@ -159,7 +159,7 @@ char* check_PRO_LST_names(char* tiles_lst, tt_arr_handle* new_protos) {
     //  and mark them as duplicates in (matches)
     int match_ctr = 0;
     uint8_t shift_ctr = 0;
-    int tiles_lst_len = strlen(tiles_lst);
+    int tiles_lst_len = static_cast<int>(strlen(tiles_lst));
     for (int i = 0; i < new_protos->size; i++) {
         tt_arr* node = &tiles[i];
         // skip blank nodes
@@ -496,8 +496,8 @@ char* append_PRO_tile_MSG_inplace(char* old_PRO_MSG, char* new_PRO_MSG, export_s
 
     // append new list_of_tiles to the end of original list
     // in a new buffer large enough to fit both
-    int old_LST_size = strlen(old_PRO_MSG);
-    int new_LST_size = strlen(new_PRO_MSG);
+    int old_LST_size = static_cast<int>(strlen(old_PRO_MSG));
+    int new_LST_size = static_cast<int>(strlen(new_PRO_MSG));
     int final_size = old_LST_size + new_LST_size + 1;
     char* final_PRO_LST = (char*)malloc(old_LST_size + new_LST_size + 1); //+1 for null char
     snprintf(final_PRO_LST, final_size, "%s%s", old_PRO_MSG, new_PRO_MSG);
@@ -552,7 +552,7 @@ bool append_PRO_tile_MSG(user_info* usr_nfo, tt_arr_handle* handle, export_state
         return false;
     }
 
-    char* new_PRO_tile_MSG = make_PRO_tile_MSG(&info, tile->tile_id);
+    char* new_PRO_tile_MSG = make_PRO_tile_MSG(&info, static_cast<int>(tile->tile_id));
 
     char* final_PRO_tile_MSG =
         append_PRO_tile_MSG_inplace(usr_nfo->game_files.PRO_TILE_MSG, new_PRO_tile_MSG, state);
@@ -623,7 +623,7 @@ char* save_NEW_PRO_tile_MSG(tt_arr_handle* handle, user_info* usr_nfo, export_st
 
     assign_tile_id(handle, FRM_tiles_LST);
 
-    char* new_PRO_tile_MSG = make_PRO_tile_MSG(&info, tile->tile_id);
+    char* new_PRO_tile_MSG = make_PRO_tile_MSG(&info, static_cast<int>(tile->tile_id));
 
     char save_path[MAX_PATH];
     snprintf(save_path, MAX_PATH, "%s/data/text/english/game/pro_tile.msg", game_path);
@@ -818,7 +818,7 @@ void export_protos(user_info* usr_nfo, tt_arr_handle* handle) {
     // tiles can reference different line numbers in pro_tile.msg
     // have all tiles from this batch point to first new tile entry
     tt_arr* tiles = handle->tile;
-    info.pro_tile = tiles->tile_id * 100;
+    info.pro_tile = static_cast<int>(tiles->tile_id) * 100;
     for (int i = 0; i < handle->size; i++) {
         tt_arr* node = &tiles[i];
         if (node->tile_id == -1) {
@@ -1098,8 +1098,8 @@ char* append_PRO_tiles_LST(char* old_PRO_LST, tt_arr_handle* head, export_state*
 
     // append new list_of_tiles to the end of original list
     // in a new buffer large enough to fit both
-    int old_LST_size = strlen(old_PRO_LST);
-    int new_LST_size = strlen(new_PRO_LST);
+    int old_LST_size = static_cast<int>(strlen(old_PRO_LST));
+    int new_LST_size = static_cast<int>(strlen(new_PRO_LST));
     int final_size = old_LST_size + new_LST_size + 1;
     char* final_PRO_LST = (char*)malloc(old_LST_size + new_LST_size + 1); //+1 for null char
     snprintf(final_PRO_LST, final_size, "%s%s", old_PRO_LST, new_PRO_LST);
@@ -1164,7 +1164,7 @@ bool backup_append_LST(char* path, char* LST_file) {
     }
 
     int file_size = io_file_size(path);
-    int string_len = strlen(LST_file);
+    int string_len = static_cast<int>(strlen(LST_file));
     char* buff_tiles_lst = (char*)malloc(file_size + string_len);
     FILE* tiles_lst = fopen(path, "rb");
     if (tiles_lst == nullptr) {

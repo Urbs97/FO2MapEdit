@@ -61,11 +61,11 @@ void draw_TMAP_tiles(user_info* usr_nfo, image_data* img_data, shader_info* shad
         for (int x = min_box_x; x < max_box_x; x++) {
             // new_origin.x = Origin.x + x * spacing_x * scale;
             // new_origin.y = Origin.y + y * spacing_y * scale;
-            new_origin.x = Origin.x + (x * offset->w * scale);
-            new_origin.y = Origin.y + (y * offset->h * scale);
+            new_origin.x = Origin.x + (static_cast<float>(x * offset->w) * scale);
+            new_origin.y = Origin.y + (static_cast<float>(y * offset->h) * scale);
 
-            Top_Left.x = new_origin.x + ((x * 48 + y * 32) * scale);
-            Top_Left.y = new_origin.y + ((x * -12 + y * 24) * scale);
+            Top_Left.x = new_origin.x + (static_cast<float>((x * 48) + (y * 32)) * scale);
+            Top_Left.y = new_origin.y + (static_cast<float>((x * -12) + (y * 24)) * scale);
 
             Left.x = Top_Left.x + (L_Corner.x * scale);
             Left.y = Top_Left.y + (L_Corner.y * scale);
@@ -87,14 +87,14 @@ void draw_TMAP_tiles(user_info* usr_nfo, image_data* img_data, shader_info* shad
             uv_ref.x = (float)((x * 48) + (y * 32) + offset->x);
             uv_ref.y = (float)((x * -12) + (y * 24) + offset->y);
 
-            uv_l.x = (uv_ref.x + L_Corner.x) / img_data->width;
-            uv_l.y = (uv_ref.y + L_Corner.y) / img_data->height;
-            uv_t.x = (uv_ref.x + T_Corner.x) / img_data->width;
-            uv_t.y = (uv_ref.y + T_Corner.y) / img_data->height;
-            uv_r.x = (uv_ref.x + R_Corner.x) / img_data->width;
-            uv_r.y = (uv_ref.y + R_Corner.y) / img_data->height;
-            uv_b.x = (uv_ref.x + B_Corner.x) / img_data->width;
-            uv_b.y = (uv_ref.y + B_Corner.y) / img_data->height;
+            uv_l.x = (uv_ref.x + L_Corner.x) / static_cast<float>(img_data->width);
+            uv_l.y = (uv_ref.y + L_Corner.y) / static_cast<float>(img_data->height);
+            uv_t.x = (uv_ref.x + T_Corner.x) / static_cast<float>(img_data->width);
+            uv_t.y = (uv_ref.y + T_Corner.y) / static_cast<float>(img_data->height);
+            uv_r.x = (uv_ref.x + R_Corner.x) / static_cast<float>(img_data->width);
+            uv_r.y = (uv_ref.y + R_Corner.y) / static_cast<float>(img_data->height);
+            uv_b.x = (uv_ref.x + B_Corner.x) / static_cast<float>(img_data->width);
+            uv_b.y = (uv_ref.y + B_Corner.y) / static_cast<float>(img_data->height);
 
             glBindTexture(GL_TEXTURE_2D, img_data->render_texture);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -368,7 +368,7 @@ void prev_TMAP_tiles_SURFACE(user_info* usr_info, variables* My_Variables, image
         int width = img_data->width;
         int height = img_data->height;
         float scale = img_data->scale;
-        ImVec2 size = ImVec2((float)(width * scale), (float)(height * scale));
+        ImVec2 size = ImVec2(static_cast<float>(width) * scale, static_cast<float>(height) * scale);
 
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         // TODO: change top_corner() for img_pos passed in from outside
@@ -404,9 +404,9 @@ void draw_red_squares(image_data* img_data, bool show_squares) {
 
         for (int j = 0; j < max_box_y; j++) {
             for (int i = 0; i < max_box_x; i++) {
-                Top_Left.x = Origin.x + ((i * 350) * scale);
-                Top_Left.y = Origin.y + ((j * 300) * scale);
-                Bottom_Right = {(Top_Left.x + (350 * scale)), (Top_Left.y + (300 * scale))};
+                Top_Left.x = Origin.x + (static_cast<float>(i * 350) * scale);
+                Top_Left.y = Origin.y + (static_cast<float>(j * 300) * scale);
+                Bottom_Right = {(Top_Left.x + (350.0F * scale)), (Top_Left.y + (300.0F * scale))};
                 Draw_List->AddRect(Top_Left, Bottom_Right, 0xff0000ff, 0, 0, 5.0F);
             }
         }
@@ -433,7 +433,8 @@ void add_offset(ImVec2 offset, outline* square) {
 // TODO: remove these next few functions
 //       they were used to draw red tiles
 //       on the original image
-enum { TMAP_W = (80 + 48), TMAP_H = (36 + 24) };
+static constexpr int TMAP_W = 80 + 48;
+static constexpr int TMAP_H = 36 + 24;
 // draw tiles for the preview screen when checking the tiles box
 void draw_red_tiles(image_data* img_data, bool show_squares) {
     // Draw red boxes to indicate where the tiles will be cut from
@@ -450,10 +451,10 @@ void draw_red_tiles(image_data* img_data, bool show_squares) {
     ImVec2 Top_Left;
     outline tile_offsets;
 
-    tile_offsets.Top = {48 * scale, -12 * scale};
-    tile_offsets.Rgt = {80 * scale, 12 * scale};
-    tile_offsets.Btm = {32 * scale, 24 * scale};
-    tile_offsets.Lft = {00 * scale, 00 * scale};
+    tile_offsets.Top = {48.0F * scale, -12.0F * scale};
+    tile_offsets.Rgt = {80.0F * scale, 12.0F * scale};
+    tile_offsets.Btm = {32.0F * scale, 24.0F * scale};
+    tile_offsets.Lft = {0.0F * scale, 0.0F * scale};
 
     static int offset1;
     static int offset2;
@@ -464,12 +465,14 @@ void draw_red_tiles(image_data* img_data, bool show_squares) {
     ImGui::SliderInt("offset3", &offset3, -80, 80, nullptr);
     ImGui::SliderInt("offset4", &offset4, -80, 80, nullptr);
 
-    Origin.x += offset3 * scale;
+    Origin.x += static_cast<float>(offset3) * scale;
 
-    ImVec2 offset = {(48 * scale) + (scale * offset1), (-12 * scale) + (scale * offset2)};
-    ImVec2 row_offset = {(-16 * scale) + (scale * offset4), (36 * scale) + (scale * offset4)};
+    ImVec2 offset = {(48.0F * scale) + (scale * static_cast<float>(offset1)),
+                     (-12.0F * scale) + (scale * static_cast<float>(offset2))};
+    ImVec2 row_offset = {(-16.0F * scale) + (scale * static_cast<float>(offset4)),
+                         (36.0F * scale) + (scale * static_cast<float>(offset4))};
 
-    Top_Left.x = Origin.x - (32 * scale);
+    Top_Left.x = Origin.x - (32.0F * scale);
     Top_Left.y = Origin.y;
 
     outline row_start;                 // used when incrementing rows
@@ -478,8 +481,8 @@ void draw_red_tiles(image_data* img_data, bool show_squares) {
     add_offset(Top_Left, &new_square); // move first tile position to image corner
     row_start = new_square;            // copy this position for re-use
 
-    int img_right = Origin.x + (img_data->width * scale);
-    int img_bottom = Origin.y + (img_data->height * scale);
+    float img_right = Origin.x + (static_cast<float>(img_data->width) * scale);
+    float img_bottom = Origin.y + (static_cast<float>(img_data->height) * scale);
     bool drew_row = true;
     int count = 0;
 
@@ -540,7 +543,7 @@ void draw_tiles_OpenGL(image_data* img_data, shader_info* shader, GLuint* textur
 
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 96, GL_RED, GL_UNSIGNED_BYTE, texture);
 
-        glDrawArrays(GL_TRIANGLES, 0, shader->giant_triangle.vertexCount);
+        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(shader->giant_triangle.vertexCount));
 
         // bind framebuffer back to default
         glBindFramebuffer(GL_FRAMEBUFFER, 0);

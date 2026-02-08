@@ -13,7 +13,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-void surface_paint(variables* My_Variables, Surface* edit_srfc, float x, float y);
+void surface_paint(variables* My_Variables, Surface* dst, float x, float y);
 
 // displays edit_data->render_texture in window
 // size and position stored in edit_data
@@ -29,7 +29,7 @@ ImVec2 display_img_ImGUI(variables* My_Variables, image_data* edit_data) {
     float scale = edit_data->scale;
     int width = edit_data->ANM_bounding_box[dir].x2 - edit_data->ANM_bounding_box[dir].x1;
     int height = edit_data->ANM_bounding_box[dir].y2 - edit_data->ANM_bounding_box[dir].y1;
-    ImVec2 size = ImVec2((float)(width * scale), (float)(height * scale));
+    ImVec2 size = ImVec2(static_cast<float>(width) * scale, static_cast<float>(height) * scale);
 
     ImVec2 img_pos = top_corner(edit_data->offset);
 
@@ -77,8 +77,8 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
         } else if (mouse_wheel < 0 && ImGui::GetIO().KeyCtrl && ImGui::IsWindowHovered()) {
             zoom(0.95, My_Variables->new_mouse_pos, edit_data);
         }
-        ImVec2 size =
-            ImVec2(edit_data->width * edit_data->scale, edit_data->height * edit_data->scale);
+        ImVec2 size = ImVec2(static_cast<float>(edit_data->width) * edit_data->scale,
+                             static_cast<float>(edit_data->height) * edit_data->scale);
         viewport_boundary(edit_data, size);
     }
 
@@ -138,8 +138,8 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
     };
 
     ImVec2 sub_image_offset = {
-        (img_offset.x - x_offset),
-        (img_offset.y - y_offset),
+        (img_offset.x - static_cast<float>(x_offset)),
+        (img_offset.y - static_cast<float>(y_offset)),
     };
 
     float x = NAN;
@@ -157,7 +157,8 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
         y = floorf(y);
     }
 
-    bool cursor_in_bounds = (0 <= x && x < edit_srfc->w) && (0 <= y && y < edit_srfc->h);
+    bool cursor_in_bounds = (0 <= x && x < static_cast<float>(edit_srfc->w)) &&
+                            (0 <= y && y < static_cast<float>(edit_srfc->h));
 
     // Update brush cursor when hovering over the image
     if (ImGui::IsWindowHovered() && cursor_in_bounds) {
@@ -165,8 +166,8 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
         float brush_h = My_Variables->pixel_perfect ? 1.0F : My_Variables->brush_size.y;
 
         // Clamp brush size to surface
-        brush_w = std::min<float>(brush_w, edit_srfc->w);
-        brush_h = std::min<float>(brush_h, edit_srfc->h);
+        brush_w = std::min<float>(brush_w, static_cast<float>(edit_srfc->w));
+        brush_h = std::min<float>(brush_h, static_cast<float>(edit_srfc->h));
 
         float brush_x0 = NAN;
         float brush_y0 = NAN;
@@ -178,14 +179,14 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
             // Normal mode: center brush on cursor with edge clamping
             float bx = x;
             float by = y;
-            if ((bx + (brush_w / 2)) > edit_srfc->w) {
-                bx = edit_srfc->w - (brush_w / 2);
+            if ((bx + (brush_w / 2)) > static_cast<float>(edit_srfc->w)) {
+                bx = static_cast<float>(edit_srfc->w) - (brush_w / 2);
             }
             if ((bx - (brush_w / 2)) < 0) {
                 bx = brush_w / 2;
             }
-            if ((by + (brush_h / 2)) > edit_srfc->h) {
-                by = edit_srfc->h - (brush_h / 2);
+            if ((by + (brush_h / 2)) > static_cast<float>(edit_srfc->h)) {
+                by = static_cast<float>(edit_srfc->h) - (brush_h / 2);
             }
             if ((by - (brush_h / 2)) < 0) {
                 by = brush_h / 2;
@@ -323,25 +324,25 @@ void surface_paint(variables* My_Variables, Surface* dst, float x, float y) {
         y = floorf(y);
         x = std::max<float>(x, 0);
         y = std::max<float>(y, 0);
-        if (x >= w) {
-            x = w - 1;
+        if (x >= static_cast<float>(w)) {
+            x = static_cast<float>(w) - 1;
         }
-        if (y >= h) {
-            y = h - 1;
+        if (y >= static_cast<float>(h)) {
+            y = static_cast<float>(h) - 1;
         }
     } else {
         // clamp brush size to within surface
-        brush_w = std::min<float>(brush_w, w);
-        brush_h = std::min<float>(brush_h, h);
+        brush_w = std::min<float>(brush_w, static_cast<float>(w));
+        brush_h = std::min<float>(brush_h, static_cast<float>(h));
         // clamp brush position to edge
-        if ((x + (brush_w / 2)) > w) {
-            x = w - (brush_w / 2);
+        if ((x + (brush_w / 2)) > static_cast<float>(w)) {
+            x = static_cast<float>(w) - (brush_w / 2);
         }
         if ((x - (brush_w / 2)) < 0) {
             x = brush_w / 2;
         }
-        if ((y + (brush_h / 2)) > h) {
-            y = h - (brush_h / 2);
+        if ((y + (brush_h / 2)) > static_cast<float>(h)) {
+            y = static_cast<float>(h) - (brush_h / 2);
         }
         if ((y - (brush_h / 2)) < 0) {
             y = brush_h / 2;
@@ -382,7 +383,7 @@ void draw_frame_boundary(image_data* edit_data, ImVec2 img_pos, bool edit_MSK) {
         return;
     }
     // MSK files opened directly: frame == canvas
-    if (edit_data->type == MSK) {
+    if (edit_data->type == img_type::MSK) {
         return;
     }
 
@@ -416,11 +417,14 @@ void draw_frame_boundary(image_data* edit_data, ImVec2 img_pos, bool edit_MSK) {
 
     float scale = edit_data->scale;
     // Frame rect in screen space
-    ImVec2 f_min = {img_pos.x + (fx * scale), img_pos.y + (fy * scale)};
-    ImVec2 f_max = {img_pos.x + ((fx + fw) * scale), img_pos.y + ((fy + fh) * scale)};
+    ImVec2 f_min = {img_pos.x + (static_cast<float>(fx) * scale),
+                    img_pos.y + (static_cast<float>(fy) * scale)};
+    ImVec2 f_max = {img_pos.x + (static_cast<float>(fx + fw) * scale),
+                    img_pos.y + (static_cast<float>(fy + fh) * scale)};
     // Canvas rect in screen space
     ImVec2 c_min = img_pos;
-    ImVec2 c_max = {img_pos.x + (cw * scale), img_pos.y + (ch * scale)};
+    ImVec2 c_max = {img_pos.x + (static_cast<float>(cw) * scale),
+                    img_pos.y + (static_cast<float>(ch) * scale)};
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImU32 dim_col = IM_COL32(0, 0, 0, 100);
@@ -448,7 +452,7 @@ void draw_pixel_grid(image_data* edit_data, ImVec2 img_pos, bool edit_MSK) {
     int dir = edit_data->display_orient_num;
     int img_w = 0;
     int img_h = 0;
-    if (edit_MSK || edit_data->type == MSK) {
+    if (edit_MSK || edit_data->type == img_type::MSK) {
         img_w = edit_data->width;
         img_h = edit_data->height;
     } else {
@@ -458,7 +462,8 @@ void draw_pixel_grid(image_data* edit_data, ImVec2 img_pos, bool edit_MSK) {
 
     // Image rect in screen space
     ImVec2 img_min = img_pos;
-    ImVec2 img_max = {img_pos.x + (img_w * scale), img_pos.y + (img_h * scale)};
+    ImVec2 img_max = {img_pos.x + (static_cast<float>(img_w) * scale),
+                      img_pos.y + (static_cast<float>(img_h) * scale)};
 
     // Clip to visible window region
     ImVec2 win_min = ImGui::GetWindowPos();
@@ -490,13 +495,13 @@ void draw_pixel_grid(image_data* edit_data, ImVec2 img_pos, bool edit_MSK) {
 
     // Vertical lines (pixel column boundaries)
     for (int col = first_col; col <= last_col; col++) {
-        float sx = img_pos.x + (col * scale);
+        float sx = img_pos.x + (static_cast<float>(col) * scale);
         draw_list->AddLine({sx, vis_min.y}, {sx, vis_max.y}, grid_col);
     }
 
     // Horizontal lines (pixel row boundaries)
     for (int row = first_row; row <= last_row; row++) {
-        float sy = img_pos.y + (row * scale);
+        float sy = img_pos.y + (static_cast<float>(row) * scale);
         draw_list->AddLine({vis_min.x, sy}, {vis_max.x, sy}, grid_col);
     }
 

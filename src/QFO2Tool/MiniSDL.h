@@ -30,7 +30,7 @@ Surface* Convert_Surface_to_RGBA(Surface* src);
 Surface* Copy8BitSurface(Surface* src);
 
 void BlitSurface(Surface* src, Rect src_rect, Surface* dst, Rect dst_rect);
-void PaintSurface(Surface* dst, Rect dst_rect, uint8_t color);
+void PaintSurface(Surface* dst, Rect brush_rect, uint8_t color);
 void ClearSurface(Surface* dst);
 
 void print_SURFACE_pxls(Surface* src);

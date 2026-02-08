@@ -7,7 +7,7 @@
 
 // create blank surface, 4-bytes per pixel (RGBA)
 Surface* Create_RGBA_Surface(int width, int height) {
-    int size = sizeof(Surface) + (width * height * 4);
+    size_t size = sizeof(Surface) + (static_cast<size_t>(width) * height * 4);
     Surface* surface = (Surface*)malloc(size);
     if (surface == nullptr) {
         return nullptr;
@@ -23,7 +23,7 @@ Surface* Create_RGBA_Surface(int width, int height) {
 }
 
 Surface* Create_8Bit_Surface(int width, int height, Palette* pal) {
-    int size = sizeof(Surface) + (width * height);
+    size_t size = sizeof(Surface) + (static_cast<size_t>(width) * height);
     Surface* surface = (Surface*)calloc(1, size);
     if (surface == nullptr) {
         return nullptr;
@@ -79,7 +79,7 @@ Surface* Convert_Surface_to_RGBA(Surface* src) {
         }
     } else if (src->channels == 4) {
         // just copy using same format
-        memcpy(RGBA_surface->pxls, src->pxls, src->h * src->pitch);
+        memcpy(RGBA_surface->pxls, src->pxls, static_cast<size_t>(src->h) * src->pitch);
     }
     return RGBA_surface;
 }
@@ -139,7 +139,7 @@ Surface* Copy8BitSurface(Surface* src) {
     if (dst == nullptr) {
         return nullptr;
     }
-    memcpy(dst->pxls, src->pxls, src->w * src->h);
+    memcpy(dst->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
     dst->channels = src->channels;
     dst->palette = src->palette;
     dst->pitch = src->pitch;
@@ -176,7 +176,7 @@ void ClearSurface(Surface* dst) {
     //      memset(pxls, 0, dst->pitch);
     //      pxls += dst->pitch;
     //  }
-    memset(pxls, 0, dst->w * dst->h);
+    memset(pxls, 0, static_cast<size_t>(dst->w) * dst->h);
 }
 
 void FreeSurface(Surface* src) {

@@ -20,6 +20,6 @@ union Pxl_Err {
     int arr[4];
 };
 
-void Euclidian_Distance_Color_Match(Surface* Convert, Surface* Temp_Surface);
+void Euclidian_Distance_Color_Match(Surface* Surface_32, Surface* Surface_8);
 void clamp_dither(Surface* Surface_32, Pxl_Err* err, int pixel_idx, int factor);
 void limit_dither(Surface* Surface_32, Pxl_Err* err, int x, int y);
