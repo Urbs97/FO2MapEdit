@@ -70,6 +70,7 @@ extern "C" const char *__lsan_default_suppressions() {
 #include "Stroke_State.h"
 #include "display_FRM_OpenGL.h"
 
+#include "City_Layer.h"
 #include "ImGui_Warning.h"
 #include "Worldmap_Project.h"
 #include "timer_functions.h"
@@ -96,6 +97,11 @@ static char g_import_wmap_base_name[64] = "WRLDMP";
 static char g_import_error[2048] = "";
 static bool g_import_wmap_done = false;
 static bool g_import_error_pending = false;
+
+// Edit state for Show_Preview_Window (file-scope so shutdown can clean up)
+static ANM_Dir g_edit_struct[6];
+static StrokeState g_stroke_state;
+static LF *g_edit_state_owner = nullptr;
 
 // Function declarations
 void Show_Preview_Window(variables *My_Variables, LF *F_Prop, int counter);
@@ -556,11 +562,22 @@ int main(int argc, char **argv) {
     ImGui::End();
 
     // contextual palette window for MSK vs FRM editing
-    if (My_Variables.window_number_focus > -1 &&
-        My_Variables.F_Prop[My_Variables.window_number_focus].active_layer >= 0) {
-      Show_MSK_Palette_Window(&My_Variables);
-    } else {
-      Show_Palette_Window(&My_Variables);
+    // Show MSK palette only when editing a paint-based overlay (not interactive layers like City)
+    {
+      bool show_msk_palette = false;
+      if (My_Variables.window_number_focus > -1) {
+        LF* focused = &My_Variables.F_Prop[My_Variables.window_number_focus];
+        int al = focused->active_layer;
+        if (al >= 0 && al < focused->edit_data.overlay_count &&
+            !focused->edit_data.overlay[al].interactive) {
+          show_msk_palette = true;
+        }
+      }
+      if (show_msk_palette) {
+        Show_MSK_Palette_Window(&My_Variables);
+      } else {
+        Show_Palette_Window(&My_Variables);
+      }
     }
 
     // update palette at regular intervals
@@ -660,6 +677,8 @@ int main(int argc, char **argv) {
   if (g_reset_imgui_ini && (ini_path != nullptr)) {
     std::remove(ini_path);
   }
+
+  stroke_state_cleanup(&g_stroke_state);
 
   for (auto & i : My_Variables.F_Prop) {
     Clear_img_data(&i.img_data);
@@ -926,11 +945,10 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
   shader_info *shaders = &My_Variables->shaders;
   image_data *img_data = &F_Prop->img_data;
 
-  // Edit state (shared across file slots, same pattern as old
-  // Edit_Image_Window)
-  static ANM_Dir edit_struct[6];
-  static StrokeState stroke_state;
-  static LF *edit_state_owner = nullptr; // tracks which F_Prop owns the statics
+  // Edit state aliases (file-scope globals, so shutdown can clean up)
+  ANM_Dir (&edit_struct)[6] = g_edit_struct;
+  StrokeState &stroke_state = g_stroke_state;
+  LF *(&edit_state_owner) = g_edit_state_owner;
 
   std::string a = F_Prop->c_name;
   char b[3];
@@ -1174,6 +1192,12 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         if (F_Prop->wmap != nullptr) {
           // Layer panel replaces old mask switching buttons
           draw_layer_panel(F_Prop, shaders, ed);
+
+          // City info panel for selected city
+          if (F_Prop->active_layer >= 0 && F_Prop->active_layer < ed->overlay_count &&
+              ed->overlay[F_Prop->active_layer].type == LayerType::CITY) {
+            draw_city_info_panel(&ed->overlay[F_Prop->active_layer]);
+          }
         }
 
         if (ImGui::Button("Reset Image")) {
@@ -1268,16 +1292,23 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
 
         ImVec2 img_pos = display_img_ImGUI(My_Variables, edit_data);
 
-        Edit_Image(My_Variables, img_pos, &F_Prop->edit_data, edit_struct,
-                   F_Prop->active_layer,
-                   My_Variables->Palette_Update, &My_Variables->Color_Pick,
-                   &stroke_state);
+        bool is_interactive = (F_Prop->active_layer >= 0 &&
+                               F_Prop->active_layer < edit_data->overlay_count &&
+                               edit_data->overlay[F_Prop->active_layer].interactive);
+        if (is_interactive && edit_data->overlay[F_Prop->active_layer].type == LayerType::CITY) {
+          Edit_City_Layer(My_Variables, img_pos, edit_data, F_Prop->active_layer);
+        } else {
+          Edit_Image(My_Variables, img_pos, &F_Prop->edit_data, edit_struct,
+                     F_Prop->active_layer,
+                     My_Variables->Palette_Update, &My_Variables->Color_Pick,
+                     &stroke_state);
+          draw_brush_cursor(&stroke_state);
+        }
 
         draw_frame_boundary(edit_data, img_pos, F_Prop->active_layer);
         if (My_Variables->pixel_perfect) {
           draw_pixel_grid(edit_data, img_pos, F_Prop->active_layer);
         }
-        draw_brush_cursor(&stroke_state);
 
         Gui_Video_Controls(&F_Prop->edit_data, F_Prop->edit_data.type);
       }

@@ -1,6 +1,7 @@
 #include "Worldmap_Project.h"
 
 #include "B_Endian.h"
+#include "City_Layer.h"
 #include "ImGui_Warning.h"
 #include "Image2Texture.h"
 #include "display_FRM_OpenGL.h"
@@ -108,9 +109,9 @@ bool write_worldmap_txt(const char* output_path, const char* base_name, int tile
 }
 
 // Shared helper: set up OpenGL resources for a stitched worldmap surface.
-// Stores references to stitched and msk_srfc in img_data (does not copy).
-// After a successful call, img_data owns the surfaces — caller must not free them.
-static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc, LF* F_Prop, image_data* img_data,
+// Stores reference to stitched in img_data (does not copy).
+// After a successful call, img_data owns the surface — caller must not free it.
+static bool init_wmap_opengl(Surface* stitched, LF* F_Prop, image_data* img_data,
                              shader_info* shaders) {
     // allocate ANM_dir[6]
     img_data->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir) * 6);
@@ -190,17 +191,6 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc, LF* F_Prop, i
         img_data->FRM_size = synth_size;
     }
 
-    // set up MSK overlay if present
-    if (msk_srfc != nullptr) {
-        int idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MSK,
-                              LayerBlend::WHITE_MIX, "Mask", 1.0F, 1.0F, 1.0F, 0.5F);
-        if (idx >= 0) {
-            img_data->overlay[idx].srfc = msk_srfc;
-            img_data->overlay[idx].texture =
-                init_texture(msk_srfc, msk_srfc->w, msk_srfc->h, img_type::MSK);
-        }
-    }
-
     F_Prop->palettized = true;
     F_Prop->file_open_window = true;
 
@@ -220,8 +210,6 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
     image_data* src_data =
         (F_Prop->edit_data.ANM_dir != nullptr) ? &F_Prop->edit_data : &F_Prop->img_data;
     Surface* frm_srfc = src_data->ANM_dir[0].frame_data[0];
-    int msk_idx = find_overlay(src_data->overlay, src_data->overlay_count, LayerType::MSK);
-    Surface* msk_srfc = (msk_idx >= 0) ? src_data->overlay[msk_idx].srfc : nullptr;
 
     if ((frm_srfc == nullptr) || (frm_srfc->pxls == nullptr)) {
         set_popup_warning("[ERROR] save_wmap_project()\n\n"
@@ -229,40 +217,111 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
         return false;
     }
 
-    uint32_t frm_size = (uint32_t)(frm_srfc->w * frm_srfc->h);
-    uint32_t msk_size = 0;
-    bool has_msk = (info->has_msk && (msk_srfc != nullptr) && (msk_srfc->pxls != nullptr));
-    if (has_msk) {
-        msk_size = (uint32_t)(msk_srfc->w * msk_srfc->h);
+    // Count layers with valid surface data
+    uint32_t num_layers = 0;
+    for (int i = 0; i < src_data->overlay_count; i++) {
+        if (src_data->overlay[i].srfc != nullptr && src_data->overlay[i].srfc->pxls != nullptr) {
+            num_layers++;
+        }
     }
 
+    uint32_t frm_size = (uint32_t)(frm_srfc->w * frm_srfc->h);
+    uint32_t frm_offset = (uint32_t)(sizeof(wmap_header) + (num_layers * sizeof(wmap_layer_entry)));
+
+    // Build layer entries and compute data sizes
+    wmap_layer_entry* entries = nullptr;
+    uint8_t** layer_blobs = nullptr;
+    uint32_t* blob_sizes = nullptr;
+    if (num_layers > 0) {
+        entries = (wmap_layer_entry*)calloc(num_layers, sizeof(wmap_layer_entry));
+        layer_blobs = (uint8_t**)calloc(num_layers, sizeof(uint8_t*));
+        blob_sizes = (uint32_t*)calloc(num_layers, sizeof(uint32_t));
+    }
+
+    uint32_t data_cursor = frm_offset + frm_size;
+    uint32_t entry_idx = 0;
+    for (int i = 0; i < src_data->overlay_count; i++) {
+        OverlayLayer* layer = &src_data->overlay[i];
+        if (layer->srfc == nullptr || layer->srfc->pxls == nullptr) {
+            continue;
+        }
+
+        uint32_t layer_data_size = 0;
+        uint8_t* blob = nullptr;
+
+        if (layer->type == LayerType::MSK) {
+            layer_data_size = (uint32_t)(layer->srfc->w * layer->srfc->h);
+            blob = layer->srfc->pxls; // write directly, don't free
+        } else if (layer->type == LayerType::CITY) {
+            if (layer->source_data != nullptr) {
+                int ser_size = 0;
+                blob = serialize_city_data((city_layer_data*)layer->source_data, &ser_size);
+                layer_data_size = (uint32_t)ser_size;
+            }
+        }
+
+        entries[entry_idx].layer_type = (int8_t)layer->type;
+        memset(entries[entry_idx].padding, 0, 3);
+        entries[entry_idx].data_offset = data_cursor;
+        entries[entry_idx].data_size = layer_data_size;
+        layer_blobs[entry_idx] = blob;
+        blob_sizes[entry_idx] = layer_data_size;
+
+        data_cursor += layer_data_size;
+        entry_idx++;
+    }
+
+    // Build header
     wmap_header hdr = {};
     memcpy(hdr.magic, "WMAP", 4);
-    hdr.version = 2;
+    hdr.version = 1;
     memset(hdr.base_name, 0, 8);
     strncpy(hdr.base_name, info->base_name, 7);
     hdr.tiles_x = (uint32_t)info->tiles_x;
     hdr.tiles_y = (uint32_t)info->tiles_y;
-    hdr.flags = has_msk ? 1 : 0;
-    hdr.frm_offset = (uint32_t)sizeof(wmap_header);
+    hdr.flags = 0;
+    hdr.num_layers = num_layers;
+    hdr.frm_offset = frm_offset;
     hdr.frm_size = frm_size;
-    hdr.msk_offset = has_msk ? (uint32_t)(sizeof(wmap_header) + frm_size) : 0;
-    hdr.msk_size = msk_size;
 
     FILE* fp = fopen(path, "wb");
     if (fp == nullptr) {
         set_popup_warning("[ERROR] save_wmap_project()\n\n"
                           "Unable to open file for writing.");
         printf("Error: save_wmap_project(), unable to open %s for writing: L%d\n", path, __LINE__);
+        // Free any serialized city blobs
+        for (uint32_t j = 0; j < num_layers; j++) {
+            if (layer_blobs[j] != nullptr && entries[j].layer_type == (int8_t)LayerType::CITY) {
+                free(layer_blobs[j]);
+            }
+        }
+        free(entries);
+        free(layer_blobs);
+        free(blob_sizes);
         return false;
     }
 
+    // Write: header -> layer entries -> FRM pixels -> layer data
     fwrite(&hdr, sizeof(wmap_header), 1, fp);
+    if (num_layers > 0) {
+        fwrite(entries, sizeof(wmap_layer_entry), num_layers, fp);
+    }
     fwrite(frm_srfc->pxls, frm_size, 1, fp);
-    if (has_msk) {
-        fwrite(msk_srfc->pxls, msk_size, 1, fp);
+
+    for (uint32_t j = 0; j < num_layers; j++) {
+        if (blob_sizes[j] > 0 && layer_blobs[j] != nullptr) {
+            fwrite(layer_blobs[j], blob_sizes[j], 1, fp);
+        }
+        // Free serialized city blobs (MSK blobs point to srfc->pxls, don't free)
+        if (entries[j].layer_type == (int8_t)LayerType::CITY && layer_blobs[j] != nullptr) {
+            free(layer_blobs[j]);
+        }
     }
     fclose(fp);
+
+    free(entries);
+    free(layer_blobs);
+    free(blob_sizes);
 
     // Update save_path (skip if path already points into save_path)
     if (path != info->save_path) {
@@ -270,7 +329,7 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
         info->save_path[MAX_PATH - 1] = '\0';
     }
 
-    printf("save_wmap_project(): wrote %s (%u + %u bytes)\n", path, frm_size, msk_size);
+    printf("save_wmap_project(): wrote %s (frm=%u, %u layers)\n", path, frm_size, num_layers);
     return true;
 }
 
@@ -302,10 +361,10 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop, image_data* img_data,
     }
 
     // Validate version
-    if (hdr.version != 2) {
+    if (hdr.version != 1) {
         set_popup_warning("[ERROR] load_wmap_project()\n\n"
                           "Unsupported .wmap version.\n"
-                          "Expected version 2.");
+                          "Expected version 1.");
         fclose(fp);
         return false;
     }
@@ -330,58 +389,100 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop, image_data* img_data,
     int full_w = static_cast<int>(hdr.tiles_x) * WMAP_TILE_W;
     int full_h = static_cast<int>(hdr.tiles_y) * WMAP_TILE_H;
 
+    // Read layer entries
+    wmap_layer_entry* entries = nullptr;
+    if (hdr.num_layers > 0) {
+        entries = (wmap_layer_entry*)malloc(hdr.num_layers * sizeof(wmap_layer_entry));
+        if (entries == nullptr) {
+            set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                              "Unable to allocate layer entries.");
+            fclose(fp);
+            return false;
+        }
+        if (fread(entries, sizeof(wmap_layer_entry), hdr.num_layers, fp) != hdr.num_layers) {
+            set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                              "Failed to read layer entries.");
+            free(entries);
+            fclose(fp);
+            return false;
+        }
+    }
+
     // Read FRM pixel data
     Surface* stitched = Create_8Bit_Surface(full_w, full_h, shaders->FO_pal);
     if (stitched == nullptr) {
         set_popup_warning("[ERROR] load_wmap_project()\n\n"
                           "Unable to allocate FRM surface.");
+        free(entries);
         fclose(fp);
         return false;
     }
 
-    fseek(fp, hdr.frm_offset, SEEK_SET);
+    fseek(fp, (long)hdr.frm_offset, SEEK_SET);
     if (fread(stitched->pxls, hdr.frm_size, 1, fp) != 1) {
         set_popup_warning("[ERROR] load_wmap_project()\n\n"
                           "Failed to read FRM pixel data.");
         FreeSurface(stitched);
+        free(entries);
         fclose(fp);
         return false;
     }
 
-    // Read MSK pixel data if present
-    Surface* msk_full = nullptr;
-    bool has_msk = ((hdr.flags & 1) != 0U) && hdr.msk_offset > 0 && hdr.msk_size > 0;
-    if (has_msk) {
-        msk_full = Create_8Bit_Surface(full_w, full_h, nullptr);
-        if (msk_full == nullptr) {
-            set_popup_warning("[ERROR] load_wmap_project()\n\n"
-                              "Unable to allocate MSK surface.");
-            FreeSurface(stitched);
-            fclose(fp);
-            return false;
-        }
-
-        fseek(fp, hdr.msk_offset, SEEK_SET);
-        if (fread(msk_full->pxls, hdr.msk_size, 1, fp) != 1) {
-            set_popup_warning("[ERROR] load_wmap_project()\n\n"
-                              "Failed to read MSK pixel data.");
-            FreeSurface(msk_full);
-            FreeSurface(stitched);
-            fclose(fp);
-            return false;
-        }
-    }
-
-    fclose(fp);
-
-    // Set up OpenGL resources
-    if (!init_wmap_opengl(stitched, msk_full, F_Prop, img_data, shaders)) {
+    // Set up OpenGL resources (FRM only)
+    if (!init_wmap_opengl(stitched, F_Prop, img_data, shaders)) {
         FreeSurface(stitched);
-        if (msk_full != nullptr) {
-            FreeSurface(msk_full);
-        }
+        free(entries);
+        fclose(fp);
         return false;
     }
+
+    // Load layer data
+    for (uint32_t i = 0; i < hdr.num_layers; i++) {
+        LayerType ltype = (LayerType)entries[i].layer_type;
+
+        if (ltype == LayerType::MSK) {
+            Surface* msk_srfc = Create_8Bit_Surface(full_w, full_h, nullptr);
+            if (msk_srfc == nullptr) {
+                printf("Warning: load_wmap_project(), MSK surface alloc failed\n");
+                continue;
+            }
+            fseek(fp, (long)entries[i].data_offset, SEEK_SET);
+            if (fread(msk_srfc->pxls, entries[i].data_size, 1, fp) != 1) {
+                printf("Warning: load_wmap_project(), failed to read MSK data\n");
+                FreeSurface(msk_srfc);
+                continue;
+            }
+            int idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MSK,
+                                  LayerBlend::WHITE_MIX, "Mask", 1.0F, 1.0F, 1.0F, 0.5F);
+            if (idx >= 0) {
+                img_data->overlay[idx].srfc = msk_srfc;
+                img_data->overlay[idx].texture =
+                    init_texture(msk_srfc, msk_srfc->w, msk_srfc->h, img_type::MSK);
+            } else {
+                FreeSurface(msk_srfc);
+            }
+        } else if (ltype == LayerType::CITY) {
+            uint8_t* buf = (uint8_t*)malloc(entries[i].data_size);
+            if (buf == nullptr) {
+                printf("Warning: load_wmap_project(), CITY buffer alloc failed\n");
+                continue;
+            }
+            fseek(fp, (long)entries[i].data_offset, SEEK_SET);
+            if (fread(buf, entries[i].data_size, 1, fp) != 1) {
+                printf("Warning: load_wmap_project(), failed to read CITY data\n");
+                free(buf);
+                continue;
+            }
+            city_layer_data* cd = deserialize_city_data(buf, (int)entries[i].data_size);
+            free(buf);
+            if (cd != nullptr) {
+                create_city_overlay(img_data, cd);
+            }
+        }
+    }
+
+    free(entries);
+    fclose(fp);
 
     // Allocate and populate wmap_info
     F_Prop->wmap = (wmap_info*)calloc(1, sizeof(wmap_info));
@@ -390,12 +491,10 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop, image_data* img_data,
                           "Unable to allocate wmap_info.");
         return false;
     }
-    F_Prop->wmap->version = 2;
     memset(F_Prop->wmap->base_name, 0, sizeof(F_Prop->wmap->base_name));
     memcpy(F_Prop->wmap->base_name, hdr.base_name, 7);
     F_Prop->wmap->tiles_x = (int)hdr.tiles_x;
     F_Prop->wmap->tiles_y = (int)hdr.tiles_y;
-    F_Prop->wmap->has_msk = has_msk;
     strncpy(F_Prop->wmap->save_path, wmap_path, MAX_PATH - 1);
     F_Prop->wmap->save_path[MAX_PATH - 1] = '\0';
 
@@ -427,7 +526,7 @@ bool new_wmap_project(LF* F_Prop, image_data* img_data, shader_info* shaders, Su
     }
 
     // Set up OpenGL resources (no MSK for new projects)
-    if (!init_wmap_opengl(stitched, nullptr, F_Prop, img_data, shaders)) {
+    if (!init_wmap_opengl(stitched, F_Prop, img_data, shaders)) {
         FreeSurface(stitched);
         return false;
     }
@@ -439,12 +538,10 @@ bool new_wmap_project(LF* F_Prop, image_data* img_data, shader_info* shaders, Su
                           "Unable to allocate wmap_info.");
         return false;
     }
-    F_Prop->wmap->version = 2;
     strncpy(F_Prop->wmap->base_name, base_name, sizeof(F_Prop->wmap->base_name) - 1);
     F_Prop->wmap->base_name[sizeof(F_Prop->wmap->base_name) - 1] = '\0';
     F_Prop->wmap->tiles_x = tiles_x;
     F_Prop->wmap->tiles_y = tiles_y;
-    F_Prop->wmap->has_msk = false;
     F_Prop->wmap->save_path[0] = '\0';
 
     return true;
@@ -959,8 +1056,8 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
         }
     }
 
-    // Initialize OpenGL
-    if (!init_wmap_opengl(stitched, msk_full, F_Prop, img_data, shaders)) {
+    // Initialize OpenGL (FRM only)
+    if (!init_wmap_opengl(stitched, F_Prop, img_data, shaders)) {
         FreeSurface(stitched);
         if (msk_full != nullptr) {
             FreeSurface(msk_full);
@@ -969,6 +1066,30 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
         free(lst_txt);
         free(tile_entries);
         return false;
+    }
+
+    // Add MSK overlay after OpenGL init
+    if (msk_full != nullptr) {
+        int idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MSK,
+                              LayerBlend::WHITE_MIX, "Mask", 1.0F, 1.0F, 1.0F, 0.5F);
+        if (idx >= 0) {
+            img_data->overlay[idx].srfc = msk_full;
+            img_data->overlay[idx].texture =
+                init_texture(msk_full, msk_full->w, msk_full->h, img_type::MSK);
+        } else {
+            FreeSurface(msk_full);
+        }
+    }
+
+    // Attempt CITY.TXT import
+    char city_path[MAX_PATH];
+    if (resolve_path_icase(data_path, "data/city.txt", city_path, MAX_PATH)) {
+        city_layer_data* cd = parse_city_txt(city_path);
+        if (cd != nullptr && cd->area_count > 0) {
+            create_city_overlay(img_data, cd);
+        } else {
+            free(cd);
+        }
     }
 
     // Populate wmap_info
@@ -981,12 +1102,10 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
         free(tile_entries);
         return false;
     }
-    F_Prop->wmap->version = 2;
     strncpy(F_Prop->wmap->base_name, base_name, sizeof(F_Prop->wmap->base_name) - 1);
     F_Prop->wmap->base_name[sizeof(F_Prop->wmap->base_name) - 1] = '\0';
     F_Prop->wmap->tiles_x = tiles_x;
     F_Prop->wmap->tiles_y = tiles_y;
-    F_Prop->wmap->has_msk = any_msk;
     F_Prop->wmap->save_path[0] = '\0'; // user must Save As
 
     printf("import_wmap_from_fo2(): imported %dx%d tiles (%dx%d pixels), msk=%s\n", tiles_x,

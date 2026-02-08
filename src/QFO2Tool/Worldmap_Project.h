@@ -11,24 +11,29 @@ constexpr uint16_t WMAP_TILE_H = 300;
 #pragma pack(push, 1)
 struct wmap_header {
     char magic[4];     // "WMAP"
-    uint32_t version;  // 2
+    uint32_t version;  // 1
     char base_name[8]; // null-padded
     uint32_t tiles_x;
     uint32_t tiles_y;
-    uint32_t flags;      // bit 0 = has_msk
-    uint32_t frm_offset; // always 44 for v2
+    uint32_t flags; // reserved, 0
+    uint32_t num_layers;
+    uint32_t frm_offset;
     uint32_t frm_size;
-    uint32_t msk_offset; // 0 if no MSK
-    uint32_t msk_size;
+    // followed by num_layers * wmap_layer_entry
+};
+
+struct wmap_layer_entry {
+    int8_t layer_type; // LayerType enum value
+    uint8_t padding[3];
+    uint32_t data_offset;
+    uint32_t data_size;
 };
 #pragma pack(pop)
 
 struct wmap_info {
-    int version;
     char base_name[64]; // project display name (not used for export)
     int tiles_x;
     int tiles_y;
-    bool has_msk;
     char save_path[MAX_PATH];
 };
 

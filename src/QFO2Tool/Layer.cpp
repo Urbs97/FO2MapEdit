@@ -93,6 +93,11 @@ void clear_overlay(OverlayLayer* layer) {
         return;
     }
     cleanup_layer_edit_surface(layer);
+    if (layer->source_data != nullptr) {
+        free(layer->source_data);
+        layer->source_data = nullptr;
+        layer->source_data_size = 0;
+    }
     if (layer->srfc != nullptr) {
         FreeSurface(layer->srfc);
         layer->srfc = nullptr;
