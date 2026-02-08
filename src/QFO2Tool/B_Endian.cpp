@@ -1,17 +1,22 @@
 #include "B_Endian.h"
 
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 
-// Signed conversions
-inline void B_Endian::swap_16(uint16_t* in) { *in = (*in << 8) | (*in >> 8); }
-inline void B_Endian::swap_16(int16_t* in) { *in = (*in << 8) | ((*in >> 8) & 0xff); }
-void B_Endian::swap_32(uint32_t& in) {
-    uint32_t v = 0;
-    v = (in & 0x000000ff) << 24 | (in & 0x0000ff00) << 8 | (in & 0x00ff0000) >> 8 |
-        (in & 0xff000000) >> 24;
-
-    in = v;
+// Byte-swap a 16-bit value in place (handles misaligned access)
+void B_Endian::swap_16(void* in) {
+    uint8_t* p = (uint8_t*)in;
+    uint8_t tmp = p[0];
+    p[0] = p[1];
+    p[1] = tmp;
+}
+void B_Endian::swap_32(void* in) {
+    uint32_t val;
+    memcpy(&val, in, sizeof(val));
+    val = (val & 0x000000ff) << 24 | (val & 0x0000ff00) << 8 | (val & 0x00ff0000) >> 8 |
+          (val & 0xff000000) >> 24;
+    memcpy(in, &val, sizeof(val));
 }
 void byte_swap_16x4(uint64_t* p) {
     uint64_t q = 0;
@@ -27,25 +32,25 @@ void Orientation(int16_t Frame_0_Orient[6]) {
 
 void Offset(uint32_t Frame_0_Offset[6]) {
     for (int i = 0; i < 6; i++) {
-        B_Endian::swap_32(Frame_0_Offset[i]);
+        B_Endian::swap_32(&Frame_0_Offset[i]);
     }
 }
 
 void B_Endian::flip_header_endian(FRM_Header* header) {
-    B_Endian::swap_32(header->version);
+    B_Endian::swap_32(&header->version);
     B_Endian::swap_16(&header->FPS);
     B_Endian::swap_16(&header->Action_Frame);
     B_Endian::swap_16(&header->Frames_Per_Orient);
     Orientation(header->Shift_Orient_x);
     Orientation(header->Shift_Orient_y);
     Offset(header->Frame_0_Offset);
-    B_Endian::swap_32(header->Frame_Area);
+    B_Endian::swap_32(&header->Frame_Area);
 }
 
 void B_Endian::flip_frame_endian(FRM_Frame* frame_data) {
     B_Endian::swap_16(&frame_data->Frame_Width);
     B_Endian::swap_16(&frame_data->Frame_Height);
-    B_Endian::swap_32(frame_data->Frame_Size);
+    B_Endian::swap_32(&frame_data->Frame_Size);
     B_Endian::swap_16(&frame_data->Shift_Offset_x);
     B_Endian::swap_16(&frame_data->Shift_Offset_y);
 }
@@ -54,10 +59,10 @@ void B_Endian::flip_frame_endian(FRM_Frame* frame_data) {
 void B_Endian::flip_proto_endian(tile_proto* proto) {
     // just these 4 for now
     // used in export_single_tile_PRO()
-    B_Endian::swap_32(proto->ObjectID);
-    B_Endian::swap_32(proto->TextID);
-    B_Endian::swap_32(proto->FrmID);
-    B_Endian::swap_32(proto->MaterialID);
+    B_Endian::swap_32(&proto->ObjectID);
+    B_Endian::swap_32(&proto->TextID);
+    B_Endian::swap_32(&proto->FrmID);
+    B_Endian::swap_32(&proto->MaterialID);
 
     // B_Endian::swap_32(proto->Light_Radius);
     // B_Endian::swap_32(proto->Light_Intensity);

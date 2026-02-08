@@ -5,7 +5,7 @@
 
 TEST_CASE("swap_32 reverses byte order") {
     uint32_t val = 0x01020304;
-    B_Endian::swap_32(val);
+    B_Endian::swap_32(&val);
     CHECK(val == 0x04030201);
 }
 

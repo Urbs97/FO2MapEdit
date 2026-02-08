@@ -186,6 +186,10 @@ void Clear_img_data(image_data* img_data) {
         free(img_data->FRM_data);
         img_data->FRM_data = NULL;
         img_data->FRM_hdr = NULL;
+    } else if (img_data->FRM_hdr) {
+        // FRM_hdr allocated separately (OTHER path in prep_image_SURFACE)
+        free(img_data->FRM_hdr);
+        img_data->FRM_hdr = NULL;
     }
     if (img_data->ANM_dir) {
         for (int i = 0; i < 6; i++) {

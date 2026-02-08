@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.25)
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-  add_link_options(-fsanitize=address)
+  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address,undefined)
 endif()
 
 #compile option (-mavx) for is_tile_blank() in tiles_patterns.cpp

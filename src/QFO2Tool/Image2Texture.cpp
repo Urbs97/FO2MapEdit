@@ -3,6 +3,7 @@
 
 #include "FRM_Convert.h"
 #include "ImGui_Warning.h"
+#include "Load_Animation.h"
 
 #include <glad/glad.h>
 #include <stdio.h>
@@ -39,7 +40,9 @@ bool copy_it_all_ANM(image_data* src, image_data* dst) {
         printf("Unable to allocate memory for ANM_dir: %d", __LINE__);
         return false;
     }
-    new (dst->ANM_dir) ANM_Dir[6];
+    for (int k = 0; k < 6; k++) {
+        new (&dst->ANM_dir[k]) ANM_Dir;
+    }
 
     ANM_Dir* src_dir = src->ANM_dir;
     ANM_Dir* dst_dir = dst->ANM_dir;
@@ -98,6 +101,14 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
     image_data* src = &F_Prop->img_data;
     image_data* dst = &F_Prop->edit_data;
 
+    // Free previous edit_data to prevent leaks on repeated calls
+    // (e.g. Enable Editing -> Disable Editing -> Enable Editing).
+    // MSK path copies the MSK_data pointer from src, so null it to avoid double-free.
+    if (dst->MSK_data && dst->MSK_data == src->MSK_data) {
+        dst->MSK_data = NULL;
+    }
+    Clear_img_data(dst);
+
     dst->width = src->width;
     dst->height = src->height;
     dst->scale = src->scale;
@@ -144,7 +155,9 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
             printf("Unable to allocate memory for ANM_dir: %d", __LINE__);
             return;
         }
-        new (dst->ANM_dir) ANM_Dir[6];
+        for (int k = 0; k < 6; k++) {
+            new (&dst->ANM_dir[k]) ANM_Dir;
+        }
 
         dst->ANM_dir[dir].frame_data = (Surface**)malloc(sizeof(Surface*));
         if (!dst->ANM_dir[dir].frame_data) {

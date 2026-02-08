@@ -13,9 +13,8 @@ void flip_header_endian(FRM_Header* header);
 void flip_frame_endian(FRM_Frame* frame_data);
 void flip_proto_endian(tile_proto* proto);
 
-void swap_16(uint16_t* in);
-void swap_16(int16_t* in);
-void swap_32(uint32_t& in);
+void swap_16(void* in);
+void swap_32(void* in);
 // Convert unsigned values
 uint32_t read_u32(std::istream& f);
 uint32_t write_u32(int f);

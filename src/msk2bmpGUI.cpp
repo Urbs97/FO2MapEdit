@@ -514,7 +514,6 @@ int main(int argc, char **argv) {
         &My_Variables, &My_Variables.F_Prop[num], images_arr, &counter);
 
     if (clear_images_arr) {
-      clear_images_arr = false;
       for (int i = 0; i < 6; i++) {
         images_arr[i].animation_images.clear();
       }
@@ -522,7 +521,6 @@ int main(int argc, char **argv) {
 
     // handle opening dropped files
     if (file_drop_frame) {
-      file_drop_frame = false;
       char *path = all_dropped_files.first_path;
 
       for (int i = 0; i < all_dropped_files.count; i++) {
@@ -555,8 +553,8 @@ int main(int argc, char **argv) {
     ImGui::End();
 
     // contextual palette window for MSK vs FRM editing
-    if (My_Variables.F_Prop[My_Variables.window_number_focus].edit_MSK &&
-        My_Variables.window_number_focus > -1) {
+    if (My_Variables.window_number_focus > -1 &&
+        My_Variables.F_Prop[My_Variables.window_number_focus].edit_MSK) {
       Show_MSK_Palette_Window(&My_Variables);
     } else {
       Show_Palette_Window(&My_Variables);
@@ -689,6 +687,7 @@ int main(int argc, char **argv) {
 // copies dropped file-paths to
 // global dropped_files* all_dropped_files
 void dropped_files_callback(GLFWwindow *window, int count, const char **paths) {
+  if (count <= 0) return;
   size_t size = 0;
   // get total length of all strings
   for (int i = 0; i < count; i++) {
@@ -743,7 +742,7 @@ void init_edit_struct_ANM(ANM_Dir *edit_struct, image_data *edit_data,
       printf("Unable to create 8bit surface: %d\n", __LINE__);
       return;
     }
-    edit_data->ANM_dir = (ANM_Dir *)malloc(sizeof(ANM_Dir *));
+    edit_data->ANM_dir = (ANM_Dir *)malloc(sizeof(ANM_Dir));
     if (!edit_data->ANM_dir) {
       free(edit_struct[0].frame_data);
       FreeSurface(edit_struct[0].frame_data[0]);
@@ -940,7 +939,6 @@ static void commit_and_save_edits(LF *F_Prop, LF *edit_state_owner,
 void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
                          int counter) {
   shader_info *shaders = &My_Variables->shaders;
-  Palette *pxlFMT_FO_Pal = My_Variables->FO_Palette;
   image_data *img_data = &F_Prop->img_data;
 
   // Edit state (shared across file slots, same pattern as old
@@ -1958,7 +1956,7 @@ static void ShowMainMenuBar(int *counter, struct variables *My_Variables) {
         int focus = My_Variables->window_number_focus;
         bool can_save =
             (focus >= 0 && My_Variables->F_Prop[focus].wmap != nullptr);
-        if (ImGui::MenuItem("Save Project", "Ctrl+S", false, can_save)) {
+        if (ImGui::MenuItem("Save Project", "Ctrl+S", false, can_save) && can_save) {
           LF *fp = &My_Variables->F_Prop[focus];
           if (fp->wmap->save_path[0] != '\0') {
             save_wmap_project(fp->wmap->save_path, fp);
@@ -2066,7 +2064,7 @@ bool save_FRM_popup(LF *F_Prop) {
 
 bool save_MSK_popup(LF *F_Prop) {
   image_data *img_data = &F_Prop->img_data;
-  Save_Info *sv_info;
+  Save_Info *sv_info = nullptr;
 
   bool open_window = true;
   // TODO: replace ImGui::Begin() with BeginPopupModal()?

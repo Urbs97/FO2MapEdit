@@ -1,11 +1,11 @@
 BUILD_DIR := build
 
-.PHONY: all configure build test clean rebuild run release
+.PHONY: all configure build test clean rebuild run release lint lint-all
 
 all: build
 
 configure:
-	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug
+	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 build: configure
 	cmake --build $(BUILD_DIR) -j$$(nproc)
@@ -25,3 +25,9 @@ run: build
 release:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release
 	cmake --build $(BUILD_DIR) -j$$(nproc)
+
+lint: configure
+	git diff --cached --name-only --diff-filter=d -- '*.cpp' '*.h' | xargs -r clang-tidy -p $(BUILD_DIR)
+
+lint-all: configure
+	clang-tidy -p $(BUILD_DIR) src/QFO2Tool/*.cpp src/QFO2Tool/*.h
