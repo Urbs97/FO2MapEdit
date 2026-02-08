@@ -64,6 +64,7 @@ uint8_t* load_entire_file(const char* file_name, int* file_size) {
     int error = fseek(File_ptr, 0, SEEK_END);
     if (error) {
         // TODO: maybe put a popup warning here?
+        fclose(File_ptr);
         return NULL;
     }
     file_length = ftell(File_ptr);
@@ -71,6 +72,7 @@ uint8_t* load_entire_file(const char* file_name, int* file_size) {
 
     if (file_length < 1) {
         // TODO: maybe put a popup warning here?
+        fclose(File_ptr);
         return NULL;
     }
     uint8_t* buffer = (uint8_t*)malloc(file_length);
@@ -202,7 +204,9 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
         img_data->FRM_hdr = NULL;
         return false;
     }
-    new (img_data->ANM_dir) ANM_Dir[6];
+    for (int k = 0; k < 6; k++) {
+        new (&img_data->ANM_dir[k]) ANM_Dir;
+    }
 
     ANM_Dir* anm_dir = img_data->ANM_dir;
     int buff_offset = sizeof(FRM_Header);

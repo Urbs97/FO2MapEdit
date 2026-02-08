@@ -1,7 +1,7 @@
 #pragma once
 
-#include "town_map_tiles.h"
 #include "Load_Settings.h"
+#include "town_map_tiles.h"
 
 struct proto_info {
     char* name;

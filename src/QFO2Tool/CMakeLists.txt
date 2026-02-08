@@ -37,6 +37,7 @@ add_library(FO2MapEditLib
   Preview_Tiles.h
   Save_Files.cpp
   Save_Files.h
+  stb_impl.c
   shader_class.cpp
   shader_class.h
   Zoom_Pan.cpp
@@ -76,7 +77,7 @@ target_compile_definitions(
 endif()
 
 target_include_directories(
-  FO2MapEditLib PUBLIC
+  FO2MapEditLib SYSTEM PUBLIC
   ../dependencies/GLAD/include
   ../dependencies/tinyfiledialogs
   ../dependencies/imgui-1.90.8-docking

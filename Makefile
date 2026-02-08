@@ -1,6 +1,6 @@
 BUILD_DIR := build
 
-.PHONY: all configure build test clean rebuild run release lint lint-all
+.PHONY: all configure build test clean rebuild run release lint lint-all format
 
 all: build
 
@@ -31,3 +31,6 @@ lint: configure
 
 lint-all: configure
 	clang-tidy -p $(BUILD_DIR) src/QFO2Tool/*.cpp src/QFO2Tool/*.h
+
+format:
+	clang-format -i src/QFO2Tool/*.cpp src/QFO2Tool/*.h

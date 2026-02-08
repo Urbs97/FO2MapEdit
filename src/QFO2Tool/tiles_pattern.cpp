@@ -9,10 +9,9 @@
 #include "ImGui_Warning.h"
 #include "platform_io.h"
 
-#include <imgui.h>
-
 #include <cctype>
 #include <cstdio>
+#include <imgui.h>
 #include <string.h>
 
 // need to check if mapper can access above 4096
@@ -30,11 +29,6 @@
 bool is_tile_blank(town_tile* tile) {
     int buff_size = 36 * 5;
     bool not_blank = true;
-    __m128i ONES = _mm_set_epi64x(-1, -1);
-    __m128i* frm_ptr128 = (__m128i*)tile->frm_data;
-
-    int64_t* ptr = (int64_t*)&ONES;
-
     for (int i = 0; i < buff_size; i++) {
         // if (_mm_test_all_zeros(_mm_loadu_si128(frm_ptr128+i), ONES) == false) {
         //     not_blank = false;
@@ -179,6 +173,7 @@ void export_TMAP_tiles_pattern(user_info* usr_info, tt_arr_handle* handle, char*
         // set_false(state);
         set_popup_warning("Error: save_NEW_FRM_tiles_LST()\n"
                           "Unable to create folders\n");
+        free(out_pattern);
         return;
     }
 

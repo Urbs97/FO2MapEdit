@@ -60,6 +60,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
         set_popup_warning("[ERROR] crop_animation_SURFACE()\n\n"
                           "Failed to allocate for ANM_dir.");
         printf("Failed to allocate for ANM_dir: %d\n", __LINE__);
+        return false;
     }
 
     // loop over all frames in all directions
@@ -85,10 +86,10 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
             // TODO: log out to file
             set_popup_warning("[ERROR] crop_animation_SURFACE()\n\n"
                               "Failed to allocate for ANM_dir[i].frame_box.");
-            free(dst->ANM_dir);
-            for (int i = 0; i < 6; i++) {
-                free(dst->ANM_dir[i].frame_data);
+            for (int j = 0; j < 6; j++) {
+                free(dst->ANM_dir[j].frame_data);
             }
+            free(dst->ANM_dir);
             return false;
         }
 

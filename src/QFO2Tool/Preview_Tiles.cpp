@@ -449,9 +449,6 @@ void draw_red_tiles(image_data* img_data, bool show_squares) {
     tile_offsets.Btm = {32 * scale, 24 * scale};
     tile_offsets.Lft = {00 * scale, 00 * scale};
 
-    int max_box_x = img_data->width / TMAP_W;
-    int max_box_y = img_data->height / TMAP_H;
-
     static int offset1;
     static int offset2;
     static int offset3;
@@ -522,8 +519,6 @@ void draw_red_tiles(image_data* img_data, bool show_squares) {
 
 void draw_tiles_OpenGL(image_data* img_data, shader_info* shader, GLuint* texture,
                        bool draw_tiles) {
-    float scale = img_data->scale;
-
     printf("draw_tiles_OpenGL is being called...\n");
 
     if (draw_tiles) {

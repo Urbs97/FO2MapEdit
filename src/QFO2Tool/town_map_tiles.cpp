@@ -111,7 +111,7 @@ void crop_single_tileB(uint8_t* dst, uint8_t* src, int src_width, int src_height
                 // in the future as part of the job of this if block
                 // is to make sure the left side is within bounds
                 // when we read it
-                src_row_left = 0;
+                src_row_left = 0; // NOLINT(clang-analyzer-deadcode.DeadStores)
             }
 
             // put 0s in the right side of dst when we're off
@@ -129,7 +129,7 @@ void crop_single_tileB(uint8_t* dst, uint8_t* src, int src_width, int src_height
 
                 // similar to above, we don't need the following line
                 // at the moment
-                src_row_right = src_width;
+                src_row_right = src_width; // NOLINT(clang-analyzer-deadcode.DeadStores)
             }
 
             // we need this check as a safeguard against negative

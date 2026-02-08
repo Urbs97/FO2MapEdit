@@ -96,7 +96,9 @@ char* make_PRO_tiles_LST(tt_arr_handle* head, uint8_t* match_buff_src) {
 
     // if there are no nodes (or none with viable names)
     if (total_size < 1) {
-        if (match_buff_src == NULL) { free(match_buff); }
+        if (match_buff_src == NULL) {
+            free(match_buff);
+        }
         ImGui::OpenPopup("TILES.LST Unmodified");
         return nullptr;
     }
@@ -125,7 +127,9 @@ char* make_PRO_tiles_LST(tt_arr_handle* head, uint8_t* match_buff_src) {
     }
     c[0] = '\0';
 
-    if (match_buff_src == NULL) { free(match_buff); }
+    if (match_buff_src == NULL) {
+        free(match_buff);
+    }
     return cropped_list;
 }
 
@@ -337,6 +341,7 @@ void fallout2_exe_NOT_FOUND(char* FObuff) {
 bool missing_files_popup(export_state* state) {
     const char* art = "";
     const char* pro = "";
+    static char msg_buf[128];
     const char* msg = "";
     if (state->loaded_FRM_LST == false) {
         art = "/data/art/tiles/TILES.LST\n";
@@ -345,7 +350,8 @@ bool missing_files_popup(export_state* state) {
         pro = "/data/proto/tiles/TILES.LST\n";
     }
     if (state->loaded_PRO_MSG == false) {
-        msg = "/data/text/%s/game/pro_tile.msg\n", state->language[0];
+        snprintf(msg_buf, sizeof(msg_buf), "/data/text/%s/game/pro_tile.msg\n", state->language[0]);
+        msg = msg_buf;
     }
 
     // char* lst_path = state->LST_path;
@@ -559,8 +565,8 @@ bool append_PRO_tile_MSG(user_info* usr_nfo, tt_arr_handle* handle, export_state
         strncpy(save_path, actual_path, MAX_PATH);
     }
 
-    bool success = io_backup_file(save_path, nullptr);
-    success = io_save_txt_file(save_path, final_PRO_tile_MSG);
+    io_backup_file(save_path, nullptr);
+    bool success = io_save_txt_file(save_path, final_PRO_tile_MSG);
     if (!success) {
         free(new_PRO_tile_MSG);
         free(final_PRO_tile_MSG);
@@ -631,6 +637,7 @@ char* save_NEW_PRO_tile_MSG(tt_arr_handle* handle, user_info* usr_nfo, export_st
         set_false(state);
         set_popup_warning("Error: save_NEW_FRM_tiles_LST()\n"
                           "Unable to create folders\n");
+        free(new_PRO_tile_MSG);
         return NULL;
     }
 
@@ -639,6 +646,7 @@ char* save_NEW_PRO_tile_MSG(tt_arr_handle* handle, user_info* usr_nfo, export_st
         set_false(state);
         set_popup_warning("Error: save_NEW_FRM_tiles_LST()\n"
                           "Unable to create folders\n");
+        free(new_PRO_tile_MSG);
         return NULL;
     }
     state->make_PRO_MSG = false;
@@ -1128,8 +1136,8 @@ bool append_TMAP_PRO_tiles_LST(user_info* usr_nfo, tt_arr_handle* head, export_s
     }
 
     // backup and save new list
-    bool success = io_backup_file(save_path, nullptr);
-    success = io_save_txt_file(save_path, new_PRO_LST);
+    io_backup_file(save_path, nullptr);
+    bool success = io_save_txt_file(save_path, new_PRO_LST);
     if (!success) {
         free(new_PRO_LST);
         return false;
@@ -1161,6 +1169,7 @@ bool backup_append_LST(char* path, char* LST_file) {
     if (tiles_lst == nullptr) {
         // TODO: popup warning?
         // unable to open file for some reason
+        free(buff_tiles_lst);
         return false;
     }
 
@@ -1172,6 +1181,10 @@ bool backup_append_LST(char* path, char* LST_file) {
 
     io_backup_file(path, nullptr);
     tiles_lst = fopen(path, "wb");
+    if (tiles_lst == nullptr) {
+        free(buff_tiles_lst);
+        return false;
+    }
     fwrite(buff_tiles_lst, file_size + string_len, 1, tiles_lst);
     fclose(tiles_lst);
 
@@ -1226,7 +1239,6 @@ bool export_single_tile_PRO(char* game_path, tt_arr* tile, proto_info* info) {
     FILE* tile_pro = fopen(path_buff, "wb");
     if (tile_pro == nullptr) {
         printf("Unable to open proto file: %s\n", path_buff);
-        fclose(tile_pro);
         return false;
     }
     fwrite(&proto, sizeof(tile_proto), 1, tile_pro);

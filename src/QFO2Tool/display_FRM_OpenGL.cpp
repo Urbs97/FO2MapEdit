@@ -36,11 +36,7 @@ void render_OTHER_OpenGL(image_data* img_data, int width, int height) {
     int orient = img_data->display_orient_num; //(img_data->ANIM_hdr->Frame_0_Offset[1] > 0) ?
                                                // img_data->display_orient_num : 0;
     int frame_num = img_data->display_frame_num;
-    int max_frm = img_data->ANM_dir[orient].num_frames;
     ANM_Dir* anm_dir = img_data->ANM_dir;
-
-    int x_offset = anm_dir[orient].frame_box->x1 - img_data->ANM_bounding_box[orient].x1;
-    int y_offset = anm_dir[orient].frame_box->y1 - img_data->ANM_bounding_box[orient].y1;
 
     uint8_t* pxls;
     if (anm_dir[orient].frame_data[frame_num] == NULL) {
@@ -182,8 +178,12 @@ void PAL_SURFACE_to_sub_texture(uint8_t* pxls, GLuint texture, int x_offset, int
     if (needed > blank_size) {
         free(blank);
         blank = (uint8_t*)calloc(1, needed);
+        if (!blank) {
+            blank_size = 0;
+            return;
+        }
         blank_size = needed;
-    } else {
+    } else if (blank) {
         memset(blank, 0, needed);
     }
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, total_width, total_height, 0, pxl_type, GL_UNSIGNED_BYTE,
@@ -249,8 +249,6 @@ void draw_FRM_to_framebuffer(shader_info* shader_i, int width, int height, GLuin
 
     // shader
     shader_i->render_FRM_shader->use();
-    uint32_t ID = shader_i->render_FRM_shader->ID;
-
     GLint t = glGetUniformLocation(shader_i->render_FRM_shader->ID, "ColorPaletteUINT");
     glUniform1uiv(t, 256, (GLuint*)shader_i->FO_pal->colors);
 

@@ -70,7 +70,6 @@ void Preview_MSK_Image(variables* My_Variables, struct image_data* img_data, boo
     // handle zoom and panning for the image, plus update image position every frame
     zoom_pan(img_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
 
-    shader_info* shaders = &My_Variables->shaders;
     if (img_data->MSK_data == NULL) {
         ImGui::Text("No Image Data");
         return;
@@ -111,8 +110,6 @@ void Preview_Image(variables* My_Variables, struct image_data* img_data, bool sh
 
     // handle zoom and panning for the image, plus update image position every frame
     zoom_pan(img_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
-
-    shader_info* shaders = &My_Variables->shaders;
 
     // handle frame display by orientation and number
     float scale = img_data->scale;

@@ -184,6 +184,7 @@ bool load_MSK_SURFACE(char* FileName, image_data* img_data, int width, int heigh
                           "Unable to open file.\n");
         // TODO: fprintf? or printf? (stderr or stdout)?
         fprintf(stderr, "[ERROR] Unable to open file: %s.\n", FileName);
+        free(MSK_buffer);
         return false;
     }
 
@@ -201,6 +202,7 @@ bool load_MSK_SURFACE(char* FileName, image_data* img_data, int width, int heigh
                           "Failed to allocate memory for MSK surface.\n");
         printf("[ERROR] Failed to allocate memory for MSK surface.\n");
         printf("MSK image didn't load...\n");
+        free(MSK_buffer);
         return false;
     }
 
@@ -254,6 +256,7 @@ void Convert_SURFACE_to_MSK(Surface* surface, image_data* img_data, int cutoff) 
         set_popup_warning("[ERROR] Convert_SURFACE_to_MSK()\n\n"
                           "Unable to allocate surface for MSK");
         printf("[ERROR] Unable to allocate surface for MSK\n");
+        free(data);
         return;
     }
 

@@ -119,7 +119,9 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc, LF* F_Prop, i
         printf("Error: init_wmap_opengl(), ANM_dir alloc failed : L%d\n", __LINE__);
         return false;
     }
-    new (img_data->ANM_dir) ANM_Dir[6];
+    for (int k = 0; k < 6; k++) {
+        new (&img_data->ANM_dir[k]) ANM_Dir;
+    }
 
     // allocate frame_data[0]
     img_data->ANM_dir[0].frame_data = (Surface**)malloc(sizeof(Surface*));
@@ -533,6 +535,8 @@ static bool parse_worldmap_txt(const char* txt_path, int* out_tiles_x, int* out_
         int clean_len = line_len;
         if (clean_len > 0 && line[clean_len - 1] == '\r')
             clean_len--;
+        if (clean_len < 0)
+            clean_len = 0;
 
         // Make a null-terminated copy of this line
         char line_buf[256];
@@ -771,7 +775,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
             char buf[128];
             snprintf(buf, sizeof(buf), "  Tile %d: art_idx=%d out of range\n", i, idx);
             if (strlen(missing_msg) + strlen(buf) < sizeof(missing_msg) - 1)
-                strcat(missing_msg, buf);
+                strncat(missing_msg, buf, sizeof(missing_msg) - strlen(missing_msg) - 1);
             all_found = false;
             missing_count++;
             continue;
@@ -782,7 +786,7 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
             char buf[128];
             snprintf(buf, sizeof(buf), "  %s\n", lst_lines[idx]);
             if (strlen(missing_msg) + strlen(buf) < sizeof(missing_msg) - 1)
-                strcat(missing_msg, buf);
+                strncat(missing_msg, buf, sizeof(missing_msg) - strlen(missing_msg) - 1);
             all_found = false;
             missing_count++;
         }

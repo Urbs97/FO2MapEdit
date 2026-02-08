@@ -1,22 +1,21 @@
-#include <cstdint>
-#include <filesystem>
-#include <stdio.h>
-#include <sys/types.h>
+#include "Save_Files.h"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "B_Endian.h"
 #include "ImGui_Warning.h"
 #include "Load_Settings.h"
-#include "Save_Files.h"
 #include "Worldmap_Project.h"
 #include "imgui.h"
 #include "platform_io.h"
 #include "town_map_tiles.h"
 
 #include <ImFileDialog.h>
+#include <cstdint>
 #include <ctype.h>
+#include <filesystem>
 #include <imgui_internal.h>
 #include <stb_image_write.h>
+#include <stdio.h>
+#include <sys/types.h>
 
 void write_cfg_file(user_info* user_info, char* exe_path);
 
@@ -51,6 +50,9 @@ char* generate_PNG_name(char* name, int src_dir, int num) {
             break;
         case NW:
             dir = "NW";
+            break;
+        default:
+            dir = "NE";
             break;
     }
     snprintf(buffer, MAX_PATH, "%s_%s_%02d.%s", name, dir, num, "png");
@@ -360,7 +362,6 @@ bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info
     ANM_Dir* anm_dir = img_data->ANM_dir;
 
     int dir = img_data->display_orient_num;
-    int num = img_data->display_frame_num;
     int fpo = sv_info->s_type == single_frm ? 1 : anm_dir[dir].num_frames;
 
     FRM_Header header;
@@ -575,7 +576,9 @@ bool check_and_write_cfg_file(user_info* user_info, char* exe_path) {
     }
 
     write_cfg_file(user_info, exe_path);
-    fclose(cfg_file_ptr);
+    if (cfg_file_ptr) {
+        fclose(cfg_file_ptr);
+    }
     return true;
 }
 
@@ -618,11 +621,8 @@ bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path, uint8
 
     int img_w = src->w;
     int img_h = src->h;
-    int img_size = img_w * img_h;
-
     int num_tiles_x = img_w / MAP_TILE_W;
     int num_tiles_y = img_h / MAP_TILE_H;
-    uint8_t* pxls = src->pxls;
 
     if (type == TILE) {
         type = FRM;

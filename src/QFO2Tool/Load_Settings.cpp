@@ -93,7 +93,8 @@ void Load_Config(struct user_info* usr_info, char* exe_path) {
 void parse_data(char* file_data, size_t size, struct user_info* usr_info) {
     // config_data_struct is global here (maybe instance here instead?)
     while (config_data_struct.char_ptr < size) {
-        switch (file_data[config_data_struct.char_ptr]) {
+        switch (
+            file_data[config_data_struct.char_ptr]) { // NOLINT(clang-analyzer-security.ArrayBound)
             case '\r':
             case '\n': {
                 config_data_struct.char_ptr++;

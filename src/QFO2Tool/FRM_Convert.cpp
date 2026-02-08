@@ -44,8 +44,10 @@ Palette* load_palette_from_path(const char* path) {
     uint8_t r, g, b;
     Color* PaletteColors = path_palette->colors;
     for (int i = 0; i < 256; i++) {
-        uint8_t bytes[4];
-        fread(bytes, 3, 1, file_ptr);
+        uint8_t bytes[4] = {};
+        if (fread(bytes, 3, 1, file_ptr) != 1) {
+            break;
+        }
 
         r = convert_colors(bytes[0]);
         g = convert_colors(bytes[1]);
@@ -53,6 +55,7 @@ Palette* load_palette_from_path(const char* path) {
         PaletteColors[i] = Color{r, g, b};
     }
 
+    fclose(file_ptr);
     path_palette->num_colors = 256;
 
     return path_palette;
@@ -97,7 +100,7 @@ Surface* PAL_Color_Convert(Surface* src, Palette* pal, int color_match_algo) {
 }
 
 void Euclidian_Distance_Color_Match(Surface* Surface_32, Surface* Surface_8) {
-    uint8_t w_PaletteColor;
+    uint8_t w_PaletteColor = 0;
     Color rgba;
     Pxl_Err err;
 

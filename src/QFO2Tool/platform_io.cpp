@@ -497,6 +497,10 @@ char* io_load_txt_file(const char* full_path) {
     char* text_file_buff = (char*)malloc(file_size + 1);
 
     FILE* tiles_lst = fopen(full_path, "rb");
+    if (!tiles_lst) {
+        free(text_file_buff);
+        return nullptr;
+    }
     fread(text_file_buff, file_size, 1, tiles_lst);
     fclose(tiles_lst);
     // TODO: should I put error checking in

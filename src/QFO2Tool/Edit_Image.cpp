@@ -309,8 +309,6 @@ void surface_paint(variables* My_Variables, Surface* dst, float x, float y) {
     int color_pick = My_Variables->Color_Pick;
     float brush_w = My_Variables->pixel_perfect ? 1.0f : My_Variables->brush_size.x;
     float brush_h = My_Variables->pixel_perfect ? 1.0f : My_Variables->brush_size.y;
-    int brush_size = brush_h * brush_w;
-
     int w = dst->w;
     int h = dst->h;
 

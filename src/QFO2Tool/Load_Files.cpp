@@ -39,9 +39,10 @@ char* Program_Directory() {
         set_popup_warning("[ERROR] Program Directory()\n\n"
                           "Error reading program .exe location.");
         printf("Error reading program .exe location, read_size: %zd", read_size);
+        free(utf8_buff);
         return NULL;
     }
-    utf8_buff[read_size + 1] = '\0'; // append null to entire string
+    utf8_buff[read_size] = '\0'; // append null to entire string
 
 #endif
 
@@ -59,7 +60,6 @@ char* Program_Directory() {
 
 bool drag_drop_POPUP(variables* My_Variables, LF* F_Prop, image_paths* images_arr, int* counter) {
     bool open = true;
-    bool process_animation;
     if (ImGui::BeginPopupModal("Drag_Drop_Folder", &open)) {
         const char* name_ptr;
         for (int i = 0; i < 6; i++) {
@@ -76,7 +76,6 @@ bool drag_drop_POPUP(variables* My_Variables, LF* F_Prop, image_paths* images_ar
 
         if (ImGui::Button("Yep, everything in this folder \nis part of an animation.")) {
             open = false;
-            process_animation = true;
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
 
@@ -668,7 +667,6 @@ bool ImDialog_load_files(LF* F_Prop, image_data* img_data, user_info* usr_info,
     if (success) {
         add_recent_file(usr_info, load_name);
         load_name[0] = '\0';
-        success = false;
         load_file = false;
         return true;
     }

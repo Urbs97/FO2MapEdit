@@ -65,6 +65,9 @@ char* write_tiles_lst(char* tiles_lst_path, char* list_of_tiles) {
     }
 
     FILE* tiles_lst = fopen(tiles_lst_path, "wb");
+    if (!tiles_lst) {
+        return nullptr;
+    }
     fwrite(list_of_tiles, strlen(list_of_tiles), 1, tiles_lst);
     fclose(tiles_lst);
 
@@ -99,7 +102,9 @@ tile_name_arr* make_name_list_arr(char* new_tiles_list) {
         node++;
     }
 
-    large_list[node - 1].next = 0;
+    if (node > 0) {
+        large_list[node - 1].next = 0;
+    }
     return large_list;
 }
 
@@ -139,6 +144,9 @@ char* make_FRM_tile_LST(tt_arr_handle* handle, uint8_t* match_buff_src) {
 #pragma region popup
     if (buff_size < 1) {
         // if there are no nodes (or none with viable names)
+        if (!match_buff_src) {
+            free(match_buff);
+        }
         ImGui::OpenPopup("TILES.LST Unmodified");
         return nullptr;
     }
@@ -419,8 +427,8 @@ bool append_TMAP_tiles_LST(user_info* usr_nfo, tt_arr_handle* handle, export_sta
     }
 
     // write combined lists out
-    bool success = io_backup_file(save_path, nullptr);
-    success = io_save_txt_file(save_path, new_tiles_lst);
+    io_backup_file(save_path, nullptr);
+    bool success = io_save_txt_file(save_path, new_tiles_lst);
     if (!success) {
         set_popup_warning("[ERROR] append_TMAP_tiles_LST()"
                           "Unable to append to FRM TILES.LST\n");

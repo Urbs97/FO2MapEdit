@@ -1,10 +1,9 @@
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-#define STB_IMAGE_IMPLEMENTATION
 #include "MiniSDL.h"
 
+#include <assert.h>
 #include <stb_image.h>
+#include <stdlib.h>
+#include <string.h>
 
 // create blank surface, 4-bytes per pixel (RGBA)
 Surface* Create_RGBA_Surface(int width, int height) {
@@ -95,6 +94,7 @@ Surface* Load_File_to_RGBA(const char* filename) {
 
     Surface* surface = (Surface*)malloc(sizeof(Surface));
     if (!surface) {
+        stbi_image_free(pxls);
         return NULL;
     }
     surface->w = w;
