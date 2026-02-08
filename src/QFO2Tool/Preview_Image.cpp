@@ -27,7 +27,8 @@ void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, b
 
     if (img_data->overlay_count > 0) {
         draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
-                                &shaders->giant_triangle, img_data);
+                                &shaders->giant_triangle, img_data, img_data->overlay,
+                                img_data->overlay_count);
     } else {
         draw_texture_to_framebuffer(shaders->FO_pal, shaders->render_FRM_shader,
                                     &shaders->giant_triangle, img_data->framebuffer,

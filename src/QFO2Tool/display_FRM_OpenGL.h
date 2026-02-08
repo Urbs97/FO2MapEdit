@@ -12,7 +12,8 @@ void PAL_SURFACE_to_sub_texture(uint8_t* pxls, GLuint texture, int x_offset, int
 void draw_FRM_to_framebuffer(shader_info* shader_i, int width, int height, GLuint framebuffer,
                              GLuint texture);
 void draw_PAL_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
-                             struct image_data* img_data);
+                             struct image_data* img_data, OverlayLayer* overlays,
+                             int overlay_count);
 void animate_OTHER_to_framebuff(Shader* shader, mesh* triangle, image_data* img_data,
                                 uint64_t current_time);
 void draw_texture_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle, GLuint framebuffer,

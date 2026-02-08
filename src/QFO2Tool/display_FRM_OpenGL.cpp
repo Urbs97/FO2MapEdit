@@ -266,7 +266,8 @@ void draw_FRM_to_framebuffer(shader_info* shader_i, int width, int height, GLuin
 }
 
 void draw_PAL_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
-                             struct image_data* img_data) {
+                             struct image_data* img_data, OverlayLayer* overlays,
+                             int overlay_count) {
     glViewport(0, 0, img_data->width, img_data->height);
 
     // bind framebuffer to draw to
@@ -286,14 +287,14 @@ void draw_PAL_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
     int blend_arr[MAX_OVERLAY_LAYERS] = {};
     float color_arr[MAX_OVERLAY_LAYERS * 4] = {};
 
-    for (int i = 0; i < img_data->overlay_count && i < MAX_OVERLAY_LAYERS; i++) {
+    for (int i = 0; i < overlay_count && i < MAX_OVERLAY_LAYERS; i++) {
         glActiveTexture(GL_TEXTURE2 + i);
-        glBindTexture(GL_TEXTURE_2D, img_data->overlay[i].texture);
-        blend_arr[i] = static_cast<int>(img_data->overlay[i].blend);
-        color_arr[(i * 4) + 0] = img_data->overlay[i].color[0];
-        color_arr[(i * 4) + 1] = img_data->overlay[i].color[1];
-        color_arr[(i * 4) + 2] = img_data->overlay[i].color[2];
-        color_arr[(i * 4) + 3] = img_data->overlay[i].color[3];
+        glBindTexture(GL_TEXTURE_2D, overlays[i].texture);
+        blend_arr[i] = static_cast<int>(overlays[i].blend);
+        color_arr[(i * 4) + 0] = overlays[i].color[0];
+        color_arr[(i * 4) + 1] = overlays[i].color[1];
+        color_arr[(i * 4) + 2] = overlays[i].color[2];
+        color_arr[(i * 4) + 3] = overlays[i].color[3];
     }
 
     // shader
@@ -310,7 +311,7 @@ void draw_PAL_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
     }
 
     // Set overlay uniforms
-    shader->setInt("overlay_count", img_data->overlay_count);
+    shader->setInt("overlay_count", overlay_count);
     glUniform1iv(glGetUniformLocation(ID, "overlay_blend"), MAX_OVERLAY_LAYERS, blend_arr);
     glUniform4fv(glGetUniformLocation(ID, "overlay_color"), MAX_OVERLAY_LAYERS, color_arr);
 

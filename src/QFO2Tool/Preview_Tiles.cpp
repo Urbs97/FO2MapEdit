@@ -358,7 +358,7 @@ void prev_TMAP_tiles_SURFACE(user_info* usr_info, variables* My_Variables, image
     // TODO: rename?
     //       this takes 3 textures and draws them into 1 framebuffer
     draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader, &shaders->giant_triangle,
-                            img_data);
+                            img_data, img_data->overlay, img_data->overlay_count);
 
     static bool image_toggle = false;
     checkbox_handler("toggle image", &image_toggle);

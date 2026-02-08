@@ -36,6 +36,7 @@ struct LF {
     int active_layer = -1; // -1 = map, 0..N-1 = overlay index
 
     wmap_info* wmap = nullptr;            // non-null = this slot is a worldmap project
+    bool dirty = false;                   // true when unsaved edits exist
     bool show_close_confirm = false;      // pending "unsaved changes" dialog for tab close
     bool pending_commit_and_save = false; // commit edit_struct → edit_data, then save
 };

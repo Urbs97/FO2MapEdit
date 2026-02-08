@@ -532,15 +532,16 @@ void refresh_city_overlay(OverlayLayer* layer) {
 
 // --- Interactive Editing ---
 
-void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* ed, int layer_idx) {
-    if (vars == nullptr || ed == nullptr) {
+void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, image_data* edit_data,
+                     int layer_idx) {
+    if (vars == nullptr || img_data == nullptr) {
         return;
     }
-    if (layer_idx < 0 || layer_idx >= ed->overlay_count) {
+    if (layer_idx < 0 || layer_idx >= img_data->overlay_count) {
         return;
     }
 
-    OverlayLayer* layer = &ed->overlay[layer_idx];
+    OverlayLayer* layer = &img_data->overlay[layer_idx];
     if (layer->source_data == nullptr) {
         return;
     }
@@ -549,7 +550,7 @@ void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* ed, int layer_
 
     // Convert mouse position to map pixel coordinates
     ImVec2 mouse = ImGui::GetMousePos();
-    float scale = ed->scale;
+    float scale = edit_data->scale;
     float map_x = (mouse.x - img_pos.x) / scale;
     float map_y = (mouse.y - img_pos.y) / scale;
 

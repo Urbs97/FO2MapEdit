@@ -72,6 +72,7 @@ extern "C" const char *__lsan_default_suppressions() {
 
 #include "City_Layer.h"
 #include "ImGui_Warning.h"
+#include "Zoom_Pan.h"
 #include "Worldmap_Project.h"
 #include "timer_functions.h"
 
@@ -568,8 +569,8 @@ int main(int argc, char **argv) {
       if (My_Variables.window_number_focus > -1) {
         LF* focused = &My_Variables.F_Prop[My_Variables.window_number_focus];
         int al = focused->active_layer;
-        if (al >= 0 && al < focused->edit_data.overlay_count &&
-            !focused->edit_data.overlay[al].interactive) {
+        if (al >= 0 && al < focused->img_data.overlay_count &&
+            !focused->img_data.overlay[al].interactive) {
           show_msk_palette = true;
         }
       }
@@ -598,7 +599,7 @@ int main(int argc, char **argv) {
     g_any_file_editing = false;
     for (int i = 0; i < counter; i++) {
       if (My_Variables.F_Prop[i].file_open_window &&
-          My_Variables.F_Prop[i].editing_enabled) {
+          My_Variables.F_Prop[i].dirty) {
         g_any_file_editing = true;
         break;
       }
@@ -623,7 +624,7 @@ int main(int argc, char **argv) {
       if (ImGui::Button("Save & Quit")) {
         for (int i = 0; i < counter; i++) {
           LF *fp = &My_Variables.F_Prop[i];
-          if (!fp->file_open_window || !fp->editing_enabled) {
+          if (!fp->file_open_window || !fp->dirty) {
             continue;
 }
           fp->pending_commit_and_save = true;
@@ -839,7 +840,7 @@ void commit_map_edits(ANM_Dir *edit_struct, image_data *edit_data) {
 }
 
 // Layer panel — allows switching between Map and overlay layers
-void draw_layer_panel(LF *F_Prop, shader_info *shaders, image_data *edit_data) {
+void draw_layer_panel(LF *F_Prop, shader_info *shaders, image_data *img_data) {
   ImGui::Separator();
   ImGui::Text("Layers");
 
@@ -848,16 +849,16 @@ void draw_layer_panel(LF *F_Prop, shader_info *shaders, image_data *edit_data) {
     bool selected = (F_Prop->active_layer == -1);
     if (ImGui::Selectable("  Map", selected)) {
       // Commit overlay working buffer before switching away
-      if (F_Prop->active_layer >= 0 && F_Prop->active_layer < edit_data->overlay_count) {
-        commit_layer_edits(&edit_data->overlay[F_Prop->active_layer]);
+      if (F_Prop->active_layer >= 0 && F_Prop->active_layer < img_data->overlay_count) {
+        commit_layer_edits(&img_data->overlay[F_Prop->active_layer]);
       }
       F_Prop->active_layer = -1;
     }
   }
 
   // Overlay layers
-  for (int i = 0; i < edit_data->overlay_count; i++) {
-    OverlayLayer *layer = &edit_data->overlay[i];
+  for (int i = 0; i < img_data->overlay_count; i++) {
+    OverlayLayer *layer = &img_data->overlay[i];
     if (layer->type == LayerType::NONE || layer->srfc == nullptr) {
       continue;
     }
@@ -895,8 +896,8 @@ void draw_layer_panel(LF *F_Prop, shader_info *shaders, image_data *edit_data) {
     if (ImGui::Selectable((layer->name != nullptr) ? layer->name : "Layer", selected)) {
       if (layer->visible) {
         // Commit previous overlay's edits before switching
-        if (F_Prop->active_layer >= 0 && F_Prop->active_layer < edit_data->overlay_count) {
-          commit_layer_edits(&edit_data->overlay[F_Prop->active_layer]);
+        if (F_Prop->active_layer >= 0 && F_Prop->active_layer < img_data->overlay_count) {
+          commit_layer_edits(&img_data->overlay[F_Prop->active_layer]);
         }
         F_Prop->active_layer = i;
       }
@@ -914,7 +915,7 @@ static void commit_and_save_edits(LF *F_Prop, LF *edit_state_owner,
                                   ANM_Dir edit_struct[6]) {
   if (F_Prop == edit_state_owner) {
     commit_map_edits(edit_struct, &F_Prop->edit_data);
-    commit_all_overlay_edits(&F_Prop->edit_data);
+    commit_all_overlay_edits(&F_Prop->img_data);
     if ((F_Prop->edit_data.ANM_dir != nullptr) && (F_Prop->img_data.ANM_dir != nullptr)) {
       for (int d = 0; d < 6; d++) {
         int nf = F_Prop->edit_data.ANM_dir[d].num_frames;
@@ -931,11 +932,13 @@ static void commit_and_save_edits(LF *F_Prop, LF *edit_state_owner,
   }
   if ((F_Prop->wmap != nullptr) && F_Prop->wmap->save_path[0] != '\0') {
     save_wmap_project(F_Prop->wmap->save_path, F_Prop);
+    F_Prop->dirty = false;
   } else if (F_Prop->img_data.type == img_type::FRM && F_Prop->Opened_File[0] != '\0') {
     Save_Info sv_info;
     sv_info.s_type = Save_Type::all_dirs;
     save_FRM_SURFACE(F_Prop->Opened_File, &F_Prop->img_data, &usr_info,
                      &sv_info, true);
+    F_Prop->dirty = false;
   }
 }
 
@@ -1001,7 +1004,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
                                alpha_off);
           }
           commit_map_edits(edit_struct, &F_Prop->edit_data);
-          commit_all_overlay_edits(&F_Prop->edit_data);
+          commit_all_overlay_edits(&F_Prop->img_data);
           F_Prop->edit_data.type = img_type::TILE;
           image_data *ed = &F_Prop->edit_data;
           int dir = ed->display_orient_num;
@@ -1009,7 +1012,8 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
                                          My_Variables->CurrentTime_ms);
           shader_info *shaders = &My_Variables->shaders;
           draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
-                                  &shaders->giant_triangle, ed);
+                                  &shaders->giant_triangle, ed,
+                                  F_Prop->img_data.overlay, F_Prop->img_data.overlay_count);
           open_wmap_export = true;
         }
         if (open_wmap_export) {
@@ -1036,8 +1040,8 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
                                My_Variables->color_match_algo,
                                &F_Prop->editing_enabled, alpha_off);
             // MSK files: set active layer to the MSK overlay
-            int msk_idx = find_overlay(F_Prop->edit_data.overlay,
-                                       F_Prop->edit_data.overlay_count, LayerType::MSK);
+            int msk_idx = find_overlay(F_Prop->img_data.overlay,
+                                       F_Prop->img_data.overlay_count, LayerType::MSK);
             F_Prop->active_layer = msk_idx;
           }
         } else if (img_data->type == img_type::OTHER && !F_Prop->palettized) {
@@ -1111,53 +1115,23 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
             F_Prop->editing_enabled = true;
 
             // Auto-create MSK overlay for worldmap projects
-            image_data *ed = &F_Prop->edit_data;
-            if ((F_Prop->wmap != nullptr) && find_overlay(ed->overlay, ed->overlay_count, LayerType::MSK) < 0) {
-              int idx = add_overlay(ed->overlay, &ed->overlay_count,
+            image_data *img = &F_Prop->img_data;
+            if ((F_Prop->wmap != nullptr) && find_overlay(img->overlay, img->overlay_count, LayerType::MSK) < 0) {
+              int idx = add_overlay(img->overlay, &img->overlay_count,
                                     LayerType::MSK, LayerBlend::WHITE_MIX, "Mask",
                                     1.0F, 1.0F, 1.0F, 0.5F);
               if (idx >= 0) {
-                ed->overlay[idx].srfc = Create_8Bit_Surface(ed->width, ed->height, nullptr);
-                ed->overlay[idx].texture = init_texture(ed->overlay[idx].srfc,
-                                                        ed->overlay[idx].srfc->w,
-                                                        ed->overlay[idx].srfc->h, img_type::MSK);
+                img->overlay[idx].srfc = Create_8Bit_Surface(img->width, img->height, nullptr);
+                img->overlay[idx].texture = init_texture(img->overlay[idx].srfc,
+                                                        img->overlay[idx].srfc->w,
+                                                        img->overlay[idx].srfc->h, img_type::MSK);
               }
             }
           }
         } else {
           if (ImGui::Button("Disable Editing")) {
             commit_map_edits(edit_struct, &F_Prop->edit_data);
-            commit_all_overlay_edits(&F_Prop->edit_data);
-
-            // Copy overlay edits to img_data for preview
-            for (int oi = 0; oi < F_Prop->edit_data.overlay_count; oi++) {
-              OverlayLayer *ed_layer = &F_Prop->edit_data.overlay[oi];
-              if (ed_layer->srfc == nullptr) { continue;
-}
-              int mw = ed_layer->srfc->w;
-              int mh = ed_layer->srfc->h;
-              // Find or create matching overlay in img_data
-              int img_idx = find_overlay(F_Prop->img_data.overlay,
-                                         F_Prop->img_data.overlay_count, ed_layer->type);
-              if (img_idx < 0) {
-                img_idx = add_overlay(F_Prop->img_data.overlay,
-                                      &F_Prop->img_data.overlay_count,
-                                      ed_layer->type, ed_layer->blend, ed_layer->name,
-                                      ed_layer->color[0], ed_layer->color[1],
-                                      ed_layer->color[2], ed_layer->color[3]);
-                if (img_idx >= 0) {
-                  F_Prop->img_data.overlay[img_idx].srfc = Create_8Bit_Surface(mw, mh, nullptr);
-                  F_Prop->img_data.overlay[img_idx].texture =
-                      init_texture(F_Prop->img_data.overlay[img_idx].srfc, mw, mh, img_type::MSK);
-                }
-              }
-              if (img_idx >= 0 && (F_Prop->img_data.overlay[img_idx].srfc != nullptr)) {
-                memcpy(F_Prop->img_data.overlay[img_idx].srfc->pxls,
-                       ed_layer->srfc->pxls, static_cast<size_t>(mw) * mh);
-                SURFACE_to_texture(F_Prop->img_data.overlay[img_idx].srfc,
-                                   F_Prop->img_data.overlay[img_idx].texture, mw, mh, 1);
-              }
-            }
+            commit_all_overlay_edits(&F_Prop->img_data);
 
             // Copy map edits to img_data for preview
             if ((F_Prop->edit_data.ANM_dir != nullptr) && (F_Prop->img_data.ANM_dir != nullptr)) {
@@ -1191,12 +1165,12 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
 
         if (F_Prop->wmap != nullptr) {
           // Layer panel replaces old mask switching buttons
-          draw_layer_panel(F_Prop, shaders, ed);
+          draw_layer_panel(F_Prop, shaders, &F_Prop->img_data);
 
           // City info panel for selected city
-          if (F_Prop->active_layer >= 0 && F_Prop->active_layer < ed->overlay_count &&
-              ed->overlay[F_Prop->active_layer].type == LayerType::CITY) {
-            draw_city_info_panel(&ed->overlay[F_Prop->active_layer]);
+          if (F_Prop->active_layer >= 0 && F_Prop->active_layer < F_Prop->img_data.overlay_count &&
+              F_Prop->img_data.overlay[F_Prop->active_layer].type == LayerType::CITY) {
+            draw_city_info_panel(&F_Prop->img_data.overlay[F_Prop->active_layer]);
           }
         }
 
@@ -1205,22 +1179,22 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
           int num = ed->display_frame_num;
           int dir = ed->display_orient_num;
           bool editing_overlay = (F_Prop->active_layer >= 0 &&
-                                  F_Prop->active_layer < ed->overlay_count);
+                                  F_Prop->active_layer < F_Prop->img_data.overlay_count);
           Surface *edit_srfc = nullptr;
           if (!editing_overlay) {
             if (edit_struct[dir].frame_data != nullptr) {
               edit_srfc = edit_struct[dir].frame_data[num];
 }
           } else {
-            edit_srfc = ed->overlay[F_Prop->active_layer].edit_srfc;
+            edit_srfc = F_Prop->img_data.overlay[F_Prop->active_layer].edit_srfc;
           }
           if (edit_srfc != nullptr) {
             ClearSurface(edit_srfc);
             Surface *src = nullptr;
             GLuint texture = ed->FRM_texture;
             if (editing_overlay) {
-              src = ed->overlay[F_Prop->active_layer].srfc;
-              texture = ed->overlay[F_Prop->active_layer].texture;
+              src = F_Prop->img_data.overlay[F_Prop->active_layer].srfc;
+              texture = F_Prop->img_data.overlay[F_Prop->active_layer].texture;
             } else {
               src = ed->ANM_dir[dir].frame_data[num];
             }
@@ -1245,7 +1219,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
           open_save = true;
         }
         if (open_save) {
-          int msk_export_idx = find_overlay(ed->overlay, ed->overlay_count, LayerType::MSK);
+          int msk_export_idx = find_overlay(F_Prop->img_data.overlay, F_Prop->img_data.overlay_count, LayerType::MSK);
           if (F_Prop->active_layer >= 0 && F_Prop->active_layer == msk_export_idx) {
             open_save = save_MSK_popup(F_Prop);
           } else if (ed->type == img_type::FRM) {
@@ -1280,9 +1254,9 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
           edit_state_owner = F_Prop;
         }
         // Initialize overlay edit surfaces on demand
-        for (int oi = 0; oi < edit_data->overlay_count; oi++) {
-          if ((edit_data->overlay[oi].srfc != nullptr) && (edit_data->overlay[oi].edit_srfc == nullptr)) {
-            init_layer_edit_surface(&edit_data->overlay[oi]);
+        for (int oi = 0; oi < F_Prop->img_data.overlay_count; oi++) {
+          if ((F_Prop->img_data.overlay[oi].srfc != nullptr) && (F_Prop->img_data.overlay[oi].edit_srfc == nullptr)) {
+            init_layer_edit_surface(&F_Prop->img_data.overlay[oi]);
           }
         }
 
@@ -1293,16 +1267,23 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         ImVec2 img_pos = display_img_ImGUI(My_Variables, edit_data);
 
         bool is_interactive = (F_Prop->active_layer >= 0 &&
-                               F_Prop->active_layer < edit_data->overlay_count &&
-                               edit_data->overlay[F_Prop->active_layer].interactive);
-        if (is_interactive && edit_data->overlay[F_Prop->active_layer].type == LayerType::CITY) {
-          Edit_City_Layer(My_Variables, img_pos, edit_data, F_Prop->active_layer);
+                               F_Prop->active_layer < F_Prop->img_data.overlay_count &&
+                               F_Prop->img_data.overlay[F_Prop->active_layer].interactive);
+        if (is_interactive) {
+          // Interactive layers don't use Edit_Image, so handle zoom/pan here
+          zoom_pan(edit_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
+        }
+        if (is_interactive && F_Prop->img_data.overlay[F_Prop->active_layer].type == LayerType::CITY) {
+          Edit_City_Layer(My_Variables, img_pos, &F_Prop->img_data, edit_data, F_Prop->active_layer);
         } else {
-          Edit_Image(My_Variables, img_pos, &F_Prop->edit_data, edit_struct,
-                     F_Prop->active_layer,
+          Edit_Image(My_Variables, img_pos, &F_Prop->edit_data, &F_Prop->img_data,
+                     edit_struct, F_Prop->active_layer,
                      My_Variables->Palette_Update, &My_Variables->Color_Pick,
                      &stroke_state);
           draw_brush_cursor(&stroke_state);
+          if (!stroke_state.undo_stack.empty()) {
+            F_Prop->dirty = true;
+          }
         }
 
         draw_frame_boundary(edit_data, img_pos, F_Prop->active_layer);
@@ -1373,8 +1354,8 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
   }
   show_popup_warnings();
 
-  // Intercept tab close when editing is active
-  if (was_open && !F_Prop->file_open_window && F_Prop->editing_enabled) {
+  // Intercept tab close when there are unsaved edits
+  if (was_open && !F_Prop->file_open_window && F_Prop->editing_enabled && F_Prop->dirty) {
     F_Prop->file_open_window = true; // keep window alive
     F_Prop->show_close_confirm = true;
   }
@@ -1426,8 +1407,8 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
   if (!F_Prop->editing_enabled && F_Prop == edit_state_owner) {
     stroke_state_cleanup(&stroke_state);
     // Cleanup overlay edit surfaces
-    for (int oi = 0; oi < F_Prop->edit_data.overlay_count; oi++) {
-      cleanup_layer_edit_surface(&F_Prop->edit_data.overlay[oi]);
+    for (int oi = 0; oi < F_Prop->img_data.overlay_count; oi++) {
+      cleanup_layer_edit_surface(&F_Prop->img_data.overlay[oi]);
     }
     for (int i = 0; i < 6; i++) {
       // Free individual Surface objects before freeing the pointer array

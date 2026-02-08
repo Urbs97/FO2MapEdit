@@ -60,7 +60,8 @@ void refresh_city_overlay(OverlayLayer* layer);
 struct variables;
 
 // Interactive city editing handler (mouse hit-test, selection).
-void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* ed, int layer_idx);
+void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, image_data* edit_data,
+                     int layer_idx);
 
 // ImGui panel showing selected city info.
 void draw_city_info_panel(OverlayLayer* layer);

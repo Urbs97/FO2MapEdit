@@ -43,15 +43,17 @@ ImVec2 display_img_ImGUI(variables* My_Variables, image_data* edit_data) {
 }
 
 // helper: recomposite the edit image after undo/cancel
-static void recomposite(shader_info* shaders, image_data* edit_data, ANM_Dir* edit_struct,
-                        Surface* edit_srfc, GLuint texture, int dir, int num, uint64_t time_ms) {
+static void recomposite(shader_info* shaders, image_data* edit_data, image_data* img_data,
+                        ANM_Dir* edit_struct, Surface* edit_srfc, GLuint texture, int dir, int num,
+                        uint64_t time_ms) {
     SURFACE_to_texture(edit_srfc, texture, edit_srfc->w, edit_srfc->h, 1);
     if (edit_data->ANM_dir[dir].frame_data != nullptr) {
         animate_SURFACE_to_sub_texture(edit_data, edit_struct[dir].frame_data[num], time_ms);
     }
-    if (edit_data->overlay_count > 0) {
+    if (img_data->overlay_count > 0) {
         draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
-                                &shaders->giant_triangle, edit_data);
+                                &shaders->giant_triangle, edit_data, img_data->overlay,
+                                img_data->overlay_count);
     } else {
         draw_texture_to_framebuffer(shaders->FO_pal, shaders->render_FRM_shader,
                                     &shaders->giant_triangle, edit_data->framebuffer,
@@ -60,8 +62,8 @@ static void recomposite(shader_info* shaders, image_data* edit_data, ANM_Dir* ed
 }
 
 void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
-                ANM_Dir* edit_struct, int active_layer, bool Palette_Update, uint8_t* Color_Pick,
-                StrokeState* stroke_state) {
+                image_data* img_data, ANM_Dir* edit_struct, int active_layer, bool Palette_Update,
+                uint8_t* Color_Pick, StrokeState* stroke_state) {
     shader_info* shaders = &My_Variables->shaders;
 
     // handle zoom and panning for the image
@@ -91,20 +93,20 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
         num = anm_dir[dir].num_frames - 1;
     }
 
-    bool editing_overlay = (active_layer >= 0 && active_layer < edit_data->overlay_count);
+    bool editing_overlay = (active_layer >= 0 && active_layer < img_data->overlay_count);
 
     Surface* edit_srfc = nullptr;
     if (!editing_overlay) {
         edit_srfc = edit_struct[dir].frame_data[num];
     } else {
-        edit_srfc = edit_data->overlay[active_layer].edit_srfc;
+        edit_srfc = img_data->overlay[active_layer].edit_srfc;
     }
 
     if (edit_data->ANM_dir == nullptr) {
         ImGui::Text("No ANM_dir");
         return;
     }
-    bool has_overlay = (edit_data->overlay_count > 0);
+    bool has_overlay = (img_data->overlay_count > 0);
     if (edit_data->ANM_dir[dir].frame_data == nullptr && !has_overlay) {
         ImGui::Text("No frame_data");
         return;
@@ -114,8 +116,8 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
     Surface* srfc_ptr = edit_srfc;
     GLuint texture = edit_data->FRM_texture;
     if (editing_overlay) {
-        srfc_ptr = edit_data->overlay[active_layer].edit_srfc;
-        texture = edit_data->overlay[active_layer].texture;
+        srfc_ptr = img_data->overlay[active_layer].edit_srfc;
+        texture = img_data->overlay[active_layer].texture;
     }
 
     // --- Compute brush cursor position (always when window is hovered) ---
@@ -221,7 +223,7 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
         }
         if (cancel) {
             stroke_cancel(stroke_state);
-            recomposite(shaders, edit_data, edit_struct, srfc_ptr, texture, dir, num,
+            recomposite(shaders, edit_data, img_data, edit_struct, srfc_ptr, texture, dir, num,
                         My_Variables->CurrentTime_ms);
             return;
         }
@@ -236,7 +238,7 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
     }
     if (!stroke_state->stroke_active && undo_trigger) {
         if (stroke_undo(stroke_state)) {
-            recomposite(shaders, edit_data, edit_struct, srfc_ptr, texture, dir, num,
+            recomposite(shaders, edit_data, img_data, edit_struct, srfc_ptr, texture, dir, num,
                         My_Variables->CurrentTime_ms);
             return;
         }
@@ -251,7 +253,7 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
     }
     if (!stroke_state->stroke_active && redo_trigger) {
         if (stroke_redo(stroke_state)) {
-            recomposite(shaders, edit_data, edit_struct, srfc_ptr, texture, dir, num,
+            recomposite(shaders, edit_data, img_data, edit_struct, srfc_ptr, texture, dir, num,
                         My_Variables->CurrentTime_ms);
             return;
         }
@@ -286,9 +288,10 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
                                            My_Variables->CurrentTime_ms);
         }
 
-        if (edit_data->overlay_count > 0) {
+        if (img_data->overlay_count > 0) {
             draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
-                                    &shaders->giant_triangle, edit_data);
+                                    &shaders->giant_triangle, edit_data, img_data->overlay,
+                                    img_data->overlay_count);
         } else {
             draw_texture_to_framebuffer(shaders->FO_pal, shaders->render_FRM_shader,
                                         &shaders->giant_triangle, edit_data->framebuffer,
