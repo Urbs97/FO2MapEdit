@@ -1,6 +1,8 @@
 #pragma once
-#include <stdint.h>
+
 #include "Palette_Cycle.h"
+
+#include <stdint.h>
 
 typedef struct Rect {
     int x;
@@ -12,12 +14,12 @@ typedef struct Rect {
 typedef struct Surface {
     uint16_t w;
     uint16_t h;
-    int16_t  x;
-    int16_t  y;
-    int channels;       //number of color channels, 1 for indexed/palletized, 3/4 for RGB/RGBA
-    int pitch;          //== w*channels
-    Palette* palette;   //store a palette per image?
-    uint8_t* pxls;      //actual pixel data
+    int16_t x;
+    int16_t y;
+    int channels;     // number of color channels, 1 for indexed/palletized, 3/4 for RGB/RGBA
+    int pitch;        //== w*channels
+    Palette* palette; // store a palette per image?
+    uint8_t* pxls;    // actual pixel data
 } Surface;
 
 void FreeSurface(Surface* src);

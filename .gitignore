@@ -43,7 +43,7 @@ src/config\\msk2bmpGUI.cfg
 *.zip
 CMakeCache.txt
 *.cmake
-Makefile
+build/**/Makefile
 /src/resources/BARREL.FRM
 /src/resources/HANPWRAB.FRM
 /x64

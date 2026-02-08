@@ -1,13 +1,14 @@
 #include "FRM_Convert.h"
-#include "B_Endian.h"
-#include "Load_Files.h"
+
 #include "ImGui_Warning.h"
 #include "platform_io.h"
 
+#include <cerrno>
 #include <cstdint>
-#include <vector>
-#include <math.h>
+#include <cstdio>
+#include <cstring>
 #include <limits.h>
+#include <math.h>
 
 union Pxl_Err {
     struct {
@@ -23,30 +24,26 @@ union Pxl_Err {
 uint8_t convert_colors(uint8_t bytes) {
     if (bytes < 64) {
         return 4 * bytes;
-    }
-    else {
+    } else {
         return bytes;
     }
 }
 
-//TODO: rewrite this to more generically load palettes
-//TODO: index 0 might be alpha channel only
-//      need to load alternative palettes and check
-//      if the game always assigns alpha to index 0
-//      regardless of palette info
-//  https://falloutmods.fandom.com/wiki/PAL_File_Format
-//TODO: also, move this function to load_files.h/cpp
-Palette* load_palette_from_path(const char* path)
-{
+// TODO: rewrite this to more generically load palettes
+// TODO: index 0 might be alpha channel only
+//       need to load alternative palettes and check
+//       if the game always assigns alpha to index 0
+//       regardless of palette info
+//   https://falloutmods.fandom.com/wiki/PAL_File_Format
+// TODO: also, move this function to load_files.h/cpp
+Palette* load_palette_from_path(const char* path) {
     FILE* file_ptr = fopen(path, "rb");
     if (file_ptr == NULL) {
-        //TODO: replace color.pal w/name
-        //      (possibly modify messagebox for user provided palette)
-        //TODO: log out to file
-        set_popup_warning(
-            "[ERROR] load_palette_from_path()\n"
-            "Unable to load color.pal, the default Fallout color palette."
-        );
+        // TODO: replace color.pal w/name
+        //       (possibly modify messagebox for user provided palette)
+        // TODO: log out to file
+        set_popup_warning("[ERROR] load_palette_from_path()\n"
+                          "Unable to load color.pal, the default Fallout color palette.");
         printf("Error opening color.pal \n%d: %s\n", errno, strerror(errno));
         printf("Current Working Directory: %s\n", io_get_cwd());
         return NULL;
@@ -56,15 +53,14 @@ Palette* load_palette_from_path(const char* path)
 
     uint8_t r, g, b;
     Color* PaletteColors = path_palette->colors;
-    for (int i = 0; i < 256; i++)
-    {
+    for (int i = 0; i < 256; i++) {
         uint8_t bytes[4];
         fread(bytes, 3, 1, file_ptr);
 
         r = convert_colors(bytes[0]);
         g = convert_colors(bytes[1]);
         b = convert_colors(bytes[2]);
-        PaletteColors[i] = Color{ r, g, b };
+        PaletteColors[i] = Color{r, g, b};
     }
 
     path_palette->num_colors = 256;
@@ -73,19 +69,16 @@ Palette* load_palette_from_path(const char* path)
 }
 
 // Converts the color space to Fallout's paletted format
-Surface* PAL_Color_Convert(Surface *src, Palette* pal, int color_match_algo)
-{
+Surface* PAL_Color_Convert(Surface* src, Palette* pal, int color_match_algo) {
     Surface* Surface_32 = src;
     if (src->channels < 4) {
         // Convert input surface to 32bit format for easy palettization
         Surface_32 = Convert_Surface_to_RGBA(src);
     }
     if (!Surface_32) {
-        //TODO: log out to file
-        set_popup_warning(
-            "[ERROR] FRM_Color_Convert()"
-            "Unable to allocate 32-bit surface."
-        );
+        // TODO: log out to file
+        set_popup_warning("[ERROR] FRM_Color_Convert()"
+                          "Unable to allocate 32-bit surface.");
         printf("Error: Unable to allocate 32-bit surface: %d\n", __LINE__);
         return nullptr;
     }
@@ -93,16 +86,14 @@ Surface* PAL_Color_Convert(Surface *src, Palette* pal, int color_match_algo)
     // Setup for palettizing image
     Surface* Surface_8 = Create_8Bit_Surface(src->w, src->h, pal);
     if (!Surface_8) {
-        //TODO: log out to file
-        set_popup_warning(
-            "[ERROR] FRM_Color_Convert()"
-            "Unable to allocate 8-bit surface."
-        );
+        // TODO: log out to file
+        set_popup_warning("[ERROR] FRM_Color_Convert()"
+                          "Unable to allocate 8-bit surface.");
         printf("Error: Unable to allocate 8-bit surface: %d\n", __LINE__);
         return nullptr;
     }
-    //switch to change between euclidian and sdl color match algorithms
-    //TODO: get a new color match algorithm
+    // switch to change between euclidian and sdl color match algorithms
+    // TODO: get a new color match algorithm
     if (color_match_algo == 0) {
         Euclidian_Distance_Color_Match(Surface_32, Surface_8);
     } else if (color_match_algo == 1) {
@@ -115,11 +106,7 @@ Surface* PAL_Color_Convert(Surface *src, Palette* pal, int color_match_algo)
     return Surface_8;
 }
 
-
-void Euclidian_Distance_Color_Match(
-                Surface* Surface_32,
-                Surface* Surface_8)
-{
+void Euclidian_Distance_Color_Match(Surface* Surface_32, Surface* Surface_8) {
     uint8_t w_PaletteColor;
     Color rgba;
     Pxl_Err err;
@@ -130,7 +117,7 @@ void Euclidian_Distance_Color_Match(
     int v;
     int w;
 
-    int c = 100;    //TODO: remove this counter
+    int c = 100; // TODO: remove this counter
     Color* PaletteColors = Surface_8->palette->colors;
 
     for (int y = 0; y < Surface_32->h; y++) {
@@ -143,32 +130,30 @@ void Euclidian_Distance_Color_Match(
             if (rgba.a < 255) {
                 w_PaletteColor = 0;
             } else {
-                for (int j = 0; j < Surface_8->palette->num_colors; j++)
-                {
+                for (int j = 0; j < Surface_8->palette->num_colors; j++) {
                     s = rgba.r - PaletteColors[j].r;
                     t = rgba.g - PaletteColors[j].g;
                     u = rgba.b - PaletteColors[j].b;
                     v = rgba.a - PaletteColors[j].a;
-//SDL source code for conversion
-//https://github.com/libsdl-org/SDL/blob/e5101ebae68b62453930b94e19d62ae04e0df1f1/src/video/SDL_pixels.c#L1162
+                    // SDL source code for conversion
+                    // https://github.com/libsdl-org/SDL/blob/e5101ebae68b62453930b94e19d62ae04e0df1f1/src/video/SDL_pixels.c#L1162
                     s *= s;
                     t *= t;
                     u *= u;
                     v *= v;
-                    //TODO: non-sqrt() is faster, but produces different results
+                    // TODO: non-sqrt() is faster, but produces different results
                     w = (s + t + u + v);
                     // w = sqrt(s + t + u + v);
 
                     if (w < w_smallest) {
-                        w_smallest     = w;
+                        w_smallest = w;
                         w_PaletteColor = j;
                     }
-                // TODO: if w == 0 here
-                // we've found an exact match
-                // and shouldn't bother searching
-                // the rest of the palette
-                    if (j == Surface_8->palette->num_colors - 1)
-                    {
+                    // TODO: if w == 0 here
+                    // we've found an exact match
+                    // and shouldn't bother searching
+                    // the rest of the palette
+                    if (j == Surface_8->palette->num_colors - 1) {
                         err.r = rgba.r - PaletteColors[w_PaletteColor].r;
                         err.g = rgba.g - PaletteColors[w_PaletteColor].g;
                         err.b = rgba.b - PaletteColors[w_PaletteColor].b;
@@ -179,27 +164,28 @@ void Euclidian_Distance_Color_Match(
                 }
             }
 
-            //TODO: need to clean this up
-            //      used to keep track of palettization
+            // TODO: need to clean this up
+            //       used to keep track of palettization
             if (idx == c) {
                 printf("Euclidian color match loop #: %d\n", idx);
                 c *= 10;
             }
 
-            Surface_8->pxls[(Surface_8->pitch*y) + x] = w_PaletteColor;
+            Surface_8->pxls[(Surface_8->pitch * y) + x] = w_PaletteColor;
         }
     }
 }
 
-void limit_dither(Surface* Surface_32,
-                  union Pxl_Err *err,
-                  int x, int y)
-{
+void limit_dither(Surface* Surface_32, union Pxl_Err* err, int x, int y) {
     int pixel_index[4];
-    pixel_index[0] = (y + 0 <  Surface_32->h && x + 1 <  Surface_32->w) ? (Surface_32->w * (y + 0)) + (x + 1) : -1;
-    pixel_index[1] = (y + 1 <  Surface_32->h && x - 1 >= 0            ) ? (Surface_32->w * (y + 1)) + (x - 1) : -1;
-    pixel_index[2] = (y + 1 <  Surface_32->h && x + 0 <  Surface_32->w) ? (Surface_32->w * (y + 1)) + (x + 0) : -1;
-    pixel_index[3] = (y + 1 <  Surface_32->h && x + 1 <  Surface_32->w) ? (Surface_32->w * (y + 1)) + (x + 1) : -1;
+    pixel_index[0] =
+        (y + 0 < Surface_32->h && x + 1 < Surface_32->w) ? (Surface_32->w * (y + 0)) + (x + 1) : -1;
+    pixel_index[1] =
+        (y + 1 < Surface_32->h && x - 1 >= 0) ? (Surface_32->w * (y + 1)) + (x - 1) : -1;
+    pixel_index[2] =
+        (y + 1 < Surface_32->h && x + 0 < Surface_32->w) ? (Surface_32->w * (y + 1)) + (x + 0) : -1;
+    pixel_index[3] =
+        (y + 1 < Surface_32->h && x + 1 < Surface_32->w) ? (Surface_32->w * (y + 1)) + (x + 1) : -1;
 
     int factor[4];
     factor[0] = 7;
@@ -207,21 +193,16 @@ void limit_dither(Surface* Surface_32,
     factor[2] = 5;
     factor[3] = 1;
 
-    for (int i = 0; i < 4; i++)
-    {
+    for (int i = 0; i < 4; i++) {
         if (pixel_index[i] >= 0) {
             clamp_dither(Surface_32, err, pixel_index[i], factor[i]);
         }
     }
 }
 
-void clamp_dither(Surface *Surface_32,
-                    union Pxl_Err *err,
-                    int pixel_idx,
-                    int factor)
-{
+void clamp_dither(Surface* Surface_32, union Pxl_Err* err, int pixel_idx, int factor) {
     // pointer arrays so I can run a loop through them dependably
-    uint8_t* pxl_color [4];
+    uint8_t* pxl_color[4];
     Color rgba;
     memcpy(&rgba, (Color*)Surface_32->pxls + pixel_idx, sizeof(Color));
 
@@ -230,19 +211,19 @@ void clamp_dither(Surface *Surface_32,
     pxl_color[2] = &(((Color*)Surface_32->pxls + (pixel_idx))->b);
     pxl_color[3] = &(((Color*)Surface_32->pxls + (pixel_idx))->a);
 
-    // take palettized error and clamp values to max/min, then add error to appropriate pixel
-    for (int i = 0; i < 4; i++)
-    {
+    // take palettized error and clamp values to max/min, then add error to
+    // appropriate pixel
+    for (int i = 0; i < 4; i++) {
         // clamp 255 or 0
         int total_error = (rgba.clr[i] + err->arr[i] * factor / 16);
 
-        if (total_error > 255)
-        { *pxl_color[i] = 255; }
-        else
-        if (total_error < 0)
-        { *pxl_color[i] = 0; }
+        if (total_error > 255) {
+            *pxl_color[i] = 255;
+        } else if (total_error < 0) {
+            *pxl_color[i] = 0;
+        }
         // if not clamp, then store error info
         else
-          *pxl_color[i] = total_error;
+            *pxl_color[i] = total_error;
     }
 }

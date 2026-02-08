@@ -1,10 +1,11 @@
 #pragma once
-#include <glad/glad.h>
-#include <stdlib.h>
 
-#include "imgui.h"
 #include "Load_Animation.h"
 #include "Load_Settings.h"
+#include "imgui.h"
+
+#include <glad/glad.h>
+#include <stdlib.h>
 
 struct mesh {
     GLuint VBO = 0;
@@ -13,49 +14,48 @@ struct mesh {
     GLuint vertexCount = 0;
 };
 
-
 #pragma pack(push, 1)
 struct FRM_Header {
-    uint32_t version = 0;                       // 0x0000
-    uint16_t FPS = 0;                           // 0x0004
-    uint16_t Action_Frame = 0;                  // 0x0006
-    uint16_t Frames_Per_Orient = 0;             // 0x0008
-    int16_t  Shift_Orient_x[6] = {};            // 0x000A
-    int16_t  Shift_Orient_y[6] = {};            // 0x0016
-    uint32_t Frame_0_Offset[6] = {};            // 0x0022
-    uint32_t Frame_Area = 0;                    // 0x003A
+    uint32_t version = 0;            // 0x0000
+    uint16_t FPS = 0;                // 0x0004
+    uint16_t Action_Frame = 0;       // 0x0006
+    uint16_t Frames_Per_Orient = 0;  // 0x0008
+    int16_t Shift_Orient_x[6] = {};  // 0x000A
+    int16_t Shift_Orient_y[6] = {};  // 0x0016
+    uint32_t Frame_0_Offset[6] = {}; // 0x0022
+    uint32_t Frame_Area = 0;         // 0x003A
 };
 
 struct FRM_Frame {
-    uint16_t Frame_Width;                       // 0x003E
-    uint16_t Frame_Height;                      // 0x0040
-    uint32_t Frame_Size;                        // 0x0042
-    int16_t  Shift_Offset_x;                    // 0x0046
-    int16_t  Shift_Offset_y;                    // 0x0048
-    uint8_t  frame_start[];
+    uint16_t Frame_Width;   // 0x003E
+    uint16_t Frame_Height;  // 0x0040
+    uint32_t Frame_Size;    // 0x0042
+    int16_t Shift_Offset_x; // 0x0046
+    int16_t Shift_Offset_y; // 0x0048
+    uint8_t frame_start[];
 };
 #pragma pack(pop)
 
 struct FRM_Dir {
-    int num_frames  = 0;
+    int num_frames = 0;
     Direction orientation = no_data;
     FRM_Frame** frame_data = NULL;
     rectangle* bounding_box = {};
 };
 
 struct image_data {
-    FRM_Header* FRM_hdr = NULL;     //same as FRM_data
+    FRM_Header* FRM_hdr = NULL; // same as FRM_data
     // FRM_Dir*    FRM_dir = NULL;     //TODO: remove
     // rectangle FRM_bounding_box[6];  //TODO: remove
 
-    ANM_Header* ANM_hdr = NULL;     //TODO: remove? leave FRM_hdr?
-    ANM_Dir*    ANM_dir = NULL;
+    ANM_Header* ANM_hdr = NULL; // TODO: remove? leave FRM_hdr?
+    ANM_Dir* ANM_dir = NULL;
     rectangle ANM_bounding_box[6];
 
     ANM_Dir* save_ptr = NULL;
 
-    img_type type     = UNK;
-    uint8_t* FRM_data = NULL;       //duplicate of FRM_hdr?
+    img_type type = UNK;
+    uint8_t* FRM_data = NULL; // duplicate of FRM_hdr?
     uint8_t* MSK_data = NULL;
     Surface* MSK_srfc = NULL;
 
@@ -77,10 +77,13 @@ struct image_data {
     ImVec2 offset{};
 };
 
-//FRM loading
+// FRM loading
 uint8_t* load_entire_file(const char* file_name, int* file_size);
 bool framebuffer_init(GLuint* texture, GLuint* framebuffer, int w, int h);
 bool load_FRM_OpenGL(const char* file_name, image_data* img_data, shader_info* shaders);
 
-void calculate_bounding_box(rectangle* bounding_box, rectangle* FRM_bounding_box, FRM_Frame* frame_start, rectangle* box);//, FRM_Dir* frm_dir, int i, int j);
-void calculate_bounding_box_SURFACE(rectangle* bounding_box, rectangle* FRM_bounding_box, Surface* anm_frame, rectangle* box);
+void calculate_bounding_box(rectangle* bounding_box, rectangle* FRM_bounding_box,
+                            FRM_Frame* frame_start,
+                            rectangle* box); //, FRM_Dir* frm_dir, int i, int j);
+void calculate_bounding_box_SURFACE(rectangle* bounding_box, rectangle* FRM_bounding_box,
+                                    Surface* anm_frame, rectangle* box);

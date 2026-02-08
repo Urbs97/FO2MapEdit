@@ -1,15 +1,14 @@
 #pragma once
-#include <cstdint>
 
 #ifdef QFO2_WINDOWS
-    #define MAX_PATH 256
-    #define PLATFORM_SLASH              ('\\')
-    #define NATIVE_STRING_TYPE          const wchar_t
-    bool io_wstrncmp(NATIVE_STRING_TYPE* str1, NATIVE_STRING_TYPE* str2, int num_char);
+#define MAX_PATH 256
+#define PLATFORM_SLASH ('\\')
+#define NATIVE_STRING_TYPE const wchar_t
+bool io_wstrncmp(NATIVE_STRING_TYPE* str1, NATIVE_STRING_TYPE* str2, int num_char);
 #elif defined(QFO2_LINUX)
-    #define MAX_PATH 4096
-    #define PLATFORM_SLASH              ('/')
-    #define NATIVE_STRING_TYPE          const char
+#define MAX_PATH 4096
+#define PLATFORM_SLASH ('/')
+#define NATIVE_STRING_TYPE const char
 #endif
 
 int io_strncmp(const char* str1, const char* str2, int num_char);
@@ -20,11 +19,9 @@ char* io_wchar_utf8(NATIVE_STRING_TYPE* src);
 wchar_t* io_utf8_wchar(const char* src);
 char* io_get_cwd();
 
-
 void* io_open_dir(char* dir_name);
 char* io_scan_dir(void* dir_stream);
 bool io_close_dir(void* dir_stream);
-
 
 char* io_path_check(char* file_name);
 bool io_file_exists(const char* filename);

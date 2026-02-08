@@ -1,41 +1,20 @@
-//https://falloutmods.fandom.com/wiki/PAL_File_Format
-//https://falloutmods.fandom.com/wiki/Pal_animations#Animated_colors
+// https://falloutmods.fandom.com/wiki/PAL_File_Format
+// https://falloutmods.fandom.com/wiki/Pal_animations#Animated_colors
 #include "Palette_Cycle.h"
-#include "ImGui_Warning.h"
-#ifdef QFO2_WINDOWS
-    #include <Windows.h>
-#elif defined(QFO2_LINUX)
-    #include "Load_Settings.h"
-#endif
 
-//color cycling stuff
-// Palette color arrays      r,   g,   b
-uint8_t g_nSlime[] =     {   0, 108,   0,       // Slime
-                            11, 115,   7,
-                            27, 123,  15,
-                            43, 131,  27 };
-uint8_t g_nMonitors[] =  { 107, 107, 111,       // Monitors
-                            99, 103, 127,
-                            87, 107, 143,
-                             0, 147, 163,
-                           107, 187, 255 };
-uint8_t g_nFireSlow[] =  { 255,   0,   0,       // Slow fire
-                           215,   0,   0,
-                           147,  43,  11,
-                           255, 119,   0,
-                           255,  59,   0 };
-uint8_t g_nFireFast[] =  {  71,   0,   0,       // Fast fire
-                           123,   0,   0,
-                           179,   0,   0,
-                           123,   0,   0,
-                            71,   0,   0 };
-uint8_t g_nShoreline[] = {  83,  63,  43,       // Shoreline
-                            75,  59,  43,
-                            67,  55,  39,
-                            63,  51,  39,
-                            55,  47,  35,
-                            51,  43,  35 };
-int g_nBlinkingRed = { -4*4 };
+// color cycling stuff
+//  Palette color arrays      r,   g,   b
+uint8_t g_nSlime[] = {0,  108, 0, // Slime
+                      11, 115, 7, 27, 123, 15, 43, 131, 27};
+uint8_t g_nMonitors[] = {107, 107, 111, // Monitors
+                         99,  103, 127, 87, 107, 143, 0, 147, 163, 107, 187, 255};
+uint8_t g_nFireSlow[] = {255, 0, 0, // Slow fire
+                         215, 0, 0, 147, 43, 11, 255, 119, 0, 255, 59, 0};
+uint8_t g_nFireFast[] = {71,  0, 0, // Fast fire
+                         123, 0, 0, 179, 0, 0, 123, 0, 0, 71, 0, 0};
+uint8_t g_nShoreline[] = {83, 63, 43, // Shoreline
+                          75, 59, 43, 67, 55, 39, 63, 51, 39, 55, 47, 35, 51, 43, 35};
+int g_nBlinkingRed = {-4 * 4};
 
 struct cycle {
     // Current parameters of cycle
@@ -53,15 +32,15 @@ struct cycle {
     double g_dwLastCycleVeryFast = 0;
 } cycle_vals;
 
-void color_cycle_PAL(Palette* pal, int* g_dwCurrent, int pal_index, uint8_t * cycle_colors, int cycle_count)
-{
+void color_cycle_PAL(Palette* pal, int* g_dwCurrent, int pal_index, uint8_t* cycle_colors,
+                     int cycle_count) {
     uint16_t Current_Frame = *g_dwCurrent;
 
     for (int i = cycle_count; i >= 0; i--) {
         pal->colors[pal_index + i].r = cycle_colors[Current_Frame * 3 + 0];
         pal->colors[pal_index + i].g = cycle_colors[Current_Frame * 3 + 1];
         pal->colors[pal_index + i].b = cycle_colors[Current_Frame * 3 + 2];
-        //all cycle colors have alpha of 255
+        // all cycle colors have alpha of 255
         pal->colors[pal_index + i].a = 255;
 
         if (Current_Frame == cycle_count)
@@ -76,9 +55,9 @@ void color_cycle_PAL(Palette* pal, int* g_dwCurrent, int pal_index, uint8_t * cy
         (*g_dwCurrent)++;
 }
 
-//returns true if Palette is updated
-//used to indicate the FRM needs to be re-rendered
-bool update_PAL_array(Palette* pal, double CurrentTime)//, bool* Palette_Update)
+// returns true if Palette is updated
+// used to indicate the FRM needs to be re-rendered
+bool update_PAL_array(Palette* pal, double CurrentTime) //, bool* Palette_Update)
 {
     bool update = false;
     uint16_t g_dwCycleSpeedFactor = 1;
@@ -113,9 +92,11 @@ bool update_PAL_array(Palette* pal, double CurrentTime)//, bool* Palette_Update)
 
     if (CurrentTime - cycle_vals.g_dwLastCycleVeryFast >= 33 * g_dwCycleSpeedFactor) {
         // Blinking red ///////////////////////////////////////////////////////
-        //TODO: need to fix this color cycle...doesn't update in ImGui correctly yet
-        if ((cycle_vals.g_nBlinkingRedCurrent == 0) || (cycle_vals.g_nBlinkingRedCurrent == 60*4))
-        { g_nBlinkingRed = -g_nBlinkingRed; }
+        // TODO: need to fix this color cycle...doesn't update in ImGui correctly yet
+        if ((cycle_vals.g_nBlinkingRedCurrent == 0) ||
+            (cycle_vals.g_nBlinkingRedCurrent == 60 * 4)) {
+            g_nBlinkingRed = -g_nBlinkingRed;
+        }
 
         pal->colors[254].r = (cycle_vals.g_nBlinkingRedCurrent + g_nBlinkingRed);
         pal->colors[254].g = 0;

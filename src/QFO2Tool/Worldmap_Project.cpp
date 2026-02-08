@@ -1,24 +1,24 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
-
 #include "Worldmap_Project.h"
+
+#include "B_Endian.h"
+#include "ImGui_Warning.h"
 #include "Image2Texture.h"
 #include "display_FRM_OpenGL.h"
-#include "ImGui_Warning.h"
-#include "B_Endian.h"
 
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-bool write_worldmap_txt(const char* output_path, const char* base_name,
-                        int tiles_x, int tiles_y, Surface* msk_srfc)
-{
+bool write_worldmap_txt(const char* output_path, const char* base_name, int tiles_x, int tiles_y,
+                        Surface* msk_srfc) {
     char txt_path[MAX_PATH];
     snprintf(txt_path, MAX_PATH, "%s/worldmap.txt", output_path);
 
     FILE* file = fopen(txt_path, "w");
     if (!file) {
-        printf("Error: write_worldmap_txt(), unable to open %s for writing: L%d\n", txt_path, __LINE__);
+        printf("Error: write_worldmap_txt(), unable to open %s for writing: L%d\n", txt_path,
+               __LINE__);
         return false;
     }
 
@@ -67,10 +67,8 @@ bool write_worldmap_txt(const char* output_path, const char* base_name,
     // --- [Tile N] sections ---
     int tile_num = 0;
     int full_w = msk_srfc ? msk_srfc->w : 0;
-    for (int y = 0; y < tiles_y; y++)
-    {
-        for (int x = 0; x < tiles_x; x++)
-        {
+    for (int y = 0; y < tiles_y; y++) {
+        for (int x = 0; x < tiles_x; x++) {
             fprintf(file, "[Tile %d]\n", tile_num);
             fprintf(file, "art_idx=%d\n", WRLDMP_ART_IDX + tile_num);
             fprintf(file, "encounter_difficulty=0\n");
@@ -108,21 +106,16 @@ bool write_worldmap_txt(const char* output_path, const char* base_name,
     return true;
 }
 
-
 // Shared helper: set up OpenGL resources for a stitched worldmap surface.
 // Stores references to stitched and msk_srfc in img_data (does not copy).
 // After a successful call, img_data owns the surfaces — caller must not free them.
-static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc,
-                              LF* F_Prop, image_data* img_data,
-                              shader_info* shaders)
-{
+static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc, LF* F_Prop, image_data* img_data,
+                             shader_info* shaders) {
     // allocate ANM_dir[6]
     img_data->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir) * 6);
     if (!img_data->ANM_dir) {
-        set_popup_warning(
-            "[ERROR] init_wmap_opengl()\n\n"
-            "Unable to allocate memory for ANM_dir."
-        );
+        set_popup_warning("[ERROR] init_wmap_opengl()\n\n"
+                          "Unable to allocate memory for ANM_dir.");
         printf("Error: init_wmap_opengl(), ANM_dir alloc failed : L%d\n", __LINE__);
         return false;
     }
@@ -131,10 +124,8 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc,
     // allocate frame_data[0]
     img_data->ANM_dir[0].frame_data = (Surface**)malloc(sizeof(Surface*));
     if (!img_data->ANM_dir[0].frame_data) {
-        set_popup_warning(
-            "[ERROR] init_wmap_opengl()\n\n"
-            "Unable to allocate memory for frame_data."
-        );
+        set_popup_warning("[ERROR] init_wmap_opengl()\n\n"
+                          "Unable to allocate memory for frame_data.");
         printf("Error: init_wmap_opengl(), frame_data alloc failed : L%d\n", __LINE__);
         free(img_data->ANM_dir);
         img_data->ANM_dir = NULL;
@@ -142,20 +133,18 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc,
     }
 
     img_data->ANM_dir[0].frame_data[0] = stitched;
-    img_data->ANM_dir[0].num_frames    = 1;
-    img_data->width  = stitched->w;
+    img_data->ANM_dir[0].num_frames = 1;
+    img_data->width = stitched->w;
     img_data->height = stitched->h;
-    img_data->type   = FRM;
+    img_data->type = FRM;
     img_data->display_orient_num = NE;
-    img_data->display_frame_num  = 0;
+    img_data->display_frame_num = 0;
 
     // allocate frame_box
     img_data->ANM_dir[0].frame_box = (rectangle*)calloc(1, sizeof(rectangle));
     if (!img_data->ANM_dir[0].frame_box) {
-        set_popup_warning(
-            "[ERROR] init_wmap_opengl()\n\n"
-            "Unable to allocate memory for frame_box."
-        );
+        set_popup_warning("[ERROR] init_wmap_opengl()\n\n"
+                          "Unable to allocate memory for frame_box.");
         printf("Error: init_wmap_opengl(), frame_box alloc failed : L%d\n", __LINE__);
         free(img_data->ANM_dir[0].frame_data);
         free(img_data->ANM_dir);
@@ -165,71 +154,54 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc,
 
     // set bounding boxes
     img_data->ANM_dir[0].frame_box[0] = {0, 0, stitched->w, stitched->h};
-    img_data->ANM_bounding_box[0]     = {0, 0, stitched->w, stitched->h};
+    img_data->ANM_bounding_box[0] = {0, 0, stitched->w, stitched->h};
 
     // create OpenGL texture + framebuffer
-    img_data->FRM_texture = init_texture(
-        stitched, stitched->w, stitched->h, FRM);
+    img_data->FRM_texture = init_texture(stitched, stitched->w, stitched->h, FRM);
 
-    framebuffer_init(
-        &img_data->render_texture,
-        &img_data->framebuffer,
-        stitched->w,
-        stitched->h);
+    framebuffer_init(&img_data->render_texture, &img_data->framebuffer, stitched->w, stitched->h);
 
-    SURFACE_to_texture(
-        stitched,
-        img_data->FRM_texture,
-        stitched->w, stitched->h, 1);
+    SURFACE_to_texture(stitched, img_data->FRM_texture, stitched->w, stitched->h, 1);
 
-    draw_texture_to_framebuffer(
-        shaders->FO_pal,
-        shaders->render_FRM_shader,
-        &shaders->giant_triangle,
-        img_data->framebuffer,
-        img_data->FRM_texture,
-        stitched->w, stitched->h);
+    draw_texture_to_framebuffer(shaders->FO_pal, shaders->render_FRM_shader,
+                                &shaders->giant_triangle, img_data->framebuffer,
+                                img_data->FRM_texture, stitched->w, stitched->h);
 
     // synthetic FRM_Header + FRM_Frame buffer so copy_it_all_ANM() works in edit mode
     int synth_size = sizeof(FRM_Header) + sizeof(FRM_Frame) + (stitched->w * stitched->h);
     uint8_t* synth_buf = (uint8_t*)calloc(1, synth_size);
     if (synth_buf) {
-        FRM_Header* hdr    = (FRM_Header*)synth_buf;
-        hdr->version           = 4;
+        FRM_Header* hdr = (FRM_Header*)synth_buf;
+        hdr->version = 4;
         hdr->Frames_Per_Orient = 1;
-        hdr->Frame_Area        = sizeof(FRM_Frame) + (stitched->w * stitched->h);
+        hdr->Frame_Area = sizeof(FRM_Frame) + (stitched->w * stitched->h);
 
-        FRM_Frame* frame   = (FRM_Frame*)(synth_buf + sizeof(FRM_Header));
-        frame->Frame_Width  = stitched->w;
+        FRM_Frame* frame = (FRM_Frame*)(synth_buf + sizeof(FRM_Header));
+        frame->Frame_Width = stitched->w;
         frame->Frame_Height = stitched->h;
-        frame->Frame_Size   = stitched->w * stitched->h;
+        frame->Frame_Size = stitched->w * stitched->h;
 
         img_data->FRM_data = synth_buf;
-        img_data->FRM_hdr  = hdr;
+        img_data->FRM_hdr = hdr;
         img_data->FRM_size = synth_size;
     }
 
     // set up MSK texture if present
     if (msk_srfc) {
         img_data->MSK_srfc = msk_srfc;
-        img_data->MSK_texture = init_texture(
-            msk_srfc, msk_srfc->w, msk_srfc->h, MSK);
+        img_data->MSK_texture = init_texture(msk_srfc, msk_srfc->w, msk_srfc->h, MSK);
     }
 
-    F_Prop->palettized        = true;
-    F_Prop->file_open_window  = true;
+    F_Prop->palettized = true;
+    F_Prop->file_open_window = true;
 
     return true;
 }
 
-
-bool save_wmap_project(const char* path, LF* F_Prop)
-{
+bool save_wmap_project(const char* path, LF* F_Prop) {
     if (!F_Prop->wmap) {
-        set_popup_warning(
-            "[ERROR] save_wmap_project()\n\n"
-            "No worldmap project data to save."
-        );
+        set_popup_warning("[ERROR] save_wmap_project()\n\n"
+                          "No worldmap project data to save.");
         return false;
     }
 
@@ -241,10 +213,8 @@ bool save_wmap_project(const char* path, LF* F_Prop)
     Surface* msk_srfc = src_data->MSK_srfc;
 
     if (!frm_srfc || !frm_srfc->pxls) {
-        set_popup_warning(
-            "[ERROR] save_wmap_project()\n\n"
-            "No FRM pixel data to save."
-        );
+        set_popup_warning("[ERROR] save_wmap_project()\n\n"
+                          "No FRM pixel data to save.");
         return false;
     }
 
@@ -257,23 +227,21 @@ bool save_wmap_project(const char* path, LF* F_Prop)
 
     wmap_header hdr = {};
     memcpy(hdr.magic, "WMAP", 4);
-    hdr.version    = 2;
+    hdr.version = 2;
     memset(hdr.base_name, 0, 8);
     strncpy(hdr.base_name, info->base_name, 7);
-    hdr.tiles_x    = (uint32_t)info->tiles_x;
-    hdr.tiles_y    = (uint32_t)info->tiles_y;
-    hdr.flags      = has_msk ? 1 : 0;
+    hdr.tiles_x = (uint32_t)info->tiles_x;
+    hdr.tiles_y = (uint32_t)info->tiles_y;
+    hdr.flags = has_msk ? 1 : 0;
     hdr.frm_offset = (uint32_t)sizeof(wmap_header);
-    hdr.frm_size   = frm_size;
+    hdr.frm_size = frm_size;
     hdr.msk_offset = has_msk ? (uint32_t)(sizeof(wmap_header) + frm_size) : 0;
-    hdr.msk_size   = msk_size;
+    hdr.msk_size = msk_size;
 
     FILE* fp = fopen(path, "wb");
     if (!fp) {
-        set_popup_warning(
-            "[ERROR] save_wmap_project()\n\n"
-            "Unable to open file for writing."
-        );
+        set_popup_warning("[ERROR] save_wmap_project()\n\n"
+                          "Unable to open file for writing.");
         printf("Error: save_wmap_project(), unable to open %s for writing: L%d\n", path, __LINE__);
         return false;
     }
@@ -293,58 +261,46 @@ bool save_wmap_project(const char* path, LF* F_Prop)
     return true;
 }
 
-
-bool load_wmap_project(const char* wmap_path, LF* F_Prop,
-                       image_data* img_data, shader_info* shaders)
-{
+bool load_wmap_project(const char* wmap_path, LF* F_Prop, image_data* img_data,
+                       shader_info* shaders) {
     FILE* fp = fopen(wmap_path, "rb");
     if (!fp) {
-        set_popup_warning(
-            "[ERROR] load_wmap_project()\n\n"
-            "Unable to open .wmap file."
-        );
+        set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                          "Unable to open .wmap file.");
         printf("Error: load_wmap_project(), Can't open file: %s : L%d\n", wmap_path, __LINE__);
         return false;
     }
 
     wmap_header hdr = {};
     if (fread(&hdr, sizeof(wmap_header), 1, fp) != 1) {
-        set_popup_warning(
-            "[ERROR] load_wmap_project()\n\n"
-            "File too small for wmap header."
-        );
+        set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                          "File too small for wmap header.");
         fclose(fp);
         return false;
     }
 
     // Validate magic
     if (memcmp(hdr.magic, "WMAP", 4) != 0) {
-        set_popup_warning(
-            "[ERROR] load_wmap_project()\n\n"
-            "Not a valid .wmap binary file.\n"
-            "(Missing WMAP magic header)"
-        );
+        set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                          "Not a valid .wmap binary file.\n"
+                          "(Missing WMAP magic header)");
         fclose(fp);
         return false;
     }
 
     // Validate version
     if (hdr.version != 2) {
-        set_popup_warning(
-            "[ERROR] load_wmap_project()\n\n"
-            "Unsupported .wmap version.\n"
-            "Expected version 2."
-        );
+        set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                          "Unsupported .wmap version.\n"
+                          "Expected version 2.");
         fclose(fp);
         return false;
     }
 
     // Validate dimensions
     if (hdr.tiles_x < 1 || hdr.tiles_y < 1) {
-        set_popup_warning(
-            "[ERROR] load_wmap_project()\n\n"
-            "Invalid tile dimensions in .wmap file."
-        );
+        set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                          "Invalid tile dimensions in .wmap file.");
         fclose(fp);
         return false;
     }
@@ -352,10 +308,8 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop,
     // Validate frm_size
     uint32_t expected_frm = hdr.tiles_x * WMAP_TILE_W * hdr.tiles_y * WMAP_TILE_H;
     if (hdr.frm_size != expected_frm) {
-        set_popup_warning(
-            "[ERROR] load_wmap_project()\n\n"
-            "FRM data size does not match tile dimensions."
-        );
+        set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                          "FRM data size does not match tile dimensions.");
         fclose(fp);
         return false;
     }
@@ -366,20 +320,16 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop,
     // Read FRM pixel data
     Surface* stitched = Create_8Bit_Surface(full_w, full_h, shaders->FO_pal);
     if (!stitched) {
-        set_popup_warning(
-            "[ERROR] load_wmap_project()\n\n"
-            "Unable to allocate FRM surface."
-        );
+        set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                          "Unable to allocate FRM surface.");
         fclose(fp);
         return false;
     }
 
     fseek(fp, hdr.frm_offset, SEEK_SET);
     if (fread(stitched->pxls, hdr.frm_size, 1, fp) != 1) {
-        set_popup_warning(
-            "[ERROR] load_wmap_project()\n\n"
-            "Failed to read FRM pixel data."
-        );
+        set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                          "Failed to read FRM pixel data.");
         FreeSurface(stitched);
         fclose(fp);
         return false;
@@ -391,10 +341,8 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop,
     if (has_msk) {
         msk_full = Create_8Bit_Surface(full_w, full_h, nullptr);
         if (!msk_full) {
-            set_popup_warning(
-                "[ERROR] load_wmap_project()\n\n"
-                "Unable to allocate MSK surface."
-            );
+            set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                              "Unable to allocate MSK surface.");
             FreeSurface(stitched);
             fclose(fp);
             return false;
@@ -402,10 +350,8 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop,
 
         fseek(fp, hdr.msk_offset, SEEK_SET);
         if (fread(msk_full->pxls, hdr.msk_size, 1, fp) != 1) {
-            set_popup_warning(
-                "[ERROR] load_wmap_project()\n\n"
-                "Failed to read MSK pixel data."
-            );
+            set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                              "Failed to read MSK pixel data.");
             FreeSurface(msk_full);
             FreeSurface(stitched);
             fclose(fp);
@@ -418,17 +364,16 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop,
     // Set up OpenGL resources
     if (!init_wmap_opengl(stitched, msk_full, F_Prop, img_data, shaders)) {
         FreeSurface(stitched);
-        if (msk_full) FreeSurface(msk_full);
+        if (msk_full)
+            FreeSurface(msk_full);
         return false;
     }
 
     // Allocate and populate wmap_info
     F_Prop->wmap = (wmap_info*)calloc(1, sizeof(wmap_info));
     if (!F_Prop->wmap) {
-        set_popup_warning(
-            "[ERROR] load_wmap_project()\n\n"
-            "Unable to allocate wmap_info."
-        );
+        set_popup_warning("[ERROR] load_wmap_project()\n\n"
+                          "Unable to allocate wmap_info.");
         return false;
     }
     F_Prop->wmap->version = 2;
@@ -443,36 +388,27 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop,
     return true;
 }
 
-
-bool new_wmap_project(LF* F_Prop, image_data* img_data, shader_info* shaders,
-                      Surface* src, const char* base_name,
-                      int tiles_x, int tiles_y)
-{
+bool new_wmap_project(LF* F_Prop, image_data* img_data, shader_info* shaders, Surface* src,
+                      const char* base_name, int tiles_x, int tiles_y) {
     if (!src || !src->pxls) {
-        set_popup_warning(
-            "[ERROR] new_wmap_project()\n\n"
-            "No source surface provided."
-        );
+        set_popup_warning("[ERROR] new_wmap_project()\n\n"
+                          "No source surface provided.");
         return false;
     }
 
     // Validate dimensions
     if (src->w % WMAP_TILE_W != 0 || src->h % WMAP_TILE_H != 0) {
-        set_popup_warning(
-            "[ERROR] new_wmap_project()\n\n"
-            "Source image dimensions must be\n"
-            "multiples of 350x300."
-        );
+        set_popup_warning("[ERROR] new_wmap_project()\n\n"
+                          "Source image dimensions must be\n"
+                          "multiples of 350x300.");
         return false;
     }
 
     // Copy source surface (takes ownership of copy)
     Surface* stitched = Copy8BitSurface(src);
     if (!stitched) {
-        set_popup_warning(
-            "[ERROR] new_wmap_project()\n\n"
-            "Unable to copy source surface."
-        );
+        set_popup_warning("[ERROR] new_wmap_project()\n\n"
+                          "Unable to copy source surface.");
         return false;
     }
 
@@ -485,10 +421,8 @@ bool new_wmap_project(LF* F_Prop, image_data* img_data, shader_info* shaders,
     // Allocate and populate wmap_info
     F_Prop->wmap = (wmap_info*)calloc(1, sizeof(wmap_info));
     if (!F_Prop->wmap) {
-        set_popup_warning(
-            "[ERROR] new_wmap_project()\n\n"
-            "Unable to allocate wmap_info."
-        );
+        set_popup_warning("[ERROR] new_wmap_project()\n\n"
+                          "Unable to allocate wmap_info.");
         return false;
     }
     F_Prop->wmap->version = 2;
@@ -502,7 +436,6 @@ bool new_wmap_project(LF* F_Prop, image_data* img_data, shader_info* shaders,
     return true;
 }
 
-
 // --- Import Worldmap from FO2 data folder ---
 
 // Case-insensitive path resolver for Linux.
@@ -511,8 +444,7 @@ bool new_wmap_project(LF* F_Prop, image_data* img_data, shader_info* shaders,
 // against actual directory entries using case-insensitive comparison.
 // Returns true and writes the resolved path to `out` if found.
 // On Windows this is a no-op since the filesystem is case-insensitive.
-bool resolve_path_icase(const char* base, const char* suffix, char* out, int out_size)
-{
+bool resolve_path_icase(const char* base, const char* suffix, char* out, int out_size) {
     snprintf(out, out_size, "%s/%s", base, suffix);
 
 #ifdef QFO2_WINDOWS
@@ -532,7 +464,8 @@ bool resolve_path_icase(const char* base, const char* suffix, char* out, int out
     char* tok = strtok_r(suffix_copy, "/", &saveptr);
     while (tok) {
         void* dir_stream = io_open_dir(resolved);
-        if (!dir_stream) return false;
+        if (!dir_stream)
+            return false;
 
         bool found = false;
         char* entry;
@@ -547,7 +480,8 @@ bool resolve_path_icase(const char* base, const char* suffix, char* out, int out
         }
         io_close_dir(dir_stream);
 
-        if (!found) return false;
+        if (!found)
+            return false;
 
         tok = strtok_r(nullptr, "/", &saveptr);
     }
@@ -558,23 +492,17 @@ bool resolve_path_icase(const char* base, const char* suffix, char* out, int out
 #endif
 }
 
-
 struct wmap_tile_entry {
-    int  art_idx;
-    char walk_mask_name[32];  // empty string if no mask
+    int art_idx;
+    char walk_mask_name[32]; // empty string if no mask
 };
 
-
-static bool parse_worldmap_txt(const char* txt_path,
-    int* out_tiles_x, int* out_tiles_y,
-    wmap_tile_entry** out_entries, int* out_count)
-{
+static bool parse_worldmap_txt(const char* txt_path, int* out_tiles_x, int* out_tiles_y,
+                               wmap_tile_entry** out_entries, int* out_count) {
     char* txt = io_load_txt_file(txt_path);
     if (!txt) {
-        set_popup_warning(
-            "[ERROR] Import Worldmap from FO2\n\n"
-            "Unable to load worldmap.txt."
-        );
+        set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
+                          "Unable to load worldmap.txt.");
         return false;
     }
 
@@ -583,16 +511,14 @@ static bool parse_worldmap_txt(const char* txt_path,
     int tile_count = 0;
     wmap_tile_entry* entries = (wmap_tile_entry*)malloc(tile_capacity * sizeof(wmap_tile_entry));
     if (!entries) {
-        set_popup_warning(
-            "[ERROR] Import Worldmap from FO2\n\n"
-            "Unable to allocate tile entries."
-        );
+        set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
+                          "Unable to allocate tile entries.");
         free(txt);
         return false;
     }
 
     bool in_tile_data = false;
-    int  current_tile_idx = -1;  // which [Tile N] we're inside
+    int current_tile_idx = -1; // which [Tile N] we're inside
     wmap_tile_entry current_entry = {};
 
     char* line = txt;
@@ -603,11 +529,13 @@ static bool parse_worldmap_txt(const char* txt_path,
 
         // Strip trailing \r
         int clean_len = line_len;
-        if (clean_len > 0 && line[clean_len - 1] == '\r') clean_len--;
+        if (clean_len > 0 && line[clean_len - 1] == '\r')
+            clean_len--;
 
         // Make a null-terminated copy of this line
         char line_buf[256];
-        if (clean_len >= (int)sizeof(line_buf)) clean_len = (int)sizeof(line_buf) - 1;
+        if (clean_len >= (int)sizeof(line_buf))
+            clean_len = (int)sizeof(line_buf) - 1;
         memcpy(line_buf, line, clean_len);
         line_buf[clean_len] = '\0';
 
@@ -617,8 +545,13 @@ static bool parse_worldmap_txt(const char* txt_path,
             if (current_tile_idx >= 0) {
                 if (tile_count >= tile_capacity) {
                     tile_capacity *= 2;
-                    wmap_tile_entry* tmp = (wmap_tile_entry*)realloc(entries, tile_capacity * sizeof(wmap_tile_entry));
-                    if (!tmp) { free(entries); free(txt); return false; }
+                    wmap_tile_entry* tmp =
+                        (wmap_tile_entry*)realloc(entries, tile_capacity * sizeof(wmap_tile_entry));
+                    if (!tmp) {
+                        free(entries);
+                        free(txt);
+                        return false;
+                    }
                     entries = tmp;
                 }
                 entries[tile_count++] = current_entry;
@@ -634,15 +567,13 @@ static bool parse_worldmap_txt(const char* txt_path,
             } else {
                 in_tile_data = false;
             }
-        }
-        else if (in_tile_data) {
+        } else if (in_tile_data) {
             // Parse num_horizontal_tiles
             int val;
             if (sscanf(line_buf, "num_horizontal_tiles=%d", &val) == 1) {
                 tiles_x = val;
             }
-        }
-        else if (current_tile_idx >= 0) {
+        } else if (current_tile_idx >= 0) {
             // Parse art_idx and walk_mask_name
             int val;
             if (sscanf(line_buf, "art_idx=%d", &val) == 1) {
@@ -663,8 +594,13 @@ static bool parse_worldmap_txt(const char* txt_path,
     if (current_tile_idx >= 0) {
         if (tile_count >= tile_capacity) {
             tile_capacity *= 2;
-            wmap_tile_entry* tmp = (wmap_tile_entry*)realloc(entries, tile_capacity * sizeof(wmap_tile_entry));
-            if (!tmp) { free(entries); free(txt); return false; }
+            wmap_tile_entry* tmp =
+                (wmap_tile_entry*)realloc(entries, tile_capacity * sizeof(wmap_tile_entry));
+            if (!tmp) {
+                free(entries);
+                free(txt);
+                return false;
+            }
             entries = tmp;
         }
         entries[tile_count++] = current_entry;
@@ -673,11 +609,9 @@ static bool parse_worldmap_txt(const char* txt_path,
     free(txt);
 
     if (tiles_x <= 0) {
-        set_popup_warning(
-            "[ERROR] Import Worldmap from FO2\n\n"
-            "num_horizontal_tiles not found\n"
-            "in worldmap.txt."
-        );
+        set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
+                          "num_horizontal_tiles not found\n"
+                          "in worldmap.txt.");
         free(entries);
         return false;
     }
@@ -685,10 +619,10 @@ static bool parse_worldmap_txt(const char* txt_path,
     if (tile_count == 0 || tile_count % tiles_x != 0) {
         char warn[256];
         snprintf(warn, sizeof(warn),
-            "[ERROR] Import Worldmap from FO2\n\n"
-            "Tile count (%d) is not divisible\n"
-            "by num_horizontal_tiles (%d).",
-            tile_count, tiles_x);
+                 "[ERROR] Import Worldmap from FO2\n\n"
+                 "Tile count (%d) is not divisible\n"
+                 "by num_horizontal_tiles (%d).",
+                 tile_count, tiles_x);
         set_popup_warning(warn);
         free(entries);
         return false;
@@ -697,14 +631,12 @@ static bool parse_worldmap_txt(const char* txt_path,
     *out_tiles_x = tiles_x;
     *out_tiles_y = tile_count / tiles_x;
     *out_entries = entries;
-    *out_count   = tile_count;
+    *out_count = tile_count;
     return true;
 }
 
-
-static void decode_msk_to_surface(const uint8_t* msk_buf,
-    Surface* dst, int dst_x, int dst_y, int tile_w, int tile_h)
-{
+static void decode_msk_to_surface(const uint8_t* msk_buf, Surface* dst, int dst_x, int dst_y,
+                                  int tile_w, int tile_h) {
     const uint8_t* bin_ptr = msk_buf;
     uint8_t bitmask = 128;
     uint8_t white = 1;
@@ -729,12 +661,10 @@ static void decode_msk_to_surface(const uint8_t* msk_buf,
     }
 }
 
-
-bool import_wmap_from_fo2(const char* data_path, const char* base_name,
-                          LF* F_Prop, image_data* img_data, shader_info* shaders,
-                          int* out_msk_skipped)
-{
-    if (out_msk_skipped) *out_msk_skipped = 0;
+bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Prop,
+                          image_data* img_data, shader_info* shaders, int* out_msk_skipped) {
+    if (out_msk_skipped)
+        *out_msk_skipped = 0;
     printf("import_wmap_from_fo2(): data_path='%s' base_name='%s'\n", data_path, base_name);
 
     // Resolve paths case-insensitively (Fallout 2 archives extract as ALL CAPS)
@@ -744,19 +674,15 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
     char msk_dir[MAX_PATH];
 
     if (!resolve_path_icase(data_path, "data/worldmap.txt", worldmap_path, MAX_PATH)) {
-        set_popup_warning(
-            "[ERROR] Import Worldmap from FO2\n\n"
-            "worldmap.txt not found in\n"
-            "the selected data folder."
-        );
+        set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
+                          "worldmap.txt not found in\n"
+                          "the selected data folder.");
         return false;
     }
     if (!resolve_path_icase(data_path, "art/intrface/intrface.lst", intrface_lst_path, MAX_PATH)) {
-        set_popup_warning(
-            "[ERROR] Import Worldmap from FO2\n\n"
-            "art/intrface/intrface.lst not found\n"
-            "in the selected data folder."
-        );
+        set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
+                          "art/intrface/intrface.lst not found\n"
+                          "in the selected data folder.");
         return false;
     }
 
@@ -781,10 +707,8 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
     // Load intrface.lst and build line index for O(1) lookup
     char* lst_txt = io_load_txt_file(intrface_lst_path);
     if (!lst_txt) {
-        set_popup_warning(
-            "[ERROR] Import Worldmap from FO2\n\n"
-            "Unable to load intrface.lst."
-        );
+        set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
+                          "Unable to load intrface.lst.");
         free(tile_entries);
         return false;
     }
@@ -807,13 +731,15 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
         char* eol = strchr(lp, '\n');
         if (eol) {
             // Null-terminate this line (strip \r if present)
-            if (eol > lp && *(eol - 1) == '\r') *(eol - 1) = '\0';
+            if (eol > lp && *(eol - 1) == '\r')
+                *(eol - 1) = '\0';
             *eol = '\0';
         }
 
         // Strip comments (";") and trailing whitespace from the line
         char* comment = strchr(lp, ';');
-        if (comment) *comment = '\0';
+        if (comment)
+            *comment = '\0';
         // Trim trailing spaces/tabs
         int len = strlen(lp);
         while (len > 0 && (lp[len - 1] == ' ' || lp[len - 1] == '\t')) {
@@ -827,8 +753,9 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
     // Print first tile's art_idx and the filename it maps to
     if (tile_count > 0) {
         int idx0 = tile_entries[0].art_idx;
-        printf("  tile 0: art_idx=%d -> '%s' (lst has %d lines)\n",
-               idx0, (idx0 >= 0 && idx0 < lst_line_count) ? lst_lines[idx0] : "OUT OF RANGE", lst_line_count);
+        printf("  tile 0: art_idx=%d -> '%s' (lst has %d lines)\n", idx0,
+               (idx0 >= 0 && idx0 < lst_line_count) ? lst_lines[idx0] : "OUT OF RANGE",
+               lst_line_count);
     }
 
     // Validate all FRM files exist before loading
@@ -874,10 +801,8 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
     int full_h = tiles_y * WMAP_TILE_H;
     Surface* stitched = Create_8Bit_Surface(full_w, full_h, shaders->FO_pal);
     if (!stitched) {
-        set_popup_warning(
-            "[ERROR] Import Worldmap from FO2\n\n"
-            "Unable to allocate stitched FRM surface."
-        );
+        set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
+                          "Unable to allocate stitched FRM surface.");
         free(lst_lines);
         free(lst_txt);
         free(tile_entries);
@@ -897,8 +822,9 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
         if (!frm_buf) {
             char warn[MAX_PATH + 64];
             snprintf(warn, sizeof(warn),
-                "[ERROR] Import Worldmap from FO2\n\n"
-                "Failed to load FRM tile:\n%s", frm_path);
+                     "[ERROR] Import Worldmap from FO2\n\n"
+                     "Failed to load FRM tile:\n%s",
+                     frm_path);
             set_popup_warning(warn);
             FreeSurface(stitched);
             free(lst_lines);
@@ -916,12 +842,11 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
         if (frame->Frame_Width != WMAP_TILE_W || frame->Frame_Height != WMAP_TILE_H) {
             char warn[256];
             snprintf(warn, sizeof(warn),
-                "[ERROR] Import Worldmap from FO2\n\n"
-                "FRM tile %s has unexpected\n"
-                "dimensions: %dx%d (expected %dx%d).",
-                lst_lines[tile_entries[i].art_idx],
-                frame->Frame_Width, frame->Frame_Height,
-                WMAP_TILE_W, WMAP_TILE_H);
+                     "[ERROR] Import Worldmap from FO2\n\n"
+                     "FRM tile %s has unexpected\n"
+                     "dimensions: %dx%d (expected %dx%d).",
+                     lst_lines[tile_entries[i].art_idx], frame->Frame_Width, frame->Frame_Height,
+                     WMAP_TILE_W, WMAP_TILE_H);
             set_popup_warning(warn);
             free(frm_buf);
             FreeSurface(stitched);
@@ -934,8 +859,8 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
         uint8_t* frame_pixels = frame->frame_start;
         int dst_offset = (y * WMAP_TILE_H * full_w) + (x * WMAP_TILE_W);
         for (int row = 0; row < WMAP_TILE_H; row++) {
-            memcpy(&stitched->pxls[dst_offset + row * full_w],
-                   &frame_pixels[row * WMAP_TILE_W], WMAP_TILE_W);
+            memcpy(&stitched->pxls[dst_offset + row * full_w], &frame_pixels[row * WMAP_TILE_W],
+                   WMAP_TILE_W);
         }
 
         free(frm_buf);
@@ -954,10 +879,8 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
     if (any_msk) {
         msk_full = Create_8Bit_Surface(full_w, full_h, nullptr);
         if (!msk_full) {
-            set_popup_warning(
-                "[ERROR] Import Worldmap from FO2\n\n"
-                "Unable to allocate MSK surface."
-            );
+            set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
+                              "Unable to allocate MSK surface.");
             FreeSurface(stitched);
             free(lst_lines);
             free(lst_txt);
@@ -966,7 +889,8 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
         }
 
         for (int i = 0; i < tile_count; i++) {
-            if (tile_entries[i].walk_mask_name[0] == '\0') continue;
+            if (tile_entries[i].walk_mask_name[0] == '\0')
+                continue;
 
             int x = i % tiles_x;
             int y = i / tiles_x;
@@ -977,7 +901,8 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
             char msk_path[MAX_PATH];
             if (!resolve_path_icase(msk_dir, msk_filename, msk_path, MAX_PATH)) {
                 printf("Warning: MSK file not found: %s/%s\n", msk_dir, msk_filename);
-                if (out_msk_skipped) (*out_msk_skipped)++;
+                if (out_msk_skipped)
+                    (*out_msk_skipped)++;
                 continue;
             }
 
@@ -985,13 +910,13 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
             uint8_t* msk_buf = load_entire_file(msk_path, &msk_size);
             if (!msk_buf) {
                 printf("Warning: Failed to load MSK file: %s\n", msk_path);
-                if (out_msk_skipped) (*out_msk_skipped)++;
+                if (out_msk_skipped)
+                    (*out_msk_skipped)++;
                 continue;
             }
 
-            decode_msk_to_surface(msk_buf, msk_full,
-                x * WMAP_TILE_W, y * WMAP_TILE_H,
-                WMAP_TILE_W, WMAP_TILE_H);
+            decode_msk_to_surface(msk_buf, msk_full, x * WMAP_TILE_W, y * WMAP_TILE_H, WMAP_TILE_W,
+                                  WMAP_TILE_H);
 
             free(msk_buf);
         }
@@ -1000,7 +925,8 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
     // Initialize OpenGL
     if (!init_wmap_opengl(stitched, msk_full, F_Prop, img_data, shaders)) {
         FreeSurface(stitched);
-        if (msk_full) FreeSurface(msk_full);
+        if (msk_full)
+            FreeSurface(msk_full);
         free(lst_lines);
         free(lst_txt);
         free(tile_entries);
@@ -1010,10 +936,8 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
     // Populate wmap_info
     F_Prop->wmap = (wmap_info*)calloc(1, sizeof(wmap_info));
     if (!F_Prop->wmap) {
-        set_popup_warning(
-            "[ERROR] Import Worldmap from FO2\n\n"
-            "Unable to allocate wmap_info."
-        );
+        set_popup_warning("[ERROR] Import Worldmap from FO2\n\n"
+                          "Unable to allocate wmap_info.");
         free(lst_lines);
         free(lst_txt);
         free(tile_entries);
@@ -1025,10 +949,10 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name,
     F_Prop->wmap->tiles_x = tiles_x;
     F_Prop->wmap->tiles_y = tiles_y;
     F_Prop->wmap->has_msk = any_msk;
-    F_Prop->wmap->save_path[0] = '\0';  // user must Save As
+    F_Prop->wmap->save_path[0] = '\0'; // user must Save As
 
-    printf("import_wmap_from_fo2(): imported %dx%d tiles (%dx%d pixels), msk=%s\n",
-           tiles_x, tiles_y, full_w, full_h, any_msk ? "yes" : "no");
+    printf("import_wmap_from_fo2(): imported %dx%d tiles (%dx%d pixels), msk=%s\n", tiles_x,
+           tiles_y, full_w, full_h, any_msk ? "yes" : "no");
 
     // Cleanup
     free(lst_lines);

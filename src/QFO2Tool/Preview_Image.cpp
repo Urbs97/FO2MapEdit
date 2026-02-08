@@ -1,18 +1,18 @@
-#include "imgui_internal.h"
-#include "display_FRM_OpenGL.h"
 #include "Preview_Image.h"
+
 #include "Zoom_Pan.h"
+#include "display_FRM_OpenGL.h"
+#include "imgui_internal.h"
 
 void show_image_stats_FRM_SURFACE(image_data* img_data, ImFont* font);
 
-void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, bool show_stats)
-{
+void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, bool show_stats) {
     ImVec2 top_of_window = ImGui::GetCursorPos();
 
-    //handle zoom and panning for the image, plus update image position every frame
+    // handle zoom and panning for the image, plus update image position every frame
     zoom_pan(img_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
 
-    //redraws FRM to framebuffer every time the palette update timer is true or animates
+    // redraws FRM to framebuffer every time the palette update timer is true or animates
     shader_info* shaders = &My_Variables->shaders;
     if (!img_data->ANM_dir) {
         ImGui::Text("No FRM_dir");
@@ -23,57 +23,51 @@ void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, b
         return;
     }
 
-    Surface* srfc = img_data->ANM_dir[img_data->display_orient_num].frame_data[img_data->display_frame_num];
-    animate_SURFACE_to_sub_texture(
-        img_data, srfc,
-        My_Variables->CurrentTime_ms
-    );
+    Surface* srfc =
+        img_data->ANM_dir[img_data->display_orient_num].frame_data[img_data->display_frame_num];
+    animate_SURFACE_to_sub_texture(img_data, srfc, My_Variables->CurrentTime_ms);
 
     if (img_data->MSK_srfc) {
         draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
                                 &shaders->giant_triangle, img_data);
     } else {
-        draw_texture_to_framebuffer(
-            shaders->FO_pal, shaders->render_FRM_shader, &shaders->giant_triangle,
-            img_data->framebuffer, img_data->FRM_texture, img_data->width, img_data->height
-        );
+        draw_texture_to_framebuffer(shaders->FO_pal, shaders->render_FRM_shader,
+                                    &shaders->giant_triangle, img_data->framebuffer,
+                                    img_data->FRM_texture, img_data->width, img_data->height);
     }
 
-    //handle frame display by orientation and number
-    int orient  = img_data->display_orient_num;
+    // handle frame display by orientation and number
+    int orient = img_data->display_orient_num;
 
     float scale = img_data->scale;
-    int width   = img_data->ANM_bounding_box[orient].x2 - img_data->ANM_bounding_box[orient].x1;
-    int height  = img_data->ANM_bounding_box[orient].y2 - img_data->ANM_bounding_box[orient].y1;
-    ImVec2 uv_min = My_Variables->uv_min;      // (0.0f,0.0f)
-    ImVec2 uv_max = My_Variables->uv_max;      // (1.0f,1.0f)
+    int width = img_data->ANM_bounding_box[orient].x2 - img_data->ANM_bounding_box[orient].x1;
+    int height = img_data->ANM_bounding_box[orient].y2 - img_data->ANM_bounding_box[orient].y1;
+    ImVec2 uv_min = My_Variables->uv_min; // (0.0f,0.0f)
+    ImVec2 uv_max = My_Variables->uv_max; // (1.0f,1.0f)
     ImVec2 size = ImVec2((float)(width * scale), (float)(height * scale));
 
-
     ImGuiWindow* window = ImGui::GetCurrentWindow();
-    //image I'm trying to pan and zoom with
-    //TODO: change top_corner() for img_pos passed in from outside
-    window->DrawList->AddImage(
-        (ImTextureID)(uintptr_t)img_data->render_texture,
-        top_corner(img_data->offset), bottom_corner(size, top_corner(img_data->offset)),
-        uv_min, uv_max,
-        ImGui::GetColorU32(My_Variables->tint_col));
+    // image I'm trying to pan and zoom with
+    // TODO: change top_corner() for img_pos passed in from outside
+    window->DrawList->AddImage((ImTextureID)(uintptr_t)img_data->render_texture,
+                               top_corner(img_data->offset),
+                               bottom_corner(size, top_corner(img_data->offset)), uv_min, uv_max,
+                               ImGui::GetColorU32(My_Variables->tint_col));
 
-    //TODO: need to figure out how I'm going to handle scrolling on large images
+    // TODO: need to figure out how I'm going to handle scrolling on large images
     ImGui::Dummy(size);
 
-    //show FRM stats over FRM
+    // show FRM stats over FRM
     ImGui::SetCursorPos(top_of_window);
     if (show_stats) {
         show_image_stats_FRM_SURFACE(img_data, My_Variables->Font);
     }
 }
 
-void Preview_MSK_Image(variables* My_Variables, struct image_data* img_data, bool show_stats)
-{
+void Preview_MSK_Image(variables* My_Variables, struct image_data* img_data, bool show_stats) {
     ImVec2 top_of_window = ImGui::GetCursorPos();
 
-    //handle zoom and panning for the image, plus update image position every frame
+    // handle zoom and panning for the image, plus update image position every frame
     zoom_pan(img_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
 
     shader_info* shaders = &My_Variables->shaders;
@@ -82,73 +76,67 @@ void Preview_MSK_Image(variables* My_Variables, struct image_data* img_data, boo
         return;
     }
 
-    //handle frame display by orientation and number
-    float scale   = img_data->scale;
-    int width     = img_data->width;
-    int height    = img_data->height;
-    ImVec2 uv_min = My_Variables->uv_min;      // (0.0f,0.0f)
-    ImVec2 uv_max = My_Variables->uv_max;      // (1.0f,1.0f)
-    ImVec2 size   = ImVec2((float)(width * scale), (float)(height * scale));
-
+    // handle frame display by orientation and number
+    float scale = img_data->scale;
+    int width = img_data->width;
+    int height = img_data->height;
+    ImVec2 uv_min = My_Variables->uv_min; // (0.0f,0.0f)
+    ImVec2 uv_max = My_Variables->uv_max; // (1.0f,1.0f)
+    ImVec2 size = ImVec2((float)(width * scale), (float)(height * scale));
 
     ImGuiWindow* window = ImGui::GetCurrentWindow();
-    //image I'm trying to pan and zoom with
-    //TODO: change top_corner() for img_pos passed in from outside
-    window->DrawList->AddImage(
-        (ImTextureID)(uintptr_t)img_data->render_texture,
-        top_corner(img_data->offset), bottom_corner(size, top_corner(img_data->offset)),
-        uv_min, uv_max,
-        ImGui::GetColorU32(My_Variables->tint_col));
+    // image I'm trying to pan and zoom with
+    // TODO: change top_corner() for img_pos passed in from outside
+    window->DrawList->AddImage((ImTextureID)(uintptr_t)img_data->render_texture,
+                               top_corner(img_data->offset),
+                               bottom_corner(size, top_corner(img_data->offset)), uv_min, uv_max,
+                               ImGui::GetColorU32(My_Variables->tint_col));
 
-    //TODO: need to figure out how I'm going to handle scrolling on large images
+    // TODO: need to figure out how I'm going to handle scrolling on large images
     ImGui::Dummy(size);
 
-    //show MSK stats over MSK image
+    // show MSK stats over MSK image
     ImGui::SetCursorPos(top_of_window);
     if (show_stats) {
         show_image_stats_MSK(img_data, My_Variables->Font);
     }
 }
 
-#define tile_grid_w         (128.0)
-#define tile_grid_h         (96.0)
+#define tile_grid_w (128.0)
+#define tile_grid_h (96.0)
 
-//TODO: refactor this
-void Preview_Image(variables* My_Variables, struct image_data* img_data, bool show_stats)
-{
+// TODO: refactor this
+void Preview_Image(variables* My_Variables, struct image_data* img_data, bool show_stats) {
     ImVec2 top_of_window = ImGui::GetCursorPos();
 
-    //handle zoom and panning for the image, plus update image position every frame
+    // handle zoom and panning for the image, plus update image position every frame
     zoom_pan(img_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
 
     shader_info* shaders = &My_Variables->shaders;
 
-    //handle frame display by orientation and number
+    // handle frame display by orientation and number
     float scale = img_data->scale;
     int width = img_data->width;
     int height = img_data->height;
-    ImVec2 uv_min = My_Variables->uv_min;      // (0.0f,0.0f)
-    ImVec2 uv_max = My_Variables->uv_max;      // (1.0f,1.0f)
+    ImVec2 uv_min = My_Variables->uv_min; // (0.0f,0.0f)
+    ImVec2 uv_max = My_Variables->uv_max; // (1.0f,1.0f)
     ImVec2 size = ImVec2((float)(width * scale), (float)(height * scale));
 
     if (img_data->ANM_dir[img_data->display_orient_num].frame_data == NULL) {
         ImGui::Text("No Image Data");
         return;
     }
-    animate_OTHER_to_framebuff(
-        My_Variables->shaders.render_OTHER_shader,
-        &My_Variables->shaders.giant_triangle,
-        img_data,
-        My_Variables->CurrentTime_ms);
+    animate_OTHER_to_framebuff(My_Variables->shaders.render_OTHER_shader,
+                               &My_Variables->shaders.giant_triangle, img_data,
+                               My_Variables->CurrentTime_ms);
 
     ImGuiWindow* window = ImGui::GetCurrentWindow();
-    //image I'm trying to pan and zoom with
-    //TODO: change top_corner() for img_pos passed in from outside
-    window->DrawList->AddImage(
-        (ImTextureID)(uintptr_t)img_data->render_texture,
-        top_corner(img_data->offset), bottom_corner(size, top_corner(img_data->offset)),
-        uv_min, uv_max,
-        ImGui::GetColorU32(My_Variables->tint_col));
+    // image I'm trying to pan and zoom with
+    // TODO: change top_corner() for img_pos passed in from outside
+    window->DrawList->AddImage((ImTextureID)(uintptr_t)img_data->render_texture,
+                               top_corner(img_data->offset),
+                               bottom_corner(size, top_corner(img_data->offset)), uv_min, uv_max,
+                               ImGui::GetColorU32(My_Variables->tint_col));
 
     ///////////////////////////////////////////////////////////////////////
 
@@ -159,30 +147,25 @@ void Preview_Image(variables* My_Variables, struct image_data* img_data, bool sh
     float tile_w = (tile_bottom.x - tile_corner.x) / tile_grid_w / scale;
     float tile_h = (tile_bottom.y - tile_corner.y) / tile_grid_h / scale;
 
-
-    ImVec2 tile_min = { 0,0 };
-    ImVec2 tile_max = { tile_w, tile_h };
-    //window->DrawList->AddImage(
-    //    (ImTextureID)My_Variables->tile_texture_prev,
-    //    tile_corner, tile_bottom, tile_min, tile_max);
+    ImVec2 tile_min = {0, 0};
+    ImVec2 tile_max = {tile_w, tile_h};
+    // window->DrawList->AddImage(
+    //     (ImTextureID)My_Variables->tile_texture_prev,
+    //     tile_corner, tile_bottom, tile_min, tile_max);
     ///////////////////////////////////////////////////////////////////////
 
-
-
-    //TODO: need to figure out how I'm going to handle scrolling on large images
+    // TODO: need to figure out how I'm going to handle scrolling on large images
     ImGui::Dummy(size);
 
-    //show image stats over image
+    // show image stats over image
     ImGui::SetCursorPos(top_of_window);
     if (show_stats) {
         show_image_stats_ANM(img_data, My_Variables->Font);
     }
 }
 
-
-//TODO: replace this with something that doesn't suck
-void show_image_stats_FRM_SURFACE(image_data* img_data, ImFont* font)
-{
+// TODO: replace this with something that doesn't suck
+void show_image_stats_FRM_SURFACE(image_data* img_data, ImFont* font) {
     int num = img_data->display_frame_num;
     int dir = img_data->display_orient_num;
     if (!img_data->ANM_dir[dir].frame_data) {
@@ -192,106 +175,97 @@ void show_image_stats_FRM_SURFACE(image_data* img_data, ImFont* font)
     char buff[256];
 
     ImGui::PushFont(font);
-    snprintf(buff, 256, "framerate: %d",       img_data->FRM_hdr->FPS);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "framerate: %d", img_data->FRM_hdr->FPS);
+    ImGui::Text("%s", buff);
 
-    snprintf(buff, 256, "Shift_Orient_x: %d",  img_data->FRM_hdr->Shift_Orient_x[dir]);
-    ImGui::Text(buff);
-    snprintf(buff, 256, "Shift_Orient_y: %d",  img_data->FRM_hdr->Shift_Orient_y[dir]);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "Shift_Orient_x: %d", img_data->FRM_hdr->Shift_Orient_x[dir]);
+    ImGui::Text("%s", buff);
+    snprintf(buff, 256, "Shift_Orient_y: %d", img_data->FRM_hdr->Shift_Orient_y[dir]);
+    ImGui::Text("%s", buff);
 
-    snprintf(buff, 256, "bounding_x1: %d\t",   img_data->ANM_dir[dir].frame_box[num].x1);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "bounding_x1: %d\t", img_data->ANM_dir[dir].frame_box[num].x1);
+    ImGui::Text("%s", buff);
     ImGui::SameLine();
-    snprintf(buff, 256, "width: %d\t",         img_data->ANM_dir[dir].frame_data[num]->w);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "width: %d\t", img_data->ANM_dir[dir].frame_data[num]->w);
+    ImGui::Text("%s", buff);
     ImGui::SameLine();
-    snprintf(buff, 256, "x_offset: %d",        img_data->ANM_dir[dir].frame_data[num]->x);
-    ImGui::Text(buff);
-    snprintf(buff, 256, "bounding_x2: %d",     img_data->ANM_dir[dir].frame_box[num].x2);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "x_offset: %d", img_data->ANM_dir[dir].frame_data[num]->x);
+    ImGui::Text("%s", buff);
+    snprintf(buff, 256, "bounding_x2: %d", img_data->ANM_dir[dir].frame_box[num].x2);
+    ImGui::Text("%s", buff);
 
-    snprintf(buff, 256, "bounding_y1: %d\t",   img_data->ANM_dir[dir].frame_box[num].y1);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "bounding_y1: %d\t", img_data->ANM_dir[dir].frame_box[num].y1);
+    ImGui::Text("%s", buff);
     ImGui::SameLine();
-    snprintf(buff, 256, "height: %d\t",        img_data->ANM_dir[dir].frame_data[num]->h);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "height: %d\t", img_data->ANM_dir[dir].frame_data[num]->h);
+    ImGui::Text("%s", buff);
     ImGui::SameLine();
-    snprintf(buff, 256, "y_offset: %d",        img_data->ANM_dir[dir].frame_data[num]->y);
-    ImGui::Text(buff);
-    snprintf(buff, 256, "bounding_y2: %d",     img_data->ANM_dir[dir].frame_box[num].y2);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "y_offset: %d", img_data->ANM_dir[dir].frame_data[num]->y);
+    ImGui::Text("%s", buff);
+    snprintf(buff, 256, "bounding_y2: %d", img_data->ANM_dir[dir].frame_box[num].y2);
+    ImGui::Text("%s", buff);
 
     snprintf(buff, 256, "FRM_bounding_x1: %d", img_data->ANM_bounding_box[dir].x1);
-    ImGui::Text(buff);
+    ImGui::Text("%s", buff);
     snprintf(buff, 256, "FRM_bounding_x2: %d", img_data->ANM_bounding_box[dir].x2);
-    ImGui::Text(buff);
+    ImGui::Text("%s", buff);
     snprintf(buff, 256, "FRM_bounding_y1: %d", img_data->ANM_bounding_box[dir].y1);
-    ImGui::Text(buff);
+    ImGui::Text("%s", buff);
     snprintf(buff, 256, "FRM_bounding_y2: %d", img_data->ANM_bounding_box[dir].y2);
-    ImGui::Text(buff);
+    ImGui::Text("%s", buff);
     ImGui::PopFont();
 }
 
-void show_image_stats_ANM(image_data* img_data, ImFont* font)
-{
+void show_image_stats_ANM(image_data* img_data, ImFont* font) {
     int num, dir, max;
     num = img_data->display_frame_num;
     dir = img_data->display_orient_num;
     char buff[256];
 
     ImGui::PushFont(font);
-    //snprintf(buff, 256, "framerate: %d", img_data->ANM_hdr->FPS);
-    //ImGui::Text(buff);
 
-    //snprintf(buff, 256, "orient_shift_x: %d", img_data->ANM_hdr->Shift_Orient_x[r]);
-    //ImGui::Text(buff);
-    //snprintf(buff, 256, "orient_shift_y: %d", img_data->ANM_hdr->Shift_Orient_y[r]);
-    //ImGui::Text(buff);
+    snprintf(buff, 256, "bounding_x1: %d\t", img_data->ANM_dir[dir].frame_box->x1);
+    ImGui::Text("%s", buff);
+    ImGui::SameLine();
+    snprintf(buff, 256, "width: %d\t", img_data->ANM_dir[dir].frame_data[num]->w);
+    ImGui::Text("%s", buff);
+    ImGui::SameLine();
+    snprintf(buff, 256, "x_offset: %d", img_data->ANM_dir[dir].frame_data[num]->x);
+    ImGui::Text("%s", buff);
+    snprintf(buff, 256, "bounding_x2: %d", img_data->ANM_dir[dir].frame_box->x2);
+    ImGui::Text("%s", buff);
 
-    snprintf(buff, 256, "bounding_x1: %d\t",    img_data->ANM_dir[dir].frame_box->x1);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "bounding_y1: %d\t", img_data->ANM_dir[dir].frame_box->y1);
+    ImGui::Text("%s", buff);
     ImGui::SameLine();
-    snprintf(buff, 256, "width: %d\t",          img_data->ANM_dir[dir].frame_data[num]->w);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "height: %d\t", img_data->ANM_dir[dir].frame_data[num]->h);
+    ImGui::Text("%s", buff);
     ImGui::SameLine();
-    snprintf(buff, 256, "x_offset: %d",         img_data->ANM_dir[dir].frame_data[num]->x);
-    ImGui::Text(buff);
-    snprintf(buff, 256, "bounding_x2: %d",      img_data->ANM_dir[dir].frame_box->x2);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "y_offset: %d", img_data->ANM_dir[dir].frame_data[num]->y);
+    ImGui::Text("%s", buff);
+    snprintf(buff, 256, "bounding_y2: %d", img_data->ANM_dir[dir].frame_box->y2);
+    ImGui::Text("%s", buff);
 
-    snprintf(buff, 256, "bounding_y1: %d\t",    img_data->ANM_dir[dir].frame_box->y1);
-    ImGui::Text(buff);
-    ImGui::SameLine();
-    snprintf(buff, 256, "height: %d\t",         img_data->ANM_dir[dir].frame_data[num]->h);
-    ImGui::Text(buff);
-    ImGui::SameLine();
-    snprintf(buff, 256, "y_offset: %d",         img_data->ANM_dir[dir].frame_data[num]->y);
-    ImGui::Text(buff);
-    snprintf(buff, 256, "bounding_y2: %d",      img_data->ANM_dir[dir].frame_box->y2);
-    ImGui::Text(buff);
-
-    snprintf(buff, 256, "ANM_bounding_x1: %d",  img_data->ANM_bounding_box[dir].x1);
-    ImGui::Text(buff);
-    snprintf(buff, 256, "ANM_bounding_x2: %d",  img_data->ANM_bounding_box[dir].x2);
-    ImGui::Text(buff);
-    snprintf(buff, 256, "ANM_bounding_y1: %d",  img_data->ANM_bounding_box[dir].y1);
-    ImGui::Text(buff);
-    snprintf(buff, 256, "ANM_bounding_y2: %d",  img_data->ANM_bounding_box[dir].y2);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "ANM_bounding_x1: %d", img_data->ANM_bounding_box[dir].x1);
+    ImGui::Text("%s", buff);
+    snprintf(buff, 256, "ANM_bounding_x2: %d", img_data->ANM_bounding_box[dir].x2);
+    ImGui::Text("%s", buff);
+    snprintf(buff, 256, "ANM_bounding_y1: %d", img_data->ANM_bounding_box[dir].y1);
+    ImGui::Text("%s", buff);
+    snprintf(buff, 256, "ANM_bounding_y2: %d", img_data->ANM_bounding_box[dir].y2);
+    ImGui::Text("%s", buff);
     ImGui::PopFont();
 }
 
-void show_image_stats_MSK(image_data* img_data, ImFont* font)
-{
+void show_image_stats_MSK(image_data* img_data, ImFont* font) {
     char buff[256];
 
     ImGui::PushFont(font);
 
-    snprintf(buff, 256, "width: %d\t",          img_data->width);
-    ImGui::Text(buff);
-    snprintf(buff, 256, "height: %d\t",         img_data->height);
-    ImGui::Text(buff);
+    snprintf(buff, 256, "width: %d\t", img_data->width);
+    ImGui::Text("%s", buff);
+    snprintf(buff, 256, "height: %d\t", img_data->height);
+    ImGui::Text("%s", buff);
 
     ImGui::PopFont();
 }

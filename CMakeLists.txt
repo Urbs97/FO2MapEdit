@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
+set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+
 # # Enable ASAN (Address Sanitizer) globally
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
@@ -14,6 +16,10 @@ add_compile_options(
   # -fsanitize=address    # used for memory leak checking
 )
 
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS FALSE)
 
 #sets PROJECT_NAME
 #PROJECT_NAME is auto set when name is passed as 1st arg
@@ -42,10 +48,6 @@ target_compile_definitions(
 )
 endif()
 
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS FALSE)
 
 target_sources(
   ${EXECUTABLE_NAME} PRIVATE
@@ -148,7 +150,7 @@ target_link_libraries(
 #this custom command copies the contents of src/resources
 #to the compilation directory
 #so the program will start without manually copying stuff
-add_custom_command(DEPENDS
+add_custom_command(
   TARGET ${EXECUTABLE_NAME} PRE_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
   ${CMAKE_CURRENT_SOURCE_DIR}/src/resources
