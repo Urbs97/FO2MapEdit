@@ -206,10 +206,12 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
 
     wmap_info* info = F_Prop->wmap;
 
-    // Get pixel data: prefer edit_data if initialized, else img_data
-    image_data* src_data =
+    // Overlays (city, MSK) always live in img_data
+    image_data* overlay_src = &F_Prop->img_data;
+    // FRM pixel data: prefer edit_data if initialized, else img_data
+    image_data* frm_src =
         (F_Prop->edit_data.ANM_dir != nullptr) ? &F_Prop->edit_data : &F_Prop->img_data;
-    Surface* frm_srfc = src_data->ANM_dir[0].frame_data[0];
+    Surface* frm_srfc = frm_src->ANM_dir[0].frame_data[0];
 
     if ((frm_srfc == nullptr) || (frm_srfc->pxls == nullptr)) {
         set_popup_warning("[ERROR] save_wmap_project()\n\n"
@@ -219,8 +221,9 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
 
     // Count layers with valid surface data
     uint32_t num_layers = 0;
-    for (int i = 0; i < src_data->overlay_count; i++) {
-        if (src_data->overlay[i].srfc != nullptr && src_data->overlay[i].srfc->pxls != nullptr) {
+    for (int i = 0; i < overlay_src->overlay_count; i++) {
+        if (overlay_src->overlay[i].srfc != nullptr &&
+            overlay_src->overlay[i].srfc->pxls != nullptr) {
             num_layers++;
         }
     }
@@ -240,8 +243,8 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
 
     uint32_t data_cursor = frm_offset + frm_size;
     uint32_t entry_idx = 0;
-    for (int i = 0; i < src_data->overlay_count; i++) {
-        OverlayLayer* layer = &src_data->overlay[i];
+    for (int i = 0; i < overlay_src->overlay_count; i++) {
+        OverlayLayer* layer = &overlay_src->overlay[i];
         if (layer->srfc == nullptr || layer->srfc->pxls == nullptr) {
             continue;
         }
@@ -296,7 +299,7 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
             }
         }
         free(entries);
-        free(layer_blobs);
+        free((void*)layer_blobs);
         free(blob_sizes);
         return false;
     }
@@ -320,7 +323,7 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
     fclose(fp);
 
     free(entries);
-    free(layer_blobs);
+    free((void*)layer_blobs);
     free(blob_sizes);
 
     // Update save_path (skip if path already points into save_path)

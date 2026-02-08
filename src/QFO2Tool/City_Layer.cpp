@@ -603,32 +603,75 @@ void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, imag
 
 // --- Info Panel ---
 
-void draw_city_info_panel(OverlayLayer* layer) {
+bool draw_city_info_panel(OverlayLayer* layer, bool editing) {
     if (layer == nullptr || layer->type != LayerType::CITY || layer->source_data == nullptr) {
-        return;
+        return false;
     }
 
     city_layer_data* data = (city_layer_data*)layer->source_data;
     if (data->selected_area < 0 || data->selected_area >= data->area_count) {
         ImGui::Text("Click a city marker to select");
-        return;
+        return false;
     }
 
     city_area* area = &data->areas[data->selected_area];
+    bool modified = false;
 
-    ImGui::Text("City: %s", area->area_name);
-    ImGui::Text("Position: %d, %d", area->world_x, area->world_y);
+    if (editing) {
+        ImGui::Text("City Name:");
+        if (ImGui::InputText("##city_name", area->area_name, CITY_NAME_LEN)) {
+            modified = true;
+        }
 
-    const char* size_str = "Small";
-    if (area->size == CitySize::MEDIUM) {
-        size_str = "Medium";
-    } else if (area->size == CitySize::LARGE) {
-        size_str = "Large";
+        int x_int = area->world_x;
+        int y_int = area->world_y;
+        ImGui::Text("Position:");
+        ImGui::SetNextItemWidth(100);
+        if (ImGui::InputInt("##city_x", &x_int)) {
+            area->world_x = (int16_t)x_int;
+            modified = true;
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(100);
+        if (ImGui::InputInt("##city_y", &y_int)) {
+            area->world_y = (int16_t)y_int;
+            modified = true;
+        }
+
+        int size_int = (int)area->size;
+        ImGui::Text("Size:");
+        ImGui::SetNextItemWidth(100);
+        if (ImGui::Combo("##city_size", &size_int, "Small\0Medium\0Large\0")) {
+            area->size = (CitySize)size_int;
+            modified = true;
+        }
+
+        if (ImGui::Checkbox("Start", &area->start_state)) {
+            modified = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Lock", &area->lock_state)) {
+            modified = true;
+        }
+
+        if (modified) {
+            refresh_city_overlay(layer);
+        }
+    } else {
+        ImGui::Text("City: %s", area->area_name);
+        ImGui::Text("Position: %d, %d", area->world_x, area->world_y);
+
+        const char* size_str = "Small";
+        if (area->size == CitySize::MEDIUM) {
+            size_str = "Medium";
+        } else if (area->size == CitySize::LARGE) {
+            size_str = "Large";
+        }
+        ImGui::Text("Size: %s", size_str);
+
+        ImGui::Text("Start: %s  Lock: %s", area->start_state ? "On" : "Off",
+                    area->lock_state ? "On" : "Off");
     }
-    ImGui::Text("Size: %s", size_str);
-
-    ImGui::Text("Start: %s  Lock: %s", area->start_state ? "On" : "Off",
-                area->lock_state ? "On" : "Off");
 
     if (area->entrance_count > 0) {
         ImGui::Separator();
@@ -639,4 +682,6 @@ void draw_city_info_panel(OverlayLayer* layer) {
                         ent->x, ent->y);
         }
     }
+
+    return modified;
 }

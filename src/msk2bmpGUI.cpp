@@ -1123,6 +1123,17 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
                                                         img->overlay[idx].srfc->h, img_type::MSK);
               }
             }
+
+            // Auto-switch to city layer if a city is selected
+            {
+              int ci = find_overlay(img->overlay, img->overlay_count, LayerType::CITY);
+              if (ci >= 0) {
+                city_layer_data* cd = (city_layer_data*)img->overlay[ci].source_data;
+                if (cd != nullptr && cd->selected_area >= 0) {
+                  F_Prop->active_layer = ci;
+                }
+              }
+            }
           }
         } else {
           if (ImGui::Button("Disable Editing")) {
@@ -1265,6 +1276,11 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         }
         if (is_interactive && F_Prop->img_data.overlay[F_Prop->active_layer].type == LayerType::CITY) {
           Edit_City_Layer(My_Variables, img_pos, &F_Prop->img_data, edit_data, F_Prop->active_layer);
+          // Recomposite so overlay texture changes (position, size) show on the map
+          shader_info *shaders = &My_Variables->shaders;
+          draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
+                                  &shaders->giant_triangle, edit_data,
+                                  F_Prop->img_data.overlay, F_Prop->img_data.overlay_count);
         } else {
           Edit_Image(My_Variables, img_pos, &F_Prop->edit_data, &F_Prop->img_data,
                      edit_struct, F_Prop->active_layer,
@@ -1543,9 +1559,10 @@ void Show_City_Info_Window(variables *My_Variables) {
   static int prev_selected = -1;
   OverlayLayer* city_layer = nullptr;
   city_layer_data* city_data = nullptr;
+  LF* focused = nullptr;
 
   if (My_Variables->window_number_focus > -1) {
-    LF* focused = &My_Variables->F_Prop[My_Variables->window_number_focus];
+    focused = &My_Variables->F_Prop[My_Variables->window_number_focus];
     int city_idx = find_overlay(focused->img_data.overlay,
                                 focused->img_data.overlay_count, LayerType::CITY);
     if (city_idx >= 0) {
@@ -1567,15 +1584,22 @@ void Show_City_Info_Window(variables *My_Variables) {
     ImGui::SetNextWindowDockID(g_palette_dock_id, ImGuiCond_Appearing);
   }
 
-  // Auto-focus the window when a new city is selected
-  if (city_data->selected_area != prev_selected) {
+  bool editing = focused->editing_enabled && focused->active_layer >= 0 &&
+                 focused->img_data.overlay[focused->active_layer].type == LayerType::CITY;
+
+  // Auto-focus the window when a new city is selected or editing starts
+  static bool prev_editing = false;
+  if (city_data->selected_area != prev_selected || (editing && !prev_editing)) {
     ImGui::SetNextWindowFocus();
   }
   prev_selected = city_data->selected_area;
+  prev_editing = editing;
 
   bool open = true;
   ImGui::Begin("City Info", &open);
-  draw_city_info_panel(city_layer);
+  if (draw_city_info_panel(city_layer, editing)) {
+      focused->dirty = true;
+  }
   ImGui::End();
 }
 

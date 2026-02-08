@@ -63,5 +63,5 @@ struct variables;
 void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, image_data* edit_data,
                      int layer_idx);
 
-// ImGui panel showing selected city info.
-void draw_city_info_panel(OverlayLayer* layer);
+// ImGui panel showing selected city info. Returns true if any field was modified.
+bool draw_city_info_panel(OverlayLayer* layer, bool editing);
