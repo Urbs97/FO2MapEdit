@@ -176,8 +176,10 @@ void set_directions(const char** names_array, image_data* img_data) {
 void Clear_img_data(image_data* img_data) {
     if (img_data->MSK_data) {
         free(img_data->MSK_data);
-        free(img_data->MSK_srfc);
         img_data->MSK_data = NULL;
+    }
+    if (img_data->MSK_srfc) {
+        FreeSurface(img_data->MSK_srfc);
         img_data->MSK_srfc = NULL;
     }
     if (img_data->FRM_data) {
@@ -195,6 +197,8 @@ void Clear_img_data(image_data* img_data) {
                 free(img_data->ANM_dir[i].frame_data);
                 img_data->ANM_dir[i].frame_data = NULL;
             }
+            free(img_data->ANM_dir[i].frame_box);
+            img_data->ANM_dir[i].frame_box = NULL;
         }
         free(img_data->ANM_dir);
         img_data->ANM_dir = NULL;

@@ -148,7 +148,16 @@ void SURFACE_to_texture(Surface* src, GLuint texture, int width, int height, int
         pxl_type = GL_RGBA;
     }
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, pxl_type, GL_UNSIGNED_BYTE, src->pxls);
+    // If the surface is smaller than the requested texture size (e.g. animation frame
+    // vs bounding box), allocate empty texture then upload just the surface portion.
+    if (src->w == width && src->h == height) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, pxl_type, GL_UNSIGNED_BYTE,
+                     src->pxls);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, pxl_type, GL_UNSIGNED_BYTE, NULL);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, src->w, src->h, pxl_type, GL_UNSIGNED_BYTE,
+                        src->pxls);
+    }
 }
 
 void PAL_SURFACE_to_sub_texture(uint8_t* pxls, GLuint texture, int x_offset, int y_offset,

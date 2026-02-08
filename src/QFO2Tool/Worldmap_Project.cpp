@@ -253,9 +253,11 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
     }
     fclose(fp);
 
-    // Update save_path
-    strncpy(info->save_path, path, MAX_PATH - 1);
-    info->save_path[MAX_PATH - 1] = '\0';
+    // Update save_path (skip if path already points into save_path)
+    if (path != info->save_path) {
+        strncpy(info->save_path, path, MAX_PATH - 1);
+        info->save_path[MAX_PATH - 1] = '\0';
+    }
 
     printf("save_wmap_project(): wrote %s (%u + %u bytes)\n", path, frm_size, msk_size);
     return true;

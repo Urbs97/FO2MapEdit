@@ -659,6 +659,13 @@ int main(int argc, char **argv) {
     std::remove(ini_path);
   }
 
+  for (int i = 0; i < 99; i++) {
+    Clear_img_data(&My_Variables.F_Prop[i].img_data);
+    Clear_img_data(&My_Variables.F_Prop[i].edit_data);
+    free(My_Variables.F_Prop[i].wmap);
+    My_Variables.F_Prop[i].wmap = nullptr;
+  }
+
   delete My_Variables.shaders.render_PAL_shader;
   delete My_Variables.shaders.render_FRM_shader;
   delete My_Variables.shaders.render_OTHER_shader;
@@ -822,6 +829,8 @@ void commit_map_edits(ANM_Dir *edit_struct, image_data *edit_data) {
       Surface *src = edit_struct[dir].frame_data[frame];
       Surface *dst = edit_data->ANM_dir[dir].frame_data[frame];
       if (!src || !dst)
+        continue;
+      if (src->w != dst->w || src->h != dst->h)
         continue;
       memcpy(dst->pxls, src->pxls, src->w * src->h);
     }
@@ -1163,21 +1172,26 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
           stroke_state_cleanup(&stroke_state);
           int num = ed->display_frame_num;
           int dir = ed->display_orient_num;
-          Surface *edit_srfc;
+          Surface *edit_srfc = nullptr;
           if (!F_Prop->edit_MSK) {
-            edit_srfc = edit_struct[dir].frame_data[num];
+            if (edit_struct[dir].frame_data)
+              edit_srfc = edit_struct[dir].frame_data[num];
           } else {
             edit_srfc = &edit_MSK_srfc;
           }
-          ClearSurface(edit_srfc);
-          Surface *src = ed->ANM_dir[dir].frame_data[num];
-          GLuint texture = ed->FRM_texture;
-          if (F_Prop->edit_MSK) {
-            src = ed->MSK_srfc;
-            texture = ed->MSK_texture;
+          if (edit_srfc) {
+            ClearSurface(edit_srfc);
+            Surface *src = ed->ANM_dir[dir].frame_data[num];
+            GLuint texture = ed->FRM_texture;
+            if (F_Prop->edit_MSK) {
+              src = ed->MSK_srfc;
+              texture = ed->MSK_texture;
+            }
+            if (src) {
+              memcpy(edit_srfc->pxls, src->pxls, src->w * src->h);
+              SURFACE_to_texture(edit_srfc, texture, edit_srfc->w, edit_srfc->h, 1);
+            }
           }
-          memcpy(edit_srfc->pxls, src->pxls, src->w * src->h);
-          SURFACE_to_texture(edit_srfc, texture, edit_srfc->w, edit_srfc->h, 1);
         }
       }
 

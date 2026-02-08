@@ -48,4 +48,5 @@ struct shader_info;
 bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* F_Prop);
 Direction assign_direction(char* direction);
 void set_directions(const char** names_array, image_data* img_data);
+void Clear_img_data(image_data* img_data);
 void Gui_Video_Controls(image_data* img_data, img_type type);

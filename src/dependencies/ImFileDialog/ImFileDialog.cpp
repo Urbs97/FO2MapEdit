@@ -918,22 +918,25 @@ namespace ifd {
 	}
 	void FileDialog::m_setDirectory(const std::filesystem::path& p, bool addHistory)
 	{
-		bool isSameDir = m_currentDirectory == p;
+		// Copy p because it may reference a path inside m_content, which gets cleared below
+		std::filesystem::path path = p;
+
+		bool isSameDir = m_currentDirectory == path;
 
 		if (addHistory && !isSameDir)
 			m_backHistory.push(m_currentDirectory);
 
-		m_currentDirectory = p;
+		m_currentDirectory = path;
 #ifdef _WIN32
 		// drives don't work well without the backslash symbol
-		if (p.u8string().size() == 2 && p.u8string()[1] == ':')
-			m_currentDirectory = std::filesystem::u8path(p.u8string() + "\\");
+		if (path.u8string().size() == 2 && path.u8string()[1] == ':')
+			m_currentDirectory = std::filesystem::u8path(path.u8string() + "\\");
 #endif
 
 		m_clearIconPreview();
-		m_content.clear(); // p == "" after this line, due to reference
+		m_content.clear();
 		m_selectedFileItem = -1;
-		
+
 		if (m_type == IFD_DIALOG_DIRECTORY || m_type == IFD_DIALOG_FILE)
 			m_inputTextbox[0] = 0;
 		m_selections.clear();
@@ -943,16 +946,16 @@ namespace ifd {
 			m_clearIcons();
 		}
 
-		if (p.u8string() == "Quick Access") {
+		if (path.u8string() == "Quick Access") {
 			for (auto& node : m_treeCache) {
-				if (node->Path == p)
+				if (node->Path == path)
 					for (auto& c : node->Children)
 						m_content.push_back(FileData(c->Path));
 			}
-		} 
-		else if (p.u8string() == "This PC") {
+		}
+		else if (path.u8string() == "This PC") {
 			for (auto& node : m_treeCache) {
-				if (node->Path == p)
+				if (node->Path == path)
 					for (auto& c : node->Children)
 						m_content.push_back(FileData(c->Path));
 			}

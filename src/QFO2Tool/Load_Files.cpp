@@ -768,8 +768,6 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
             img_data->ANM_dir = NULL;
             return false;
         }
-        new (img_data->ANM_dir->frame_data) ANM_Frame;
-
         Surface* srfc = img_data->ANM_dir[0].frame_data[0] = temp_surface;
         if (img_data->ANM_dir->frame_data) {
             img_data->width = srfc->w;

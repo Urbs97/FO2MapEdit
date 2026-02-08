@@ -259,7 +259,13 @@ GLuint init_texture(Surface* src, int w, int h, img_type type) {
     // control alignment of the image (FRM/MSK are 1-byte aligned) when converted to texture
     glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
     // bind FRM_data to FRM_texture for "indirect" editing
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, pxl_type, GL_UNSIGNED_BYTE, src->pxls);
+    // If the surface is smaller than the requested texture size (e.g. animation frame
+    // vs bounding box), allocate empty texture to avoid reading past the surface buffer.
+    if (src->w == w && src->h == h) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, pxl_type, GL_UNSIGNED_BYTE, src->pxls);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, pxl_type, GL_UNSIGNED_BYTE, NULL);
+    }
 
     return texture;
 }
