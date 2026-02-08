@@ -990,7 +990,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
           ImGui::BeginDisabled();
 }
         static bool open_wmap_export = false;
-        if (ImGui::Button("Export Worldmap Tiles")) {
+        if (ImGui::Button("Export Worldmap")) {
           F_Prop->show_squares = true;
           F_Prop->show_tiles = false;
           // Ensure edit_data is initialized before export
@@ -2195,7 +2195,7 @@ bool save_TILE_popup(LF *F_Prop) {
 
   bool open_window = true;
   // TODO: replace ImGui::Begin() with BeginPopupModal()?
-  ImGui::Begin("Export FRM Tile", &open_window);
+  ImGui::Begin("Export Worldmap", &open_window);
   if (open_window) {
     int msk_i = find_overlay(F_Prop->img_data.overlay, F_Prop->img_data.overlay_count, LayerType::MSK);
     Surface *msk = (msk_i >= 0) ? F_Prop->img_data.overlay[msk_i].srfc : nullptr;

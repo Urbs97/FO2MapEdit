@@ -11,7 +11,7 @@ Forked from [msk2bmpGUI](https://github.com/QuantumApprentice/msk2bmpGUI) by Qua
 ### Image Loading & Conversion
 - Load standard image formats (PNG, BMP, JPG, GIF) and Fallout FRM/FR0-FR5 files via file dialog or drag & drop
 - Load MSK mask files and `.wmap` worldmap project files
-- Import an existing worldmap directly from a Fallout 2 installation (parses `worldmap.txt`, stitches FRM tiles and MSK masks into a single editable project)
+- Import an existing worldmap directly from Fallout 2 (parses `worldmap.txt`, stitches FRM tiles and MSK masks, and loads `city.txt` data into a single editable project)
 - Palettize images to the Fallout 256-color palette using Euclidean distance color matching with optional Floyd-Steinberg dithering
 - Real-time palette rendering via OpenGL fragment shaders
 - Display multi-frame FRM animations in all 6 orientations
@@ -27,8 +27,15 @@ Forked from [msk2bmpGUI](https://github.com/QuantumApprentice/msk2bmpGUI) by Qua
 - Create and paint 1-bit collision masks on a dedicated MSK layer
 - Export MSK mask tiles alongside FRM tiles
 
+### City Editing & Export
+- Automatically import city data (`CITY.TXT`) when loading a worldmap from Fallout 2
+- Display cities as interactive markers on the worldmap overlay
+- Click markers to select a city and open the City Info panel
+- Edit city properties: name, world position, size (Small/Medium/Large), start state, and lock state
+- Export a modified `CITY.TXT` alongside worldmap tiles
+
 ### Game Integration
-- Set a Fallout 2 game path for one-click export of FRM and MSK files to the correct subdirectories
+- Set a Fallout 2 game path for one-click export of FRM, MSK, and CITY.TXT files to the correct subdirectories
 - Export a minimal `WORLDMAP.TXT` template for registering worldmap tiles
 
 ### Paint Tools
@@ -43,6 +50,11 @@ Detailed step-by-step guides are included in this repository:
 
 - [**Importing & Loading Files**](docs/TUTORIAL_Import_Project.md) — loading images, opening `.wmap` projects, importing a worldmap from a Fallout 2 installation, drag & drop animation loading
 - [**Worldmap Tiles & Masks**](docs/TUTORIAL_Map_and_Mask_Export.md) — exporting overworld FRM/MSK tiles, `.wmap` project files, file format reference
+- [**City Editing**](docs/TUTORIAL_City_Editing.md) — importing, editing, and exporting city data (`CITY.TXT`) for the Fallout 2 worldmap
+
+## Screenshot
+
+![City Editing](docs/screenshots/city_edit.png "City Editing")
 
 ---
 

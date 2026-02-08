@@ -849,10 +849,9 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     static char save_name[23] = "WRLDMP";
 
     if (preset_name != nullptr) {
-        // Name comes from .wmap project — show it read-only
+        // Name comes from .wmap project — use it directly
         strncpy(save_name, preset_name, 7);
         save_name[7] = '\0';
-        ImGui::Text("Tile base name: %s", save_name);
     } else {
         ImGui::Text("World map tiles (FRM) and mask tiles (MSK)\n"
                     "can technically have any name you choose.\n"
@@ -878,7 +877,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
                                "Please set it via File > Set Fallout2.exe Path.");
             ImGui::BeginDisabled();
         }
-        if (ImGui::Button("Export Worldmap Tiles")) {
+        if (ImGui::Button("Export")) {
             snprintf(save_folder, MAX_PATH, "%s%s", usr_info->default_game_path,
                      "/data/art/intrface/");
             char* path = io_path_check(save_folder);
