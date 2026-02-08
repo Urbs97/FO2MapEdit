@@ -32,11 +32,8 @@ struct LF {
     bool show_image_render = false;
     bool editing_enabled = false;
     bool palettized = false;
-    bool edit_MSK = false;
-    img_type pre_MSK_type = img_type::UNK;
 
-    int active_layer = 0;          // 0 = map, 1 = mask
-    bool msk_layer_visible = true; // visibility toggle for MSK overlay
+    int active_layer = -1; // -1 = map, 0..N-1 = overlay index
 
     wmap_info* wmap = nullptr;            // non-null = this slot is a worldmap project
     bool show_close_confirm = false;      // pending "unsaved changes" dialog for tab close

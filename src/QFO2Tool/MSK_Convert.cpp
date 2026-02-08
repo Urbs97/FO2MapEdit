@@ -226,17 +226,31 @@ bool load_MSK_SURFACE(char* FileName, image_data* img_data, int width, int heigh
         }
     }
 
-    img_data->MSK_texture = init_texture(MSK_srfc, MSK_srfc->w, MSK_srfc->h, img_type::MSK);
-
-    if (img_data->MSK_srfc != nullptr) {
-        free(img_data->MSK_srfc);
+    // Populate MSK overlay slot
+    int msk_idx = find_overlay(img_data->overlay, img_data->overlay_count, LayerType::MSK);
+    if (msk_idx < 0) {
+        msk_idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MSK,
+                              LayerBlend::WHITE_MIX, "Mask", 1.0F, 1.0F, 1.0F, 0.5F);
     }
-    if (img_data->MSK_data != nullptr) {
-        free(img_data->MSK_data);
+    if (msk_idx >= 0) {
+        OverlayLayer* layer = &img_data->overlay[msk_idx];
+        if (layer->srfc != nullptr) {
+            FreeSurface(layer->srfc);
+        }
+        layer->srfc = MSK_srfc;
+        if (layer->texture != 0) {
+            glDeleteTextures(1, &layer->texture);
+        }
+        layer->texture = init_texture(MSK_srfc, MSK_srfc->w, MSK_srfc->h, img_type::MSK);
     }
 
-    img_data->MSK_data = MSK_buffer;
-    img_data->MSK_srfc = MSK_srfc;
+    // Keep MSK_buffer alive for binary export; store in source_data
+    if (msk_idx >= 0) {
+        free(img_data->overlay[msk_idx].source_data);
+        img_data->overlay[msk_idx].source_data = MSK_buffer;
+        img_data->overlay[msk_idx].source_data_size = (width + 7) / 8 * height;
+    }
+
     img_data->width = width;
     img_data->height = height;
 
@@ -271,6 +285,18 @@ void Convert_SURFACE_to_MSK(Surface* surface, image_data* img_data, int cutoff) 
             }
         }
     }
-    img_data->MSK_data = data;
+    // Store converted data in overlay's source_data for binary export
+    int msk_idx = find_overlay(img_data->overlay, img_data->overlay_count, LayerType::MSK);
+    if (msk_idx < 0) {
+        msk_idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MSK,
+                              LayerBlend::WHITE_MIX, "Mask", 1.0F, 1.0F, 1.0F, 0.5F);
+    }
+    if (msk_idx >= 0) {
+        free(img_data->overlay[msk_idx].source_data);
+        img_data->overlay[msk_idx].source_data = data;
+        img_data->overlay[msk_idx].source_data_size = size;
+    } else {
+        free(data);
+    }
     img_data->type = img_type::MSK;
 }

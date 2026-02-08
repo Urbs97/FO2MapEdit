@@ -265,14 +265,6 @@ void draw_FRM_to_framebuffer(shader_info* shader_i, int width, int height, GLuin
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-// TODO: rename this? draw_TEXTURES_to_Framebuffer()?
-//       it used to work just for PAL images
-//       but now it just takes 3 textures
-//       and combines them into one in the framebuffer
-//       while applying the palette cycle
-// TODO: maybe restructure this to take an array of textures?
-//       textures ordered by index?
-//       passed in framebuffer to draw to?
 void draw_PAL_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
                              struct image_data* img_data) {
     glViewport(0, 0, img_data->width, img_data->height);
@@ -285,8 +277,24 @@ void draw_PAL_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
     glBindTexture(GL_TEXTURE_2D, img_data->FRM_texture);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, img_data->PAL_texture);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, img_data->MSK_texture);
+
+    // Bind overlay textures to units 2..2+N-1
+    static const char* overlay_names[MAX_OVERLAY_LAYERS] = {
+        "Overlay0", "Overlay1", "Overlay2", "Overlay3",
+        "Overlay4", "Overlay5", "Overlay6", "Overlay7",
+    };
+    int blend_arr[MAX_OVERLAY_LAYERS] = {};
+    float color_arr[MAX_OVERLAY_LAYERS * 4] = {};
+
+    for (int i = 0; i < img_data->overlay_count && i < MAX_OVERLAY_LAYERS; i++) {
+        glActiveTexture(GL_TEXTURE2 + i);
+        glBindTexture(GL_TEXTURE_2D, img_data->overlay[i].texture);
+        blend_arr[i] = static_cast<int>(img_data->overlay[i].blend);
+        color_arr[(i * 4) + 0] = img_data->overlay[i].color[0];
+        color_arr[(i * 4) + 1] = img_data->overlay[i].color[1];
+        color_arr[(i * 4) + 2] = img_data->overlay[i].color[2];
+        color_arr[(i * 4) + 3] = img_data->overlay[i].color[3];
+    }
 
     // shader
     shader->use();
@@ -295,7 +303,16 @@ void draw_PAL_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
 
     shader->setInt("Indexed_FRM", 0);
     shader->setInt("Indexed_PAL", 1);
-    shader->setInt("Indexed_MSK", 2);
+
+    // Set overlay sampler units
+    for (int i = 0; i < MAX_OVERLAY_LAYERS; i++) {
+        glUniform1i(glGetUniformLocation(ID, overlay_names[i]), 2 + i);
+    }
+
+    // Set overlay uniforms
+    shader->setInt("overlay_count", img_data->overlay_count);
+    glUniform1iv(glGetUniformLocation(ID, "overlay_blend"), MAX_OVERLAY_LAYERS, blend_arr);
+    glUniform4fv(glGetUniformLocation(ID, "overlay_color"), MAX_OVERLAY_LAYERS, color_arr);
 
     int err = glGetError();
     if (err != 0) {
@@ -334,31 +351,4 @@ void draw_texture_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle, G
 
     glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(triangle->vertexCount));
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-// TODO: delete? this should be replaced by draw_PAL_to_framebuffer()
-void draw_MSK_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
-                             struct image_data* img_data) {
-    glViewport(0, 0, img_data->width, img_data->height);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, img_data->framebuffer);
-    glBindVertexArray(triangle->VAO);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, img_data->MSK_texture);
-
-    // shader
-    shader->use();
-    glUniform1uiv(glGetUniformLocation(shader->ID, "ColorPaletteUINT"), 256, (GLuint*)pal->colors);
-    shader->setInt("Indexed_FRM", 0);
-
-    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(triangle->vertexCount));
-
-    // bind framebuffer back to default
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    GLenum err = glGetError();
-    if (err != 0U) {
-        printf("draw_MSK_to_framebuffer() glGetError: %d\n", err);
-        // GL_INVALID_OPERATION
-    }
 }

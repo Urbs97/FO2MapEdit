@@ -2,6 +2,7 @@
 
 #include "B_Endian.h"
 #include "ImGui_Warning.h"
+#include "Layer.h"
 #include "Load_Settings.h"
 #include "Worldmap_Project.h"
 #include "imgui.h"
@@ -769,7 +770,8 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     img_type type = img_type::FRM;
     const char* output_type = nullptr;
     if (img_data->type == img_type::MSK) {
-        src = img_data->MSK_srfc;
+        int idx = find_overlay(img_data->overlay, img_data->overlay_count, LayerType::MSK);
+        src = (idx >= 0) ? img_data->overlay[idx].srfc : nullptr;
         type = img_type::MSK;
         output_type = "Save worldmap MSK tiles";
     } else {

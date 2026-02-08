@@ -175,14 +175,7 @@ void set_directions(const char** names_array, image_data* img_data) {
 }
 
 void Clear_img_data(image_data* img_data) {
-    if (img_data->MSK_data != nullptr) {
-        free(img_data->MSK_data);
-        img_data->MSK_data = nullptr;
-    }
-    if (img_data->MSK_srfc != nullptr) {
-        FreeSurface(img_data->MSK_srfc);
-        img_data->MSK_srfc = nullptr;
-    }
+    clear_all_overlays(img_data->overlay, &img_data->overlay_count);
     if (img_data->FRM_data != nullptr) {
         free(img_data->FRM_data);
         img_data->FRM_data = nullptr;

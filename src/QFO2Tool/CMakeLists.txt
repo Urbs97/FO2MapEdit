@@ -56,6 +56,8 @@ add_library(FO2MapEditLib
   Proto_Files.cpp
   Worldmap_Project.h
   Worldmap_Project.cpp
+  Layer.h
+  Layer.cpp
 )
 
 #these need to be located after add_library()

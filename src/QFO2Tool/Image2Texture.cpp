@@ -103,10 +103,6 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
 
     // Free previous edit_data to prevent leaks on repeated calls
     // (e.g. Enable Editing -> Disable Editing -> Enable Editing).
-    // MSK path copies the MSK_data pointer from src, so null it to avoid double-free.
-    if ((dst->MSK_data != nullptr) && dst->MSK_data == src->MSK_data) {
-        dst->MSK_data = nullptr;
-    }
     Clear_img_data(dst);
 
     dst->width = src->width;
@@ -129,18 +125,30 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
             copy_it_all_ANM(src, dst);
             dst->FRM_texture = init_texture(dst->ANM_dir[dir].frame_data[src->display_frame_num],
                                             dst->width, dst->height, dst->type);
-            if (src->MSK_srfc != nullptr) {
-                dst->MSK_srfc = Copy8BitSurface(src->MSK_srfc);
-                dst->MSK_texture =
-                    init_texture(dst->MSK_srfc, dst->width, dst->height, img_type::MSK);
+            // Copy overlay layers
+            for (int i = 0; i < src->overlay_count; i++) {
+                OverlayLayer* s = &src->overlay[i];
+                int idx = add_overlay(dst->overlay, &dst->overlay_count, s->type, s->blend, s->name,
+                                      s->color[0], s->color[1], s->color[2], s->color[3]);
+                if (idx >= 0 && s->srfc != nullptr) {
+                    dst->overlay[idx].srfc = Copy8BitSurface(s->srfc);
+                    dst->overlay[idx].texture = init_texture(dst->overlay[idx].srfc, dst->width,
+                                                             dst->height, img_type::MSK);
+                }
             }
         }
         if (src->type == img_type::MSK) {
-            // MSK just needs a surface copy,
-            // uses dst.MSK_texture
-            dst->MSK_data = src->MSK_data;
-            dst->MSK_srfc = Copy8BitSurface(src->MSK_srfc);
-            dst->MSK_texture = init_texture(dst->MSK_srfc, dst->width, dst->height, dst->type);
+            // MSK: copy overlay layers (MSK slot holds the surface)
+            for (int i = 0; i < src->overlay_count; i++) {
+                OverlayLayer* s = &src->overlay[i];
+                int idx = add_overlay(dst->overlay, &dst->overlay_count, s->type, s->blend, s->name,
+                                      s->color[0], s->color[1], s->color[2], s->color[3]);
+                if (idx >= 0 && s->srfc != nullptr) {
+                    dst->overlay[idx].srfc = Copy8BitSurface(s->srfc);
+                    dst->overlay[idx].texture =
+                        init_texture(dst->overlay[idx].srfc, dst->width, dst->height, dst->type);
+                }
+            }
             // dst->ANM_bounding_box[dir].x1;
             // dst->ANM_bounding_box[dir].y1;
             dst->ANM_bounding_box[dir].x2 = src->width;

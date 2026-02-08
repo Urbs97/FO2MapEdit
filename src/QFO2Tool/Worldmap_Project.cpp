@@ -190,10 +190,15 @@ static bool init_wmap_opengl(Surface* stitched, Surface* msk_srfc, LF* F_Prop, i
         img_data->FRM_size = synth_size;
     }
 
-    // set up MSK texture if present
+    // set up MSK overlay if present
     if (msk_srfc != nullptr) {
-        img_data->MSK_srfc = msk_srfc;
-        img_data->MSK_texture = init_texture(msk_srfc, msk_srfc->w, msk_srfc->h, img_type::MSK);
+        int idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MSK,
+                              LayerBlend::WHITE_MIX, "Mask", 1.0F, 1.0F, 1.0F, 0.5F);
+        if (idx >= 0) {
+            img_data->overlay[idx].srfc = msk_srfc;
+            img_data->overlay[idx].texture =
+                init_texture(msk_srfc, msk_srfc->w, msk_srfc->h, img_type::MSK);
+        }
     }
 
     F_Prop->palettized = true;
@@ -215,7 +220,8 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
     image_data* src_data =
         (F_Prop->edit_data.ANM_dir != nullptr) ? &F_Prop->edit_data : &F_Prop->img_data;
     Surface* frm_srfc = src_data->ANM_dir[0].frame_data[0];
-    Surface* msk_srfc = src_data->MSK_srfc;
+    int msk_idx = find_overlay(src_data->overlay, src_data->overlay_count, LayerType::MSK);
+    Surface* msk_srfc = (msk_idx >= 0) ? src_data->overlay[msk_idx].srfc : nullptr;
 
     if ((frm_srfc == nullptr) || (frm_srfc->pxls == nullptr)) {
         set_popup_warning("[ERROR] save_wmap_project()\n\n"

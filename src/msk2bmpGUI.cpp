@@ -43,7 +43,8 @@ extern "C" const char *__lsan_default_suppressions() {
 #include "imgui_internal.h"
 
 #include <GLFW/glfw3.h>
-#include <stdio.h>
+#include <cmath>
+#include <cstdio>
 
 #include <MiniSDL.h>
 
@@ -115,13 +116,14 @@ bool save_FRM_popup(LF *F_Prop);
 bool save_MSK_popup(LF *F_Prop);
 bool save_TILE_popup(LF *F_Prop);
 
-void dropped_files_callback(GLFWwindow *window, int count, const char **paths);
+
 
 static void glfw_error_callback(int error, const char *description) {
   // Suppress GLFW_FEATURE_UNAVAILABLE (65548) for Wayland window position
   // warnings
-  if (error == 65548)
+  if (error == 65548) {
     return;
+}
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
@@ -141,7 +143,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
     if (g_any_file_editing) {
       g_show_quit_confirm = true;
     } else {
-      glfwSetWindowShouldClose(window, true);
+      glfwSetWindowShouldClose(window, 1);
     }
   }
 }
@@ -162,7 +164,7 @@ int main(int argc, char **argv) {
   // freopen_s(&fDummy, "CONOUT$", "w", stdout);
   // FreeConsole();        //used to disable the console while rendering (maybe
   // attach to a button?)
-  int my_argc;
+  int my_argc = 0;
 
 #ifdef QFO2_WINDOWS
   LPWSTR *my_argv = CommandLineToArgvW(GetCommandLineW(), &my_argc);
@@ -172,7 +174,7 @@ int main(int argc, char **argv) {
 #endif
 
   glfwSetErrorCallback(glfw_error_callback);
-  if (!glfwInit()) {
+  if (glfwInit() == 0) {
     printf("\nglfwInit() failed\n\n");
     return 1;
   }
@@ -196,9 +198,9 @@ int main(int argc, char **argv) {
   glfwSetWindowCloseCallback(window, window_close_callback);
   glfwSetDropCallback(window, dropped_files_callback);
   glfwMakeContextCurrent(window);
-  glfwSwapInterval(true); // Enable vsync
+  glfwSwapInterval(1); // Enable vsync
 
-  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+  if (gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) == 0) {
     printf("Glad Loader failed?...");
     exit(-1);
   } else {
@@ -280,9 +282,9 @@ int main(int argc, char **argv) {
   // When viewports are enabled we tweak WindowRounding/WindowBg so platform
   // windows can look identical to regular ones.
   ImGuiStyle &style = ImGui::GetStyle();
-  if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-    style.WindowRounding = 0.0f;
-    style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+  if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {
+    style.WindowRounding = 0.0F;
+    style.Colors[ImGuiCol_WindowBg].w = 1.0F;
   }
 
   // Setup Platform/Renderer backends
@@ -309,7 +311,7 @@ int main(int argc, char **argv) {
            "resources//fonts//OpenSans-Bold.ttf");
   io.Fonts->AddFontDefault();
   My_Variables.Font =
-      io.Fonts->AddFontFromFileTTF(vbuffer, My_Variables.global_font_size);
+      io.Fonts->AddFontFromFileTTF(vbuffer, static_cast<float>(My_Variables.global_font_size));
 
   // io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
   // io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
@@ -356,12 +358,12 @@ int main(int argc, char **argv) {
 #endif
 
   // Our state
-  ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+  ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
   // used to reset the default layout back to original
   bool firstframe = true;
 
   // Main loop
-  while (!glfwWindowShouldClose(window)) {
+  while (glfwWindowShouldClose(window) == 0) {
     // handling dropped files in different windows
     bool file_drop_frame = all_dropped_files.count > 0;
 
@@ -408,8 +410,9 @@ int main(int argc, char **argv) {
     // 1. Show the big demo window
     //    (Most of the sample code is in ImGui::ShowDemoWindow()!
     //    You can browse its code to learn more about Dear ImGui!).
-    if (show_demo_window)
+    if (show_demo_window) {
       ImGui::ShowDemoWindow(&show_demo_window);
+}
 
     ImGuiID dockspace_id =
         ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
@@ -426,11 +429,11 @@ int main(int argc, char **argv) {
       ImGuiID dock_main_id =
           dockspace_id; // This variable will track the docking node.
       ImGuiID dock_id_left = ImGui::DockBuilderSplitNode(
-          dock_main_id, ImGuiDir_Left, 0.35f, NULL, &dock_main_id);
+          dock_main_id, ImGuiDir_Left, 0.35F, nullptr, &dock_main_id);
       ImGuiID dock_id_bleft = ImGui::DockBuilderSplitNode(
-          dock_id_left, ImGuiDir_Down, 0.64f, NULL, &dock_id_left);
+          dock_id_left, ImGuiDir_Down, 0.64F, nullptr, &dock_id_left);
       ImGuiID dock_id_right = ImGui::DockBuilderSplitNode(
-          dock_main_id, ImGuiDir_Right, 0.50f, NULL, &dock_main_id);
+          dock_main_id, ImGuiDir_Right, 0.50F, nullptr, &dock_main_id);
 
       ImGui::DockBuilderDockWindow("###file", dock_id_left);
       ImGui::DockBuilderDockWindow("###palette", dock_id_bleft);
@@ -494,7 +497,7 @@ int main(int argc, char **argv) {
     ImGui::SameLine();
     ImGui::Text("Number Windows = %d", counter);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-                1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                1000.0F / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
 #pragma region buttons
     main_window_bttns(&My_Variables, &counter);
@@ -514,8 +517,8 @@ int main(int argc, char **argv) {
         &My_Variables, &My_Variables.F_Prop[num], images_arr, &counter);
 
     if (clear_images_arr) {
-      for (int i = 0; i < 6; i++) {
-        images_arr[i].animation_images.clear();
+      for (auto & i : images_arr) {
+        i.animation_images.clear();
       }
     }
 
@@ -554,7 +557,7 @@ int main(int argc, char **argv) {
 
     // contextual palette window for MSK vs FRM editing
     if (My_Variables.window_number_focus > -1 &&
-        My_Variables.F_Prop[My_Variables.window_number_focus].edit_MSK) {
+        My_Variables.F_Prop[My_Variables.window_number_focus].active_layer >= 0) {
       Show_MSK_Palette_Window(&My_Variables);
     } else {
       Show_Palette_Window(&My_Variables);
@@ -562,7 +565,7 @@ int main(int argc, char **argv) {
 
     // update palette at regular intervals
     My_Variables.Palette_Update = update_PAL_array(My_Variables.shaders.FO_pal,
-                                                   My_Variables.CurrentTime_ms);
+                                                   static_cast<double>(My_Variables.CurrentTime_ms));
 
     for (int i = 0; i < counter; i++) {
       if (My_Variables.F_Prop[i].file_open_window) {
@@ -596,15 +599,16 @@ int main(int argc, char **argv) {
       ImGui::OpenPopup("Unsaved Changes##quit");
       g_show_quit_confirm = false;
     }
-    if (ImGui::BeginPopupModal("Unsaved Changes##quit", NULL,
+    if (ImGui::BeginPopupModal("Unsaved Changes##quit", nullptr,
                                ImGuiWindowFlags_AlwaysAutoResize)) {
       ImGui::Text("There are files with unsaved edits.");
       ImGui::Separator();
       if (ImGui::Button("Save & Quit")) {
         for (int i = 0; i < counter; i++) {
           LF *fp = &My_Variables.F_Prop[i];
-          if (!fp->file_open_window || !fp->editing_enabled)
+          if (!fp->file_open_window || !fp->editing_enabled) {
             continue;
+}
           fp->pending_commit_and_save = true;
           fp->editing_enabled = false;
         }
@@ -636,7 +640,7 @@ int main(int argc, char **argv) {
     // Update and Render additional Platform Windows
     // (Platform functions may change the current OpenGL context, so we
     // save/restore it to make it easier to paste this code elsewhere.
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+    if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {
       GLFWwindow *current_context_backup = glfwGetCurrentContext();
 
       ImGui::UpdatePlatformWindows();
@@ -653,15 +657,15 @@ int main(int argc, char **argv) {
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
 
-  if (g_reset_imgui_ini && ini_path) {
+  if (g_reset_imgui_ini && (ini_path != nullptr)) {
     std::remove(ini_path);
   }
 
-  for (int i = 0; i < 99; i++) {
-    Clear_img_data(&My_Variables.F_Prop[i].img_data);
-    Clear_img_data(&My_Variables.F_Prop[i].edit_data);
-    free(My_Variables.F_Prop[i].wmap);
-    My_Variables.F_Prop[i].wmap = nullptr;
+  for (auto & i : My_Variables.F_Prop) {
+    Clear_img_data(&i.img_data);
+    Clear_img_data(&i.edit_data);
+    free(i.wmap);
+    i.wmap = nullptr;
   }
 
   delete My_Variables.shaders.render_PAL_shader;
@@ -687,7 +691,8 @@ int main(int argc, char **argv) {
 // copies dropped file-paths to
 // global dropped_files* all_dropped_files
 void dropped_files_callback(GLFWwindow *window, int count, const char **paths) {
-  if (count <= 0) return;
+  if (count <= 0) { return;
+}
   size_t size = 0;
   // get total length of all strings
   for (int i = 0; i < count; i++) {
@@ -695,7 +700,7 @@ void dropped_files_callback(GLFWwindow *window, int count, const char **paths) {
   }
 
   // all_dropped_files is global
-  char *c;
+  char *c = nullptr;
   if (all_dropped_files.count > 0) {
     // if already storing filenames
     c = (char *)realloc(all_dropped_files.first_path,
@@ -721,11 +726,11 @@ void dropped_files_callback(GLFWwindow *window, int count, const char **paths) {
 void init_edit_struct_ANM(ANM_Dir *edit_struct, image_data *edit_data,
                           Palette *palette) {
   // this is for editing MSK files when loading them solo
-  if (!edit_data->ANM_dir) {
+  if (edit_data->ANM_dir == nullptr) {
     // edit_data->display_orient_num = 0;
     // edit_data->FRM_hdr
     edit_struct[0].frame_data = (Surface **)malloc(sizeof(Surface *));
-    if (!edit_struct[0].frame_data) {
+    if (edit_struct[0].frame_data == nullptr) {
       // TODO: log out to txt file
       set_popup_warning("[ERROR] init_edit_struct_ANM()\n\n"
                         "Unable to allocate memory for edit_frame.\n");
@@ -734,8 +739,8 @@ void init_edit_struct_ANM(ANM_Dir *edit_struct, image_data *edit_data,
     }
     edit_struct[0].frame_data[0] =
         Create_8Bit_Surface(edit_data->width, edit_data->height, palette);
-    if (!edit_struct[0].frame_data[0]) {
-      free(edit_struct[0].frame_data);
+    if (edit_struct[0].frame_data[0] == nullptr) {
+      free(static_cast<void*>(edit_struct[0].frame_data));
       // TODO: log out to txt file
       set_popup_warning("[ERROR] init_edit_struct_ANM()\n\n"
                         "Unable to create 8bit surface.\n");
@@ -743,8 +748,8 @@ void init_edit_struct_ANM(ANM_Dir *edit_struct, image_data *edit_data,
       return;
     }
     edit_data->ANM_dir = (ANM_Dir *)malloc(sizeof(ANM_Dir));
-    if (!edit_data->ANM_dir) {
-      free(edit_struct[0].frame_data);
+    if (edit_data->ANM_dir == nullptr) {
+      free(static_cast<void*>(edit_struct[0].frame_data));
       FreeSurface(edit_struct[0].frame_data[0]);
       // TODO: log out to txt file
       set_popup_warning("[ERROR] init_edit_struct_ANM()\n\n"
@@ -763,7 +768,7 @@ void init_edit_struct_ANM(ANM_Dir *edit_struct, image_data *edit_data,
         (Surface **)malloc(num_frames * sizeof(Surface *));
 
     for (int frame = 0; frame < num_frames; frame++) {
-      if (edit_data->ANM_dir[dir].frame_data == NULL) {
+      if (edit_data->ANM_dir[dir].frame_data == nullptr) {
         break;
       }
 
@@ -777,7 +782,7 @@ void init_edit_struct_ANM(ANM_Dir *edit_struct, image_data *edit_data,
       Surface *src = edit_data->ANM_dir[dir].frame_data[frame];
       Surface *dst = Create_8Bit_Surface(src->w, src->h, palette);
 
-      memcpy(dst->pxls, src->pxls, src->w * src->h);
+      memcpy(dst->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
 
       edit_struct[dir].frame_data[frame] = dst;
     }
@@ -785,147 +790,127 @@ void init_edit_struct_ANM(ANM_Dir *edit_struct, image_data *edit_data,
   edit_data->save_ptr = edit_struct;
 }
 
-void init_MSK_surface(Surface *edit_MSK_srfc, int w, int h) {
-  // these were both for when the entire struct was being allocated at once
-  //  edit_MSK_srfc->pxls = (uint8_t*)(&(edit_MSK_srfc->pxls)+1);  //alternate
-  //  way of assigning ptr edit_MSK_srfc.pxls = (uint8_t*)(edit_MSK_srfc+1);
-
-  // TODO: replace 350*300 with something that works for different sized MSK
-  // files?
-  //       needs to match attached FRM?
-  edit_MSK_srfc->pxls = (uint8_t *)calloc(1, w * h);
-
-  if (!edit_MSK_srfc->pxls) {
-    // TODO: log out to txt file
-    set_popup_warning("[ERROR] init_MSK_surface()\n\n"
-                      "Unable to allocate edit_MSK_srfc->pxls.\n");
-    printf("[Error] unable to allocate MSK surface pixels.\n");
-    return;
+void commit_all_overlay_edits(image_data *edit_data) {
+  for (int i = 0; i < edit_data->overlay_count; i++) {
+    commit_layer_edits(&edit_data->overlay[i]);
   }
-  edit_MSK_srfc->channels = 1;
-  edit_MSK_srfc->w = w;
-  edit_MSK_srfc->h = h;
-  edit_MSK_srfc->pitch = w;
-}
-
-void commit_MSK_edits(Surface *edit_MSK_srfc, image_data *edit_data) {
-  if (!edit_MSK_srfc || !edit_MSK_srfc->pxls)
-    return;
-  if (!edit_data->MSK_srfc)
-    return;
-  memcpy(edit_data->MSK_srfc->pxls, edit_MSK_srfc->pxls,
-         edit_MSK_srfc->w * edit_MSK_srfc->h);
 }
 
 void commit_map_edits(ANM_Dir *edit_struct, image_data *edit_data) {
-  if (!edit_struct || !edit_data->ANM_dir)
+  if ((edit_struct == nullptr) || (edit_data->ANM_dir == nullptr)) {
     return;
+}
   for (int dir = 0; dir < 6; dir++) {
     int num_frames = edit_data->ANM_dir[dir].num_frames;
-    if (!edit_struct[dir].frame_data)
+    if (edit_struct[dir].frame_data == nullptr) {
       continue;
+}
     for (int frame = 0; frame < num_frames; frame++) {
       Surface *src = edit_struct[dir].frame_data[frame];
       Surface *dst = edit_data->ANM_dir[dir].frame_data[frame];
-      if (!src || !dst)
+      if ((src == nullptr) || (dst == nullptr)) {
         continue;
-      if (src->w != dst->w || src->h != dst->h)
+}
+      if (src->w != dst->w || src->h != dst->h) {
         continue;
-      memcpy(dst->pxls, src->pxls, src->w * src->h);
+}
+      memcpy(dst->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
     }
   }
 }
 
-// Layer panel for MSK editing — allows switching between Map and Mask layers
-void draw_layer_panel(LF *F_Prop, shader_info *shaders, image_data *edit_data,
-                      Surface *edit_MSK_srfc) {
+// Layer panel — allows switching between Map and overlay layers
+void draw_layer_panel(LF *F_Prop, shader_info *shaders, image_data *edit_data) {
   ImGui::Separator();
   ImGui::Text("Layers");
 
   // Map layer (always shown)
   {
-    bool selected = (F_Prop->active_layer == 0);
+    bool selected = (F_Prop->active_layer == -1);
     if (ImGui::Selectable("  Map", selected)) {
-      // Commit MSK working buffer before switching away from mask layer
-      if (F_Prop->active_layer == 1 && edit_MSK_srfc && edit_MSK_srfc->pxls) {
-        commit_MSK_edits(edit_MSK_srfc, edit_data);
+      // Commit overlay working buffer before switching away
+      if (F_Prop->active_layer >= 0 && F_Prop->active_layer < edit_data->overlay_count) {
+        commit_layer_edits(&edit_data->overlay[F_Prop->active_layer]);
       }
-      F_Prop->active_layer = 0;
-      F_Prop->edit_MSK = false;
+      F_Prop->active_layer = -1;
     }
   }
 
-  // Mask layer (shown only when MSK surface exists)
-  if (edit_data->MSK_srfc) {
-    // Visibility toggle on same line as Mask selectable
-    ImGui::PushID("msk_vis");
-    bool vis = F_Prop->msk_layer_visible;
-    if (ImGui::SmallButton(vis ? "V" : "-")) {
-      F_Prop->msk_layer_visible = !F_Prop->msk_layer_visible;
-      if (!F_Prop->msk_layer_visible && F_Prop->active_layer == 1) {
+  // Overlay layers
+  for (int i = 0; i < edit_data->overlay_count; i++) {
+    OverlayLayer *layer = &edit_data->overlay[i];
+    if (layer->type == LayerType::NONE || layer->srfc == nullptr) {
+      continue;
+    }
+
+    ImGui::PushID(i);
+    // Visibility toggle
+    if (ImGui::SmallButton(layer->visible ? "V" : "-")) {
+      layer->visible = !layer->visible;
+      if (!layer->visible && F_Prop->active_layer == i) {
         // Can't edit invisible layer — switch to map
-        F_Prop->active_layer = 0;
-        F_Prop->edit_MSK = false;
+        F_Prop->active_layer = -1;
       }
-      // Upload blank or real MSK data to the texture
-      if (F_Prop->msk_layer_visible) {
-        // Use working buffer if available, else committed data
-        Surface *src = (edit_MSK_srfc && edit_MSK_srfc->pxls)
-                           ? edit_MSK_srfc
-                           : edit_data->MSK_srfc;
-        SURFACE_to_texture(src, edit_data->MSK_texture, src->w, src->h, 1);
+      // Upload real or blank data to the texture
+      if (layer->visible) {
+        Surface *src = ((layer->edit_srfc != nullptr) && (layer->edit_srfc->pxls != nullptr))
+                           ? layer->edit_srfc
+                           : layer->srfc;
+        SURFACE_to_texture(src, layer->texture, src->w, src->h, 1);
       } else {
-        // Upload zeros to hide the overlay
-        int w = edit_data->MSK_srfc->w;
-        int h = edit_data->MSK_srfc->h;
+        int w = layer->srfc->w;
+        int h = layer->srfc->h;
         Surface blank_srfc = {};
-        blank_srfc.pxls = (uint8_t *)calloc(1, w * h);
-        blank_srfc.w = w;
-        blank_srfc.h = h;
+        blank_srfc.pxls = (uint8_t *)calloc(1, static_cast<size_t>(w) * h);
+        blank_srfc.w = static_cast<uint16_t>(w);
+        blank_srfc.h = static_cast<uint16_t>(h);
         blank_srfc.pitch = w;
         blank_srfc.channels = 1;
-        SURFACE_to_texture(&blank_srfc, edit_data->MSK_texture, w, h, 1);
+        SURFACE_to_texture(&blank_srfc, layer->texture, w, h, 1);
         free(blank_srfc.pxls);
       }
     }
-    ImGui::PopID();
 
     ImGui::SameLine();
-    bool selected = (F_Prop->active_layer == 1);
-    if (ImGui::Selectable("Mask", selected)) {
-      if (F_Prop->msk_layer_visible) {
-        F_Prop->active_layer = 1;
-        F_Prop->edit_MSK = true;
+    bool selected = (F_Prop->active_layer == i);
+    if (ImGui::Selectable((layer->name != nullptr) ? layer->name : "Layer", selected)) {
+      if (layer->visible) {
+        // Commit previous overlay's edits before switching
+        if (F_Prop->active_layer >= 0 && F_Prop->active_layer < edit_data->overlay_count) {
+          commit_layer_edits(&edit_data->overlay[F_Prop->active_layer]);
+        }
+        F_Prop->active_layer = i;
       }
     }
+    ImGui::PopID();
   }
 
   ImGui::Separator();
 }
 
 // Commit edit surfaces to edit_data and copy to img_data, then save the
-// project. edit_struct/edit_MSK_srfc are only valid for the file that owns the
-// static edit state.
+// project. edit_struct is only valid for the file that owns the static edit
+// state.
 static void commit_and_save_edits(LF *F_Prop, LF *edit_state_owner,
-                                  ANM_Dir edit_struct[6],
-                                  Surface *edit_MSK_srfc) {
+                                  ANM_Dir edit_struct[6]) {
   if (F_Prop == edit_state_owner) {
     commit_map_edits(edit_struct, &F_Prop->edit_data);
-    commit_MSK_edits(edit_MSK_srfc, &F_Prop->edit_data);
-    if (F_Prop->edit_data.ANM_dir && F_Prop->img_data.ANM_dir) {
+    commit_all_overlay_edits(&F_Prop->edit_data);
+    if ((F_Prop->edit_data.ANM_dir != nullptr) && (F_Prop->img_data.ANM_dir != nullptr)) {
       for (int d = 0; d < 6; d++) {
         int nf = F_Prop->edit_data.ANM_dir[d].num_frames;
         for (int f = 0; f < nf; f++) {
           Surface *src = F_Prop->edit_data.ANM_dir[d].frame_data[f];
           Surface *dst = F_Prop->img_data.ANM_dir[d].frame_data[f];
-          if (!src || !dst)
+          if ((src == nullptr) || (dst == nullptr)) {
             continue;
-          memcpy(dst->pxls, src->pxls, src->w * src->h);
+}
+          memcpy(dst->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
         }
       }
     }
   }
-  if (F_Prop->wmap && F_Prop->wmap->save_path[0] != '\0') {
+  if ((F_Prop->wmap != nullptr) && F_Prop->wmap->save_path[0] != '\0') {
     save_wmap_project(F_Prop->wmap->save_path, F_Prop);
   } else if (F_Prop->img_data.type == img_type::FRM && F_Prop->Opened_File[0] != '\0') {
     Save_Info sv_info;
@@ -944,8 +929,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
   // Edit state (shared across file slots, same pattern as old
   // Edit_Image_Window)
   static ANM_Dir edit_struct[6];
-  static Surface edit_MSK_srfc;
-  static bool edit_msk_copied = false;
   static StrokeState stroke_state;
   static LF *edit_state_owner = nullptr; // tracks which F_Prop owns the statics
 
@@ -967,7 +950,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
     ImGui::PushItemWidth(100);
     float *zoom_scale =
         F_Prop->editing_enabled ? &F_Prop->edit_data.scale : &img_data->scale;
-    ImGui::DragFloat("##Zoom", zoom_scale, 0.1f, 0.0f, 10.0f, "Zoom: %%%.2fx",
+    ImGui::DragFloat("##Zoom", zoom_scale, 0.1F, 0.0F, 10.0F, "Zoom: %%%.2fx",
                      0);
     ImGui::PopItemWidth();
 
@@ -985,21 +968,22 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
                      IM_ARRAYSIZE(items));
       }
 
-      if (F_Prop->wmap) {
-        if (!F_Prop->palettized)
+      if (F_Prop->wmap != nullptr) {
+        if (!F_Prop->palettized) {
           ImGui::BeginDisabled();
+}
         static bool open_wmap_export = false;
         if (ImGui::Button("Export Worldmap Tiles")) {
           F_Prop->show_squares = true;
           F_Prop->show_tiles = false;
           // Ensure edit_data is initialized before export
-          if (!F_Prop->edit_data.ANM_dir) {
+          if (F_Prop->edit_data.ANM_dir == nullptr) {
             prep_image_SURFACE(F_Prop, pxlFMT_FO_Pal,
                                My_Variables->color_match_algo, nullptr,
                                alpha_off);
           }
           commit_map_edits(edit_struct, &F_Prop->edit_data);
-          commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
+          commit_all_overlay_edits(&F_Prop->edit_data);
           F_Prop->edit_data.type = img_type::TILE;
           image_data *ed = &F_Prop->edit_data;
           int dir = ed->display_orient_num;
@@ -1022,8 +1006,9 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
                              &F_Prop->preview_tiles_window, alpha_off);
           F_Prop->show_image_render = false;
         }
-        if (!F_Prop->palettized)
+        if (!F_Prop->palettized) {
           ImGui::EndDisabled();
+}
       }
 
       if (!F_Prop->editing_enabled) {
@@ -1032,18 +1017,21 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
             prep_image_SURFACE(F_Prop, pxlFMT_FO_Pal,
                                My_Variables->color_match_algo,
                                &F_Prop->editing_enabled, alpha_off);
-            F_Prop->edit_MSK = true;
+            // MSK files: set active layer to the MSK overlay
+            int msk_idx = find_overlay(F_Prop->edit_data.overlay,
+                                       F_Prop->edit_data.overlay_count, LayerType::MSK);
+            F_Prop->active_layer = msk_idx;
           }
         } else if (img_data->type == img_type::OTHER && !F_Prop->palettized) {
           if (ImGui::Button("Palettize Image")) {
             F_Prop->palettized = true;
             for (int i = 0; i < 6; i++) {
-              if (!edit_data->save_ptr) {
+              if (edit_data->save_ptr == nullptr) {
                 break;
               }
-              if (edit_data->save_ptr[i].frame_data) {
-                free(edit_data->save_ptr[i].frame_data);
-                edit_data->save_ptr[i].frame_data = NULL;
+              if (edit_data->save_ptr[i].frame_data != nullptr) {
+                free(static_cast<void*>(edit_data->save_ptr[i].frame_data));
+                edit_data->save_ptr[i].frame_data = nullptr;
               }
             }
 
@@ -1073,8 +1061,9 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
       }
 
       if (img_data->type != img_type::OTHER) {
-        if (!F_Prop->img_data.ANM_dir)
+        if (F_Prop->img_data.ANM_dir == nullptr) {
           ImGui::BeginDisabled();
+}
         {
           char png_popup_id[32];
           snprintf(png_popup_id, sizeof(png_popup_id), "Export as PNG##%02d",
@@ -1088,8 +1077,9 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
             ImGui::EndPopup();
           }
         }
-        if (!F_Prop->img_data.ANM_dir)
+        if (F_Prop->img_data.ANM_dir == nullptr) {
           ImGui::EndDisabled();
+}
       }
 
       if (img_data->type != img_type::MSK) {
@@ -1102,45 +1092,66 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
             }
             F_Prop->editing_enabled = true;
 
-            // Auto-create MSK layer for tileable images
+            // Auto-create MSK overlay for worldmap projects
             image_data *ed = &F_Prop->edit_data;
-            if (F_Prop->wmap && !ed->MSK_srfc) {
-              ed->MSK_srfc = Create_8Bit_Surface(ed->width, ed->height, NULL);
-              ed->MSK_texture = init_texture(ed->MSK_srfc, ed->MSK_srfc->w,
-                                             ed->MSK_srfc->h, img_type::MSK);
+            if ((F_Prop->wmap != nullptr) && find_overlay(ed->overlay, ed->overlay_count, LayerType::MSK) < 0) {
+              int idx = add_overlay(ed->overlay, &ed->overlay_count,
+                                    LayerType::MSK, LayerBlend::WHITE_MIX, "Mask",
+                                    1.0F, 1.0F, 1.0F, 0.5F);
+              if (idx >= 0) {
+                ed->overlay[idx].srfc = Create_8Bit_Surface(ed->width, ed->height, nullptr);
+                ed->overlay[idx].texture = init_texture(ed->overlay[idx].srfc,
+                                                        ed->overlay[idx].srfc->w,
+                                                        ed->overlay[idx].srfc->h, img_type::MSK);
+              }
             }
           }
         } else {
           if (ImGui::Button("Disable Editing")) {
             commit_map_edits(edit_struct, &F_Prop->edit_data);
-            commit_MSK_edits(&edit_MSK_srfc, &F_Prop->edit_data);
+            commit_all_overlay_edits(&F_Prop->edit_data);
 
-            // Copy MSK edits to img_data for preview overlay
-            if (F_Prop->edit_data.MSK_srfc) {
-              int mw = F_Prop->edit_data.MSK_srfc->w;
-              int mh = F_Prop->edit_data.MSK_srfc->h;
-              // Create img_data MSK surface/texture if needed
-              if (!F_Prop->img_data.MSK_srfc) {
-                F_Prop->img_data.MSK_srfc = Create_8Bit_Surface(mw, mh, NULL);
-                F_Prop->img_data.MSK_texture =
-                    init_texture(F_Prop->img_data.MSK_srfc, mw, mh, img_type::MSK);
+            // Copy overlay edits to img_data for preview
+            for (int oi = 0; oi < F_Prop->edit_data.overlay_count; oi++) {
+              OverlayLayer *ed_layer = &F_Prop->edit_data.overlay[oi];
+              if (ed_layer->srfc == nullptr) { continue;
+}
+              int mw = ed_layer->srfc->w;
+              int mh = ed_layer->srfc->h;
+              // Find or create matching overlay in img_data
+              int img_idx = find_overlay(F_Prop->img_data.overlay,
+                                         F_Prop->img_data.overlay_count, ed_layer->type);
+              if (img_idx < 0) {
+                img_idx = add_overlay(F_Prop->img_data.overlay,
+                                      &F_Prop->img_data.overlay_count,
+                                      ed_layer->type, ed_layer->blend, ed_layer->name,
+                                      ed_layer->color[0], ed_layer->color[1],
+                                      ed_layer->color[2], ed_layer->color[3]);
+                if (img_idx >= 0) {
+                  F_Prop->img_data.overlay[img_idx].srfc = Create_8Bit_Surface(mw, mh, nullptr);
+                  F_Prop->img_data.overlay[img_idx].texture =
+                      init_texture(F_Prop->img_data.overlay[img_idx].srfc, mw, mh, img_type::MSK);
+                }
               }
-              memcpy(F_Prop->img_data.MSK_srfc->pxls,
-                     F_Prop->edit_data.MSK_srfc->pxls, mw * mh);
-              SURFACE_to_texture(F_Prop->img_data.MSK_srfc,
-                                 F_Prop->img_data.MSK_texture, mw, mh, 1);
+              if (img_idx >= 0 && (F_Prop->img_data.overlay[img_idx].srfc != nullptr)) {
+                memcpy(F_Prop->img_data.overlay[img_idx].srfc->pxls,
+                       ed_layer->srfc->pxls, static_cast<size_t>(mw) * mh);
+                SURFACE_to_texture(F_Prop->img_data.overlay[img_idx].srfc,
+                                   F_Prop->img_data.overlay[img_idx].texture, mw, mh, 1);
+              }
             }
 
             // Copy map edits to img_data for preview
-            if (F_Prop->edit_data.ANM_dir && F_Prop->img_data.ANM_dir) {
+            if ((F_Prop->edit_data.ANM_dir != nullptr) && (F_Prop->img_data.ANM_dir != nullptr)) {
               for (int d = 0; d < 6; d++) {
                 int nf = F_Prop->edit_data.ANM_dir[d].num_frames;
                 for (int f = 0; f < nf; f++) {
                   Surface *src = F_Prop->edit_data.ANM_dir[d].frame_data[f];
                   Surface *dst = F_Prop->img_data.ANM_dir[d].frame_data[f];
-                  if (!src || !dst)
+                  if ((src == nullptr) || (dst == nullptr)) {
                     continue;
-                  memcpy(dst->pxls, src->pxls, src->w * src->h);
+}
+                  memcpy(dst->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
                 }
               }
             }
@@ -1150,8 +1161,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
             F_Prop->img_data.offset = F_Prop->edit_data.offset;
 
             F_Prop->editing_enabled = false;
-            F_Prop->edit_MSK = false;
-            F_Prop->active_layer = 0;
+            F_Prop->active_layer = -1;
             My_Variables->edit_image_focused = false;
           }
         }
@@ -1161,43 +1171,48 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
       if (F_Prop->editing_enabled) {
         image_data *ed = &F_Prop->edit_data;
 
-        if (F_Prop->wmap) {
+        if (F_Prop->wmap != nullptr) {
           // Layer panel replaces old mask switching buttons
-          draw_layer_panel(F_Prop, shaders, ed, &edit_MSK_srfc);
+          draw_layer_panel(F_Prop, shaders, ed);
         }
 
         if (ImGui::Button("Reset Image")) {
           stroke_state_cleanup(&stroke_state);
           int num = ed->display_frame_num;
           int dir = ed->display_orient_num;
+          bool editing_overlay = (F_Prop->active_layer >= 0 &&
+                                  F_Prop->active_layer < ed->overlay_count);
           Surface *edit_srfc = nullptr;
-          if (!F_Prop->edit_MSK) {
-            if (edit_struct[dir].frame_data)
+          if (!editing_overlay) {
+            if (edit_struct[dir].frame_data != nullptr) {
               edit_srfc = edit_struct[dir].frame_data[num];
+}
           } else {
-            edit_srfc = &edit_MSK_srfc;
+            edit_srfc = ed->overlay[F_Prop->active_layer].edit_srfc;
           }
-          if (edit_srfc) {
+          if (edit_srfc != nullptr) {
             ClearSurface(edit_srfc);
-            Surface *src = ed->ANM_dir[dir].frame_data[num];
+            Surface *src = nullptr;
             GLuint texture = ed->FRM_texture;
-            if (F_Prop->edit_MSK) {
-              src = ed->MSK_srfc;
-              texture = ed->MSK_texture;
+            if (editing_overlay) {
+              src = ed->overlay[F_Prop->active_layer].srfc;
+              texture = ed->overlay[F_Prop->active_layer].texture;
+            } else {
+              src = ed->ANM_dir[dir].frame_data[num];
             }
-            if (src) {
-              memcpy(edit_srfc->pxls, src->pxls, src->w * src->h);
+            if (src != nullptr) {
+              memcpy(edit_srfc->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
               SURFACE_to_texture(edit_srfc, texture, edit_srfc->w, edit_srfc->h, 1);
             }
           }
         }
       }
 
-      if (!F_Prop->wmap && img_data->type == img_type::FRM) {
+      if ((F_Prop->wmap == nullptr) && img_data->type == img_type::FRM) {
         static bool open_save = false;
         image_data *ed = &F_Prop->edit_data;
         if (ImGui::Button("Export FRM")) {
-          if (!ed->ANM_dir) {
+          if (ed->ANM_dir == nullptr) {
             prep_image_SURFACE(F_Prop, pxlFMT_FO_Pal,
                                My_Variables->color_match_algo, nullptr,
                                alpha_off);
@@ -1206,7 +1221,8 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
           open_save = true;
         }
         if (open_save) {
-          if (F_Prop->active_layer == 1) {
+          int msk_export_idx = find_overlay(ed->overlay, ed->overlay_count, LayerType::MSK);
+          if (F_Prop->active_layer >= 0 && F_Prop->active_layer == msk_export_idx) {
             open_save = save_MSK_popup(F_Prop);
           } else if (ed->type == img_type::FRM) {
             open_save = save_FRM_popup(F_Prop);
@@ -1227,27 +1243,22 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
       // --- Edit mode ---
       image_data *edit_data = &F_Prop->edit_data;
 
-      if (!edit_data->ANM_dir) {
+      if (edit_data->ANM_dir == nullptr) {
         ImGui::Text("No FRM_dir");
       } else if (edit_data->ANM_dir[edit_data->display_orient_num].frame_data ==
-                 NULL) {
+                 nullptr) {
         ImGui::Text("No frame_data");
       } else {
         // Initialize edit structures on demand
-        if (!edit_struct[0].frame_data) {
+        if (edit_struct[0].frame_data == nullptr) {
           init_edit_struct_ANM(edit_struct, edit_data,
                                My_Variables->FO_Palette);
           edit_state_owner = F_Prop;
         }
-        if (!edit_MSK_srfc.pxls) {
-          init_MSK_surface(&edit_MSK_srfc, edit_data->width, edit_data->height);
-        }
-        // Copy MSK data once when entering edit mode
-        if (!edit_msk_copied) {
-          if (edit_data->MSK_srfc) {
-            edit_msk_copied = true;
-            memcpy(edit_MSK_srfc.pxls, edit_data->MSK_srfc->pxls,
-                   edit_MSK_srfc.w * edit_MSK_srfc.h);
+        // Initialize overlay edit surfaces on demand
+        for (int oi = 0; oi < edit_data->overlay_count; oi++) {
+          if ((edit_data->overlay[oi].srfc != nullptr) && (edit_data->overlay[oi].edit_srfc == nullptr)) {
+            init_layer_edit_surface(&edit_data->overlay[oi]);
           }
         }
 
@@ -1258,13 +1269,13 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         ImVec2 img_pos = display_img_ImGUI(My_Variables, edit_data);
 
         Edit_Image(My_Variables, img_pos, &F_Prop->edit_data, edit_struct,
-                   &edit_MSK_srfc, F_Prop->edit_MSK,
+                   F_Prop->active_layer,
                    My_Variables->Palette_Update, &My_Variables->Color_Pick,
                    &stroke_state);
 
-        draw_frame_boundary(edit_data, img_pos, F_Prop->edit_MSK);
+        draw_frame_boundary(edit_data, img_pos, F_Prop->active_layer);
         if (My_Variables->pixel_perfect) {
-          draw_pixel_grid(edit_data, img_pos, F_Prop->edit_MSK);
+          draw_pixel_grid(edit_data, img_pos, F_Prop->active_layer);
         }
         draw_brush_cursor(&stroke_state);
 
@@ -1272,31 +1283,37 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
       }
     } else {
       // --- Preview mode ---
-      // Show MSK visibility toggle in preview if MSK data exists
-      if (img_data->MSK_srfc && F_Prop->wmap) {
+      // Show overlay visibility toggles in preview mode
+      if (img_data->overlay_count > 0 && (F_Prop->wmap != nullptr)) {
         ImGui::Text("Layers");
-        ImGui::SameLine();
-        bool vis = F_Prop->msk_layer_visible;
-        if (ImGui::SmallButton(vis ? "V##prev_vis" : "-##prev_vis")) {
-          F_Prop->msk_layer_visible = !F_Prop->msk_layer_visible;
-          if (F_Prop->msk_layer_visible) {
-            SURFACE_to_texture(img_data->MSK_srfc, img_data->MSK_texture,
-                               img_data->MSK_srfc->w, img_data->MSK_srfc->h, 1);
-          } else {
-            int w = img_data->MSK_srfc->w;
-            int h = img_data->MSK_srfc->h;
-            Surface blank_srfc = {};
-            blank_srfc.pxls = (uint8_t *)calloc(1, w * h);
-            blank_srfc.w = w;
-            blank_srfc.h = h;
-            blank_srfc.pitch = w;
-            blank_srfc.channels = 1;
-            SURFACE_to_texture(&blank_srfc, img_data->MSK_texture, w, h, 1);
-            free(blank_srfc.pxls);
+        for (int oi = 0; oi < img_data->overlay_count; oi++) {
+          OverlayLayer *layer = &img_data->overlay[oi];
+          if (layer->srfc == nullptr) { continue;
+}
+          ImGui::SameLine();
+          ImGui::PushID(100 + oi);
+          if (ImGui::SmallButton(layer->visible ? "V" : "-")) {
+            layer->visible = !layer->visible;
+            if (layer->visible) {
+              SURFACE_to_texture(layer->srfc, layer->texture,
+                                 layer->srfc->w, layer->srfc->h, 1);
+            } else {
+              int w = layer->srfc->w;
+              int h = layer->srfc->h;
+              Surface blank_srfc = {};
+              blank_srfc.pxls = (uint8_t *)calloc(1, static_cast<size_t>(w) * h);
+              blank_srfc.w = static_cast<uint16_t>(w);
+              blank_srfc.h = static_cast<uint16_t>(h);
+              blank_srfc.pitch = w;
+              blank_srfc.channels = 1;
+              SURFACE_to_texture(&blank_srfc, layer->texture, w, h, 1);
+              free(blank_srfc.pxls);
+            }
           }
+          ImGui::SameLine();
+          ImGui::Text("%s", (layer->name != nullptr) ? layer->name : "Overlay");
+          ImGui::PopID();
         }
-        ImGui::SameLine();
-        ImGui::Text("Mask Overlay");
       }
 
       if (img_data->type == img_type::FRM) {
@@ -1340,24 +1357,21 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
     ImGui::OpenPopup(close_popup_id);
     F_Prop->show_close_confirm = false;
   }
-  if (ImGui::BeginPopupModal(close_popup_id, NULL,
+  if (ImGui::BeginPopupModal(close_popup_id, nullptr,
                              ImGuiWindowFlags_AlwaysAutoResize)) {
     ImGui::Text("You have unsaved edits.");
     ImGui::Separator();
     if (ImGui::Button("Save & Close")) {
-      commit_and_save_edits(F_Prop, edit_state_owner, edit_struct,
-                            &edit_MSK_srfc);
+      commit_and_save_edits(F_Prop, edit_state_owner, edit_struct);
       F_Prop->editing_enabled = false;
-      F_Prop->edit_MSK = false;
-      F_Prop->active_layer = 0;
+      F_Prop->active_layer = -1;
       F_Prop->file_open_window = false;
       ImGui::CloseCurrentPopup();
     }
     ImGui::SameLine();
     if (ImGui::Button("Close without saving")) {
       F_Prop->editing_enabled = false;
-      F_Prop->edit_MSK = false;
-      F_Prop->active_layer = 0;
+      F_Prop->active_layer = -1;
       F_Prop->file_open_window = false;
       ImGui::CloseCurrentPopup();
     }
@@ -1372,8 +1386,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
 
   // Commit edits and save before cleanup frees the statics
   if (F_Prop->pending_commit_and_save && !F_Prop->editing_enabled) {
-    commit_and_save_edits(F_Prop, edit_state_owner, edit_struct,
-                          &edit_MSK_srfc);
+    commit_and_save_edits(F_Prop, edit_state_owner, edit_struct);
     F_Prop->pending_commit_and_save = false;
   }
 
@@ -1381,26 +1394,27 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
   // statics
   if (!F_Prop->editing_enabled && F_Prop == edit_state_owner) {
     stroke_state_cleanup(&stroke_state);
-    free(edit_MSK_srfc.pxls);
-    edit_MSK_srfc.pxls = NULL;
+    // Cleanup overlay edit surfaces
+    for (int oi = 0; oi < F_Prop->edit_data.overlay_count; oi++) {
+      cleanup_layer_edit_surface(&F_Prop->edit_data.overlay[oi]);
+    }
     for (int i = 0; i < 6; i++) {
       // Free individual Surface objects before freeing the pointer array
-      if (edit_struct[i].frame_data) {
+      if (edit_struct[i].frame_data != nullptr) {
         image_data *ed = &F_Prop->edit_data;
-        int num_frames = (ed->ANM_dir && ed->ANM_dir[i].num_frames > 0)
+        int num_frames = ((ed->ANM_dir != nullptr) && ed->ANM_dir[i].num_frames > 0)
                              ? ed->ANM_dir[i].num_frames
                              : 0;
         for (int f = 0; f < num_frames; f++) {
-          if (edit_struct[i].frame_data[f]) {
+          if (edit_struct[i].frame_data[f] != nullptr) {
             FreeSurface(edit_struct[i].frame_data[f]);
-            edit_struct[i].frame_data[f] = NULL;
+            edit_struct[i].frame_data[f] = nullptr;
           }
         }
       }
-      free(edit_struct[i].frame_data);
-      edit_struct[i].frame_data = NULL;
+      free(static_cast<void*>(edit_struct[i].frame_data));
+      edit_struct[i].frame_data = nullptr;
     }
-    edit_msk_copied = false;
     edit_state_owner = nullptr;
   }
 
@@ -1431,11 +1445,11 @@ void Show_Palette_Window(variables *My_Variables) {
   for (int y = 0; y < 16; y++) {
     for (int x = 0; x < 16; x++) {
 
-      int index = y * 16 + x;
+      int index = (y * 16) + x;
 
-      float r = pal->colors[index].r / 255.0f;
-      float g = pal->colors[index].g / 255.0f;
-      float b = pal->colors[index].b / 255.0f;
+      float r = static_cast<float>(pal->colors[index].r) / 255.0F;
+      float g = static_cast<float>(pal->colors[index].g) / 255.0F;
+      float b = static_cast<float>(pal->colors[index].b) / 255.0F;
       // float a = pal->colors[index].a/255.0f;
 
       // give the first button an alpha channel checkerboard
@@ -1443,7 +1457,7 @@ void Show_Palette_Window(variables *My_Variables) {
       //       the first index as alpha = 0 always, then
       //       comment int "float a =" above and delete
       //       the below alpha switch
-      float alpha;
+      float alpha = NAN;
       if (x == 0 && y == 0) {
         alpha = 0.0;
       } else {
@@ -1461,13 +1475,14 @@ void Show_Palette_Window(variables *My_Variables) {
         ImVec2 min = ImGui::GetItemRectMin();
         ImVec2 max = ImGui::GetItemRectMax();
         ImDrawList *draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRect(min, max, IM_COL32(0, 0, 0, 255), 0.0f, 0, 2.0f);
-        draw_list->AddRect(min, max, IM_COL32(255, 255, 255, 255), 0.0f, 0,
-                           1.0f);
+        draw_list->AddRect(min, max, IM_COL32(0, 0, 0, 255), 0.0F, 0, 2.0F);
+        draw_list->AddRect(min, max, IM_COL32(255, 255, 255, 255), 0.0F, 0,
+                           1.0F);
       }
 
-      if (x < 15)
+      if (x < 15) {
         ImGui::SameLine();
+}
     }
   }
 
@@ -1482,13 +1497,13 @@ void Show_MSK_Palette_Window(variables *My_Variables) {
   brush_size_handler(My_Variables);
 
   ImGui::Text("Erase Mask                    Draw Mask");
-  if (ImGui::ColorButton("Erase Mask", ImVec4(0, 0, 0, 1.0f), 0,
-                         ImVec2(200.0f, 200.0f))) {
+  if (ImGui::ColorButton("Erase Mask", ImVec4(0, 0, 0, 1.0F), 0,
+                         ImVec2(200.0F, 200.0F))) {
     My_Variables->Color_Pick = (0);
   }
   ImGui::SameLine();
-  if (ImGui::ColorButton("Mark Mask", ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 0,
-                         ImVec2(200.0f, 200.0f))) {
+  if (ImGui::ColorButton("Mark Mask", ImVec4(1.0F, 1.0F, 1.0F, 1.0F), 0,
+                         ImVec2(200.0F, 200.0F))) {
     My_Variables->Color_Pick = (1);
   }
 
@@ -1510,7 +1525,7 @@ void Preview_Tiles_Window(variables *My_Variables, LF *F_Prop, int counter) {
   if (ImGui::Begin(name.c_str(), &F_Prop->preview_tiles_window, 0)) {
 
     ImGui::PushItemWidth(100);
-    ImGui::DragFloat("##Zoom", &edit_data->scale, 0.1f, 0.0f, 10.0f,
+    ImGui::DragFloat("##Zoom", &edit_data->scale, 0.1F, 0.0F, 10.0F,
                      "Zoom: %%%.2fx", 0);
     ImGui::PopItemWidth();
 
@@ -1540,7 +1555,7 @@ void Show_Image_Render(variables *My_Variables, LF *F_Prop,
       My_Variables->tile_window_focused = false;
     }
     ImGui::PushItemWidth(100);
-    ImGui::DragFloat("##Zoom", &edit_data->scale, 0.1f, 0.0f, 10.0f,
+    ImGui::DragFloat("##Zoom", &edit_data->scale, 0.1F, 0.0F, 10.0F,
                      "Zoom: %%%.2fx", 0);
     ImGui::PopItemWidth();
     ImGui::Checkbox("Show Frame Stats", &F_Prop->show_stats);
@@ -1565,7 +1580,7 @@ void Open_Files(struct user_info *usr_info, int *counter, Palette *pxlFMT,
       F_Prop, &F_Prop->img_data, usr_info, &My_Variables->shaders,
       My_Variables->F_Prop, *counter);
 
-  if (My_Variables->F_Prop[*counter].c_name) {
+  if (My_Variables->F_Prop[*counter].c_name != nullptr) {
     (*counter)++;
   }
 }
@@ -1625,7 +1640,7 @@ static void NewWmapProject_Dialogs(int *counter,
 
       // Load as RGBA
       Surface *rgba = Load_File_to_RGBA(path.c_str());
-      if (!rgba) {
+      if (rgba == nullptr) {
         set_popup_warning("[ERROR] New Worldmap Project\n\n"
                           "Unable to load the selected image.");
       } else if (rgba->w % WMAP_TILE_W != 0 || rgba->h % WMAP_TILE_H != 0) {
@@ -1652,8 +1667,8 @@ static void NewWmapProject_Dialogs(int *counter,
   if (ImGui::BeginPopupModal("New Worldmap Project", nullptr,
                              ImGuiWindowFlags_AlwaysAutoResize)) {
     ImGui::Text("Image size: %dx%d pixels",
-                g_new_wmap_source ? g_new_wmap_source->w : 0,
-                g_new_wmap_source ? g_new_wmap_source->h : 0);
+                (g_new_wmap_source != nullptr) ? g_new_wmap_source->w : 0,
+                (g_new_wmap_source != nullptr) ? g_new_wmap_source->h : 0);
     ImGui::Text("Grid: %d x %d tiles", g_new_wmap_tiles_x, g_new_wmap_tiles_y);
     ImGui::Separator();
 
@@ -1663,14 +1678,14 @@ static void NewWmapProject_Dialogs(int *counter,
 
     ImGui::Separator();
     if (ImGui::Button("OK", ImVec2(120, 0))) {
-      if (g_new_wmap_source) {
+      if (g_new_wmap_source != nullptr) {
         // Palettize the RGBA source to 8-bit indexed
         Surface *indexed =
             PAL_Color_Convert(g_new_wmap_source, My_Variables->FO_Palette, 0);
         FreeSurface(g_new_wmap_source);
         g_new_wmap_source = nullptr;
 
-        if (indexed) {
+        if (indexed != nullptr) {
           LF *F_Prop = &My_Variables->F_Prop[*counter];
           bool ok = new_wmap_project(
               F_Prop, &F_Prop->img_data, &My_Variables->shaders, indexed,
@@ -1689,7 +1704,7 @@ static void NewWmapProject_Dialogs(int *counter,
     }
     ImGui::SameLine();
     if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-      if (g_new_wmap_source) {
+      if (g_new_wmap_source != nullptr) {
         FreeSurface(g_new_wmap_source);
         g_new_wmap_source = nullptr;
       }
@@ -1707,8 +1722,9 @@ static void NewWmapProject_Dialogs(int *counter,
       // Update default load path
       strncpy(usr_info.default_load_path, path.c_str(), MAX_PATH);
       char *ptr = strrchr(usr_info.default_load_path, PLATFORM_SLASH);
-      if (ptr)
+      if (ptr != nullptr) {
         *ptr = '\0';
+}
 
       // Check if already open
       int existing =
@@ -1741,7 +1757,7 @@ static void NewWmapProject_Dialogs(int *counter,
       }
 
       int focus = My_Variables->window_number_focus;
-      if (focus >= 0 && My_Variables->F_Prop[focus].wmap) {
+      if (focus >= 0 && (My_Variables->F_Prop[focus].wmap != nullptr)) {
         if (save_wmap_project(save_path.c_str(),
                               &My_Variables->F_Prop[focus])) {
           add_recent_file(&usr_info, save_path.c_str());
@@ -1753,7 +1769,7 @@ static void NewWmapProject_Dialogs(int *counter,
           fp->Opened_File[MAX_PATH - 1] = '\0';
           // Update tab name to the filename
           char *slash = strrchr(fp->Opened_File, PLATFORM_SLASH);
-          fp->c_name = slash ? slash + 1 : fp->Opened_File;
+          fp->c_name = (slash != nullptr) ? slash + 1 : fp->Opened_File;
         }
 
         // Update default save path
@@ -1764,8 +1780,9 @@ static void NewWmapProject_Dialogs(int *counter,
         if (bptr > ptr)
           ptr = bptr;
 #endif
-        if (ptr)
+        if (ptr != nullptr) {
           *ptr = '\0';
+}
       }
     }
     ifd::FileDialog::Instance().Close();
@@ -1804,18 +1821,20 @@ static void NewWmapProject_Dialogs(int *counter,
         char parent[MAX_PATH];
         strncpy(parent, path.c_str(), MAX_PATH - 1);
         parent[MAX_PATH - 1] = '\0';
-        int plen = strlen(parent);
+        int plen = static_cast<int>(strlen(parent));
         while (plen > 1 &&
-               (parent[plen - 1] == '/' || parent[plen - 1] == '\\'))
+               (parent[plen - 1] == '/' || parent[plen - 1] == '\\')) {
           parent[--plen] = '\0';
+}
         char *last_slash = strrchr(parent, '/');
 #ifdef QFO2_WINDOWS
         char *last_bslash = strrchr(parent, '\\');
         if (last_bslash > last_slash)
           last_slash = last_bslash;
 #endif
-        if (last_slash)
+        if (last_slash != nullptr) {
           *last_slash = '\0';
+}
 
         printf("  -> data folder detected, using parent: %s\n", parent);
         strncpy(g_import_wmap_data_path, parent, MAX_PATH - 1);
@@ -1841,7 +1860,7 @@ static void NewWmapProject_Dialogs(int *counter,
   // Import Worldmap from FO2 confirmation popup
   if (g_import_wmap_pending) {
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
     ImGui::OpenPopup("Import Worldmap from FO2");
   }
   if (ImGui::BeginPopupModal("Import Worldmap from FO2", nullptr,
@@ -1896,7 +1915,7 @@ static void NewWmapProject_Dialogs(int *counter,
 
     if (g_import_error[0] != '\0') {
       ImGui::Separator();
-      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.3F, 0.3F, 1.0F));
       ImGui::TextWrapped("%s", g_import_error);
       ImGui::PopStyleColor();
     }
@@ -1907,7 +1926,7 @@ static void NewWmapProject_Dialogs(int *counter,
   // Folder validation error popup
   if (g_import_error_pending) {
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
     ImGui::OpenPopup("Import Worldmap Error");
     g_import_error_pending = false;
   }
@@ -1948,7 +1967,7 @@ static void ShowMainMenuBar(int *counter, struct variables *My_Variables) {
         ifd::FileDialog::Instance().Open(
             "ImportWmapFolderDialog", "Select Fallout 2 data/ folder", "",
             false,
-            usr_info.default_game_path[0] ? usr_info.default_game_path
+            (usr_info.default_game_path[0] != 0) ? usr_info.default_game_path
                                           : usr_info.default_load_path);
       }
       // File->Save: enabled only when focused window is a worldmap project
@@ -2024,7 +2043,7 @@ static void ShowMainMenuBar(int *counter, struct variables *My_Variables) {
   if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S,
                       ImGuiInputFlags_RouteGlobal)) {
     int focus = My_Variables->window_number_focus;
-    if (focus >= 0 && My_Variables->F_Prop[focus].wmap) {
+    if (focus >= 0 && (My_Variables->F_Prop[focus].wmap != nullptr)) {
       LF *fp = &My_Variables->F_Prop[focus];
       if (fp->wmap->save_path[0] != '\0') {
         save_wmap_project(fp->wmap->save_path, fp);
@@ -2085,8 +2104,9 @@ bool save_TILE_popup(LF *F_Prop) {
   // TODO: replace ImGui::Begin() with BeginPopupModal()?
   ImGui::Begin("Export FRM Tile", &open_window);
   if (open_window) {
-    Surface *msk = img_data->MSK_srfc;
-    const char *preset = F_Prop->wmap ? "WRLDMP" : nullptr;
+    int msk_i = find_overlay(img_data->overlay, img_data->overlay_count, LayerType::MSK);
+    Surface *msk = (msk_i >= 0) ? img_data->overlay[msk_i].srfc : nullptr;
+    const char *preset = (F_Prop->wmap != nullptr) ? "WRLDMP" : nullptr;
     open_window =
         ImDialog_save_TILE_SURFACE(img_data, &usr_info, sv_info, msk, preset);
   }
@@ -2114,7 +2134,7 @@ void main_window_bttns(variables *My_Variables, int *counter) {
       ImGui::PushID(i);
       const char *full_path = usr_info.recent_files[i];
       const char *filename = strrchr(full_path, PLATFORM_SLASH);
-      filename = filename ? filename + 1 : full_path;
+      filename = (filename != nullptr) ? filename + 1 : full_path;
 
       if (ImGui::Selectable(filename)) {
         int existing =
@@ -2153,7 +2173,7 @@ void main_window_bttns(variables *My_Variables, int *counter) {
       ImGui::PopID();
     }
   }
-  if (recent_file_warning[0]) {
+  if (recent_file_warning[0] != 0) {
     set_popup_warning(recent_file_warning);
   }
 }

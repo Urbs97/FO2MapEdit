@@ -25,7 +25,7 @@ void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, b
         img_data->ANM_dir[img_data->display_orient_num].frame_data[img_data->display_frame_num];
     animate_SURFACE_to_sub_texture(img_data, srfc, My_Variables->CurrentTime_ms);
 
-    if (img_data->MSK_srfc != nullptr) {
+    if (img_data->overlay_count > 0) {
         draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
                                 &shaders->giant_triangle, img_data);
     } else {
@@ -68,7 +68,8 @@ void Preview_MSK_Image(variables* My_Variables, struct image_data* img_data, boo
     // handle zoom and panning for the image, plus update image position every frame
     zoom_pan(img_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
 
-    if (img_data->MSK_data == nullptr) {
+    int msk_idx = find_overlay(img_data->overlay, img_data->overlay_count, LayerType::MSK);
+    if (msk_idx < 0 || img_data->overlay[msk_idx].srfc == nullptr) {
         ImGui::Text("No Image Data");
         return;
     }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Layer.h"
 #include "Load_Animation.h"
 #include "Load_Settings.h"
 #include "imgui.h"
@@ -56,11 +57,11 @@ struct image_data {
 
     img_type type = img_type::UNK;
     uint8_t* FRM_data = nullptr; // duplicate of FRM_hdr?
-    uint8_t* MSK_data = nullptr;
-    Surface* MSK_srfc = nullptr;
+
+    OverlayLayer overlay[MAX_OVERLAY_LAYERS]{};
+    int overlay_count = 0;
 
     GLuint FRM_texture{};
-    GLuint MSK_texture{};
     GLuint PAL_texture{};
     GLuint render_texture{};
     GLuint framebuffer{};

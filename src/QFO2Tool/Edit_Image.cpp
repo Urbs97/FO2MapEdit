@@ -49,7 +49,7 @@ static void recomposite(shader_info* shaders, image_data* edit_data, ANM_Dir* ed
     if (edit_data->ANM_dir[dir].frame_data != nullptr) {
         animate_SURFACE_to_sub_texture(edit_data, edit_struct[dir].frame_data[num], time_ms);
     }
-    if (edit_data->MSK_srfc != nullptr) {
+    if (edit_data->overlay_count > 0) {
         draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
                                 &shaders->giant_triangle, edit_data);
     } else {
@@ -59,10 +59,9 @@ static void recomposite(shader_info* shaders, image_data* edit_data, ANM_Dir* ed
     }
 }
 
-// TODO: maybe pass the dithering choice through?
 void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
-                ANM_Dir* edit_struct, Surface* edit_MSK_srfc, bool edit_MSK, bool Palette_Update,
-                uint8_t* Color_Pick, StrokeState* stroke_state) {
+                ANM_Dir* edit_struct, int active_layer, bool Palette_Update, uint8_t* Color_Pick,
+                StrokeState* stroke_state) {
     shader_info* shaders = &My_Variables->shaders;
 
     // handle zoom and panning for the image
@@ -92,18 +91,21 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
         num = anm_dir[dir].num_frames - 1;
     }
 
+    bool editing_overlay = (active_layer >= 0 && active_layer < edit_data->overlay_count);
+
     Surface* edit_srfc = nullptr;
-    if (!edit_MSK) {
+    if (!editing_overlay) {
         edit_srfc = edit_struct[dir].frame_data[num];
     } else {
-        edit_srfc = edit_MSK_srfc;
+        edit_srfc = edit_data->overlay[active_layer].edit_srfc;
     }
 
     if (edit_data->ANM_dir == nullptr) {
         ImGui::Text("No ANM_dir");
         return;
     }
-    if (edit_data->ANM_dir[dir].frame_data == nullptr && (edit_data->MSK_srfc == nullptr)) {
+    bool has_overlay = (edit_data->overlay_count > 0);
+    if (edit_data->ANM_dir[dir].frame_data == nullptr && !has_overlay) {
         ImGui::Text("No frame_data");
         return;
     }
@@ -111,9 +113,9 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
     // Determine which surface and texture we're editing
     Surface* srfc_ptr = edit_srfc;
     GLuint texture = edit_data->FRM_texture;
-    if (edit_MSK) {
-        srfc_ptr = edit_MSK_srfc;
-        texture = edit_data->MSK_texture;
+    if (editing_overlay) {
+        srfc_ptr = edit_data->overlay[active_layer].edit_srfc;
+        texture = edit_data->overlay[active_layer].texture;
     }
 
     // --- Compute brush cursor position (always when window is hovered) ---
@@ -123,7 +125,7 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
     ImVec2 mouse_pos = My_Variables->new_mouse_pos;
     int x_offset = 0;
     int y_offset = 0;
-    if (edit_MSK) {
+    if (editing_overlay) {
         x_offset = 0;
         y_offset = 0;
     } else {
@@ -144,7 +146,7 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
 
     float x = NAN;
     float y = NAN;
-    if (edit_MSK) {
+    if (editing_overlay) {
         x = img_offset.x;
         y = img_offset.y;
     } else {
@@ -198,8 +200,8 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
         // Convert from image space back to screen space
         // image_x = (screen_x - img_pos.x)/scale - x_offset  (for non-MSK)
         // screen_x = (image_x + x_offset) * scale + img_pos.x
-        float off_x = edit_MSK ? 0 : (float)x_offset;
-        float off_y = edit_MSK ? 0 : (float)y_offset;
+        float off_x = editing_overlay ? 0 : (float)x_offset;
+        float off_y = editing_overlay ? 0 : (float)y_offset;
 
         stroke_state->cursor_min.x = ((brush_x0 + off_x) * scale) + img_pos.x;
         stroke_state->cursor_min.y = ((brush_y0 + off_y) * scale) + img_pos.y;
@@ -284,7 +286,7 @@ void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
                                            My_Variables->CurrentTime_ms);
         }
 
-        if (edit_data->MSK_srfc != nullptr) {
+        if (edit_data->overlay_count > 0) {
             draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
                                     &shaders->giant_triangle, edit_data);
         } else {
@@ -377,9 +379,9 @@ void brush_size_handler(variables* My_Variables) {
     ImGui::EndDisabled();
 }
 
-void draw_frame_boundary(image_data* edit_data, ImVec2 img_pos, bool edit_MSK) {
-    // Editing MSK layer: covers full canvas, nothing to dim
-    if (edit_MSK) {
+void draw_frame_boundary(image_data* edit_data, ImVec2 img_pos, int active_layer) {
+    // Editing overlay layer: covers full canvas, nothing to dim
+    if (active_layer >= 0) {
         return;
     }
     // MSK files opened directly: frame == canvas
@@ -443,7 +445,7 @@ void draw_frame_boundary(image_data* edit_data, ImVec2 img_pos, bool edit_MSK) {
     draw_list->AddRect(f_min, f_max, IM_COL32(255, 255, 255, 255), 0.0F, 0, 1.0F);
 }
 
-void draw_pixel_grid(image_data* edit_data, ImVec2 img_pos, bool edit_MSK) {
+void draw_pixel_grid(image_data* edit_data, ImVec2 img_pos, int active_layer) {
     float scale = edit_data->scale;
     if (scale < 4.0F) {
         return;
@@ -452,7 +454,7 @@ void draw_pixel_grid(image_data* edit_data, ImVec2 img_pos, bool edit_MSK) {
     int dir = edit_data->display_orient_num;
     int img_w = 0;
     int img_h = 0;
-    if (edit_MSK || edit_data->type == img_type::MSK) {
+    if (active_layer >= 0 || edit_data->type == img_type::MSK) {
         img_w = edit_data->width;
         img_h = edit_data->height;
     } else {

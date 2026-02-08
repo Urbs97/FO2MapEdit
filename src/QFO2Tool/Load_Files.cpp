@@ -716,10 +716,14 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
             printf("Image framebuffer failed to attach correctly?\n");
             return false;
         }
-        SURFACE_to_texture(img_data->MSK_srfc, img_data->MSK_texture, 350, 300, 1);
-        draw_texture_to_framebuffer(shaders->FO_pal, shaders->render_FRM_shader,
-                                    &shaders->giant_triangle, img_data->framebuffer,
-                                    img_data->MSK_texture, 350, 300);
+        int msk_idx = find_overlay(img_data->overlay, img_data->overlay_count, LayerType::MSK);
+        if (msk_idx >= 0 && img_data->overlay[msk_idx].srfc != nullptr) {
+            SURFACE_to_texture(img_data->overlay[msk_idx].srfc, img_data->overlay[msk_idx].texture,
+                               350, 300, 1);
+            draw_texture_to_framebuffer(shaders->FO_pal, shaders->render_FRM_shader,
+                                        &shaders->giant_triangle, img_data->framebuffer,
+                                        img_data->overlay[msk_idx].texture, 350, 300);
+        }
     } else if (io_strncmp(F_Prop->extension, "WMAP", 5) == 0) {
         F_Prop->file_open_window =
             load_wmap_project(F_Prop->Opened_File, F_Prop, img_data, shaders);
