@@ -16,20 +16,20 @@ struct rectangle {
 struct ANM_Header {
     uint16_t FPS = 0;
     uint16_t Action_Frame = 0;
-    uint16_t Frames_Per_Orient;
-    int16_t Shift_Orient_x[6];
-    int16_t Shift_Orient_y[6];
-    uint32_t Frame_0_Offset[6];
-    uint32_t Frame_Area;
+    uint16_t Frames_Per_Orient{};
+    int16_t Shift_Orient_x[6]{};
+    int16_t Shift_Orient_y[6]{};
+    uint32_t Frame_0_Offset[6]{};
+    uint32_t Frame_Area{};
 };
 
 struct ANM_Frame {
-    uint16_t Frame_Width;
-    uint16_t Frame_Height;
-    uint32_t Frame_Size;
-    int16_t Shift_Offset_x;
-    int16_t Shift_Offset_y;
-    Surface* frame_start = NULL;
+    uint16_t Frame_Width{};
+    uint16_t Frame_Height{};
+    uint32_t Frame_Size{};
+    int16_t Shift_Offset_x{};
+    int16_t Shift_Offset_y{};
+    Surface* frame_start = nullptr;
 };
 
 enum Direction { no_data = -1, NE = 0, E = 1, SE = 2, SW = 3, W = 4, NW = 5 };
@@ -37,7 +37,7 @@ enum Direction { no_data = -1, NE = 0, E = 1, SE = 2, SW = 3, W = 4, NW = 5 };
 struct ANM_Dir {
     int num_frames = 0;
     Direction orientation = no_data;
-    Surface** frame_data = NULL;
+    Surface** frame_data = nullptr;
     rectangle* frame_box = {};
 };
 

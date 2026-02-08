@@ -2,7 +2,7 @@
 #include "MiniSDL.h"
 #include "imgui.h"
 
-#include <stdint.h>
+#include <cstdint>
 #include <vector>
 
 static const int UNDO_STACK_MAX = 50;

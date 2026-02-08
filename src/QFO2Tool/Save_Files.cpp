@@ -9,15 +9,13 @@
 #include "town_map_tiles.h"
 
 #include <ImFileDialog.h>
+#include <cctype>
 #include <cstdint>
-#include <ctype.h>
+#include <cstdio>
 #include <filesystem>
 #include <imgui_internal.h>
 #include <stb_image_write.h>
-#include <stdio.h>
 #include <sys/types.h>
-
-void write_cfg_file(user_info* user_info, char* exe_path);
 
 // wrapper for stbi_write_png()
 void write_PNG(const char* file_name, Surface* src) {
@@ -28,10 +26,10 @@ void write_PNG(const char* file_name, Surface* src) {
 char* generate_PNG_name(char* name, int src_dir, int num) {
     static char buffer[MAX_PATH];
     char* ptr = strrchr(name, '.');
-    if (ptr) {
+    if (ptr != nullptr) {
         *ptr = '\0';
     }
-    const char* dir;
+    const char* dir = nullptr;
     switch (src_dir) {
         case NE:
             dir = "NE";
@@ -62,10 +60,10 @@ char* generate_PNG_name(char* name, int src_dir, int num) {
 
 struct PNG_Save_Struct {
     bool overwrite = false;
-    char save_name[MAX_PATH];
-    char* match_name = NULL;
-    user_info* usr_nfo = NULL;
-    image_data* img_ptr = NULL;
+    char save_name[MAX_PATH]{};
+    char* match_name = nullptr;
+    user_info* usr_nfo = nullptr;
+    image_data* img_ptr = nullptr;
 };
 
 char* save_PNG(PNG_Save_Struct save_nfo, int dir, int num, Surface* src) {
@@ -79,22 +77,22 @@ char* save_PNG(PNG_Save_Struct save_nfo, int dir, int num, Surface* src) {
     }
 
     Surface* srfc_RGBA = Convert_Surface_to_RGBA(src);
-    if (!srfc_RGBA) {
+    if (srfc_RGBA == nullptr) {
         // TODO: log out to txt file
         set_popup_warning("[ERROR] save_PNG()\n\n"
                           "Unable to allocate memory for srfc_RGBA.\n");
         printf("Error: save_PNG() : Unable to allocate memory for srfc_RGBA: %d\n", __LINE__);
-        return NULL;
+        return nullptr;
     }
 
     write_PNG(file_name, srfc_RGBA);
     FreeSurface(srfc_RGBA);
     file_name[0] = '\0';
-    return NULL;
+    return nullptr;
 }
 
 bool overwrite_POPUP(PNG_Save_Struct* save_nfo, const char* ext_filter) {
-    if (save_nfo->match_name == NULL) {
+    if (save_nfo->match_name == nullptr) {
         return false;
     }
     bool overwrite = false;
@@ -109,7 +107,7 @@ bool overwrite_POPUP(PNG_Save_Struct* save_nfo, const char* ext_filter) {
         if (ImGui::Button("Select a different filename?")) {
             ImGui::CloseCurrentPopup();
             overwrite = false;
-            save_nfo->match_name = NULL;
+            save_nfo->match_name = nullptr;
             save_nfo->save_name[0] = '\0';
 
             char* folder = save_nfo->usr_nfo->default_save_path;
@@ -119,7 +117,7 @@ bool overwrite_POPUP(PNG_Save_Struct* save_nfo, const char* ext_filter) {
         if (ImGui::Button("Cancel")) {
             ImGui::CloseCurrentPopup();
             overwrite = false;
-            save_nfo->match_name = NULL;
+            save_nfo->match_name = nullptr;
             save_nfo->save_name[0] = '\0';
         }
 
@@ -155,10 +153,7 @@ bool ImDialog_save_PNG(PNG_Save_Struct* save_nfo) {
     }
     ifd::FileDialog::Instance().Close();
 
-    if (save_name[0] != '\0') {
-        return true;
-    }
-    return false;
+    return save_name[0] != '\0';
 }
 
 bool save_PNG_popup_INTERNAL(image_data* img_data, user_info* usr_info) {
@@ -202,25 +197,25 @@ bool save_PNG_popup_INTERNAL(image_data* img_data, user_info* usr_info) {
     if (ImGui::Button("Cancel")) {
         ImGui::CloseCurrentPopup();
         save_inf.save_name[0] = '\0';
-        save_inf.match_name = NULL;
+        save_inf.match_name = nullptr;
     }
 
     if (save_inf.save_name[0] == '\0') {
         return true;
     }
 
-    if (save_inf.match_name && !save_inf.overwrite) {
+    if ((save_inf.match_name != nullptr) && !save_inf.overwrite) {
         return true;
     }
 
-    Surface* srfc;
+    Surface* srfc = nullptr;
     if (e == 0) {
         int dir = img_data->display_orient_num;
         int num = img_data->display_frame_num;
 
         srfc = img_data->ANM_dir[dir].frame_data[num];
         save_inf.match_name = save_PNG(save_inf, dir, num, srfc);
-        if (save_inf.match_name) {
+        if (save_inf.match_name != nullptr) {
             return true;
         }
     }
@@ -229,14 +224,14 @@ bool save_PNG_popup_INTERNAL(image_data* img_data, user_info* usr_info) {
             for (int num = 0; num < img_data->ANM_dir[dir].num_frames; num++) {
                 srfc = img_data->ANM_dir[dir].frame_data[num];
                 save_inf.match_name = save_PNG(save_inf, dir, num, srfc);
-                if (save_inf.match_name) {
+                if (save_inf.match_name != nullptr) {
                     return true;
                 }
             }
         }
     }
     save_inf.save_name[0] = '\0';
-    save_inf.match_name = NULL;
+    save_inf.match_name = nullptr;
     save_inf.overwrite = false;
     return false;
 }
@@ -246,7 +241,7 @@ bool save_PNG_popup_INTERNAL(image_data* img_data, user_info* usr_info) {
 void init_IFD() {
     // TODO: move this to some initializing function
     ifd::FileDialog::Instance().CreateTexture = [](uint8_t* data, int w, int h, char fmt) -> void* {
-        GLuint tex;
+        GLuint tex = 0;
         // https://github.com/dfranx/ImFileDialog
         glGenTextures(1, &tex);
         glBindTexture(GL_TEXTURE_2D, tex);
@@ -268,17 +263,17 @@ void init_IFD() {
 }
 
 bool write_single_frame_FRM_SURFACE(Surface* src, FILE* dst, bool single_frame) {
-    if (!src) {
+    if (src == nullptr) {
         return false;
     }
-    if (!dst) {
+    if (dst == nullptr) {
         return false;
     }
     int w = src->w;
     int h = src->h;
     int s = w * h;
 
-    FRM_Frame frame;
+    FRM_Frame frame{};
     frame.Frame_Width = w;
     frame.Frame_Height = h;
     frame.Frame_Size = s;
@@ -325,7 +320,7 @@ bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info
         return false;
     }
 
-    if (!strrchr(save_name, '.')) {
+    if (strrchr(save_name, '.') == nullptr) {
         Direction dir = (Direction)img_data->display_orient_num;
         const char* ext = FRx_extension(dir);
         char buff[MAX_PATH];
@@ -340,7 +335,7 @@ bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info
         }
     }
 
-    FILE* file_ptr = NULL;
+    FILE* file_ptr = nullptr;
 
     // #ifdef QFO2_WINDOWS
     //     // parse Save_File_Name to isolate the directory and save in default_save_path for
@@ -351,7 +346,7 @@ bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info
     file_ptr = fopen(save_name, "wb");
     // #endif
 
-    if (!file_ptr) {
+    if (file_ptr == nullptr) {
         // TODO: log out to txt file
         set_popup_warning("[ERROR] save_FRM_SURFACE()\n\n"
                           "Unable to open file in write mode.\n");
@@ -434,7 +429,7 @@ bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info
                 j = img_data->display_frame_num;
             }
             Surface* src = anm_dir[i].frame_data[j];
-            write_single_frame_FRM_SURFACE(src, file_ptr, (count > 1) ? false : true);
+            write_single_frame_FRM_SURFACE(src, file_ptr, count <= 1);
         }
     }
 
@@ -442,14 +437,14 @@ bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info
 
     // printf("name: %s\n", save_name);
 
-    return save_name;
+    return save_name != nullptr;
 }
 
 bool ImDialog_save_FRM_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info) {
     init_IFD();
 
     static char save_name[MAX_PATH];
-    const char* save_type;
+    const char* save_type = nullptr;
     if (sv_info->s_type == single_frm) {
         save_type = "Export only selected \nframe as FRM.";
     } else if (sv_info->s_type == single_dir) {
@@ -458,7 +453,7 @@ bool ImDialog_save_FRM_SURFACE(image_data* img_data, user_info* usr_info, Save_I
         save_type = "Export all frames in \nall directions as FRM.";
     }
 
-    const char* ext_filter;
+    const char* ext_filter = nullptr;
     if (ImGui::Button(save_type)) {
         if (sv_info->s_type == single_dir) {
             ext_filter = "FRx file (single direction only)"
@@ -545,7 +540,7 @@ bool check_and_write_cfg_file(user_info* user_info, char* exe_path) {
              "config/msk2bmpGUI.cfg");
     snprintf(cfg_path_buffer, sizeof(cfg_path_buffer), "%s%s", exe_path, "config/");
 
-    FILE* cfg_file_ptr = NULL;
+    FILE* cfg_file_ptr = nullptr;
 
     // #ifdef QFO2_WINDOWS
     //     // Windows w/wide character support
@@ -554,7 +549,7 @@ bool check_and_write_cfg_file(user_info* user_info, char* exe_path) {
     cfg_file_ptr = fopen(cfg_filepath_buffer, "rb");
     // #endif
 
-    if (!cfg_file_ptr) {
+    if (cfg_file_ptr == nullptr) {
         // if the directory its supposed to be in exists...
         if (io_isdir(cfg_path_buffer)) {
             // make the file
@@ -564,7 +559,7 @@ bool check_and_write_cfg_file(user_info* user_info, char* exe_path) {
             // create the directory first, then make the file
             if (io_make_dir(cfg_path_buffer)) {
                 cfg_file_ptr = fopen(cfg_filepath_buffer, "wb");
-                if (!cfg_file_ptr) {
+                if (cfg_file_ptr == nullptr) {
                     printf("error opening cfg file: %s\n", strerror(errno));
                     return false;
                 }
@@ -576,16 +571,14 @@ bool check_and_write_cfg_file(user_info* user_info, char* exe_path) {
     }
 
     write_cfg_file(user_info, exe_path);
-    if (cfg_file_ptr) {
+    if (cfg_file_ptr != nullptr) {
         fclose(cfg_file_ptr);
     }
     return true;
 }
 
 // Fallout map tile size hardcoded in engine to 350x300 pixels WxH
-#define MAP_TILE_W (350)
-#define MAP_TILE_H (300)
-#define MAP_TILE_SIZE (350 * 300)
+enum { MAP_TILE_W = (350), MAP_TILE_H = (300), MAP_TILE_SIZE = (350 * 300) };
 
 // Create a filename based on the directory and export file type
 // img_type type: UNK = -1, MSK = 0, FRM = 1, FR0 = 2, FRx = 3, OTHER = 4
@@ -600,8 +593,8 @@ void create_tile_name(char* dst, char* name, img_type save_type, char* path, int
     // and case matters on Linux/Proton.
     if (save_type == MSK) {
         char* slash = strrchr(dst, '/');
-        if (slash) {
-            for (char* p = slash + 1; *p; p++) {
+        if (slash != nullptr) {
+            for (char* p = slash + 1; *p != 0; p++) {
                 *p = (char)tolower((unsigned char)*p);
             }
         }
@@ -609,7 +602,7 @@ void create_tile_name(char* dst, char* name, img_type save_type, char* path, int
 }
 
 // called 2nd
-bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path, uint8_t* selected,
+bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path, const uint8_t* selected,
                         Surface* src, img_type type, struct user_info* usr_info, Save_Info* sv_info,
                         bool overwrite) {
     if (strlen(base_path) < 1) {
@@ -637,7 +630,7 @@ bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path, uint8
 
     // create basic frame information for saving
     // every Map TILE has the same width/height/size
-    FRM_Frame frame_data; //   = {};
+    FRM_Frame frame_data{}; //   = {};
     frame_data.Frame_Width = MAP_TILE_W;
     frame_data.Frame_Height = MAP_TILE_H;
     frame_data.Frame_Size = MAP_TILE_SIZE;
@@ -646,7 +639,7 @@ bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path, uint8
     B_Endian::flip_frame_endian(&frame_data);
 
     int tile_num = 0;
-    FILE* File_ptr = NULL;
+    FILE* File_ptr = nullptr;
     uint8_t tile_buffer[MAP_TILE_SIZE];
     // split buffer into tiles and write to files
     for (int y = 0; y < num_tiles_y; y++) {
@@ -679,7 +672,7 @@ bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path, uint8
             File_ptr = fopen(save_path, "wb");
             // #endif
 
-            if (!File_ptr) {
+            if (File_ptr == nullptr) {
                 // TODO: replace with set_popup_warning()
                 set_popup_warning("[ERROR] save_tiles_SURFACE()\n\n"
                                   "Can not open this file in write mode.\n"
@@ -722,7 +715,7 @@ uint8_t* tile_grid(Surface* src, uint8_t* selected, int* e) {
     int tile_w = src->w / MAP_TILE_W;
     int tile_h = src->h / MAP_TILE_H;
     int total = tile_w * tile_h;
-    if (!selected) {
+    if (selected == nullptr) {
         selected = (uint8_t*)calloc(1, total * sizeof(uint8_t));
     }
     if (*e == 0) {
@@ -734,7 +727,7 @@ uint8_t* tile_grid(Surface* src, uint8_t* selected, int* e) {
             if (x > 0) {
                 ImGui::SameLine();
             }
-            int cur_tile = y * tile_w + x;
+            int cur_tile = (y * tile_w) + x;
             char num[3];
             snprintf(num, 3, "%02d", cur_tile);
             ImGui::PushID(cur_tile);
@@ -754,8 +747,9 @@ static bool surface_has_data(Surface* srfc) {
     uint8_t* pxls = srfc->pxls;
     int size = srfc->w * srfc->h;
     for (int i = 0; i < size; i++) {
-        if (pxls[i])
+        if (pxls[i] != 0U) {
             return true;
+        }
     }
     return false;
 }
@@ -769,9 +763,9 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     bool is_wmap = (preset_name != nullptr);
     bool has_game_path = (usr_info->default_game_path[0] != '\0');
 
-    Surface* src;
+    Surface* src = nullptr;
     img_type type;
-    const char* output_type;
+    const char* output_type = nullptr;
     if (img_data->type == MSK) {
         src = img_data->MSK_srfc;
         type = MSK;
@@ -791,7 +785,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
 
     // Re-scan mask on first frame the dialog is shown (gap in frame count)
     if (cur_frame != prev_frame + 1) {
-        export_msk_tiles = msk_srfc ? surface_has_data(msk_srfc) : false;
+        export_msk_tiles = (msk_srfc != nullptr) ? surface_has_data(msk_srfc) : false;
     }
     prev_frame = cur_frame;
 
@@ -802,22 +796,22 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     // else if (e == 1) {}
     // else if (e == 2) {}
 
-    if (msk_srfc) {
+    if (msk_srfc != nullptr) {
         ImGui::Checkbox("Also export MSK tiles", &export_msk_tiles);
     }
 
     int num_tiles_x = src->w / MAP_TILE_W;
     int num_tiles_y = src->h / MAP_TILE_H;
-    float button_size = 50.0f;
+    float button_size = 50.0F;
     ImVec2 scaled = {num_tiles_x * button_size, num_tiles_y * button_size};
     ImVec2 img_pos = ImGui::GetCursorScreenPos();
 
     // image split into selectable tiles here?
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     window->DrawList->AddImage((ImTextureID)(uintptr_t)img_data->render_texture, img_pos,
-                               {img_pos.x + scaled.x, img_pos.y + scaled.y}, ImVec2(0.0f, 0.0f),
-                               ImVec2(1.0f, 1.0f),
-                               ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)));
+                               {img_pos.x + scaled.x, img_pos.y + scaled.y}, ImVec2(0.0F, 0.0F),
+                               ImVec2(1.0F, 1.0F),
+                               ImGui::GetColorU32(ImVec4(1.0F, 1.0F, 1.0F, 1.0F)));
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
     static uint8_t* selected;
@@ -826,7 +820,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
 
     static char save_name[23] = "WRLDMP";
 
-    if (preset_name) {
+    if (preset_name != nullptr) {
         // Name comes from .wmap project — show it read-only
         strncpy(save_name, preset_name, 7);
         save_name[7] = '\0';
@@ -866,7 +860,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
             success = io_make_dir(save_folder);
             overwrite = true;
 
-            if (success && export_msk_tiles && msk_srfc) {
+            if (success && export_msk_tiles && (msk_srfc != nullptr)) {
                 snprintf(msk_save_folder, MAX_PATH, "%s%s", usr_info->default_game_path,
                          "/data/data/");
                 char* msk_path = io_path_check(msk_save_folder);
@@ -906,7 +900,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
             if (ImGui::Button("Cancel")) {
                 ImGui::CloseCurrentPopup();
                 free(selected);
-                selected = NULL;
+                selected = nullptr;
                 save_folder[0] = '\0';
                 save_path[0] = '\0';
                 overwrite = false;
@@ -934,7 +928,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     if (strlen(save_folder) > 0 && success) {
         success = save_tiles_SURFACE(save_folder, save_name, save_path, selected, src, type,
                                      usr_info, sv_info, overwrite);
-        if (success && export_msk_tiles && msk_srfc) {
+        if (success && export_msk_tiles && (msk_srfc != nullptr)) {
             char* msk_folder =
                 (is_wmap && msk_save_folder[0] != '\0') ? msk_save_folder : save_folder;
             success = save_tiles_SURFACE(msk_folder, save_name, save_path, selected, msk_srfc, MSK,
@@ -965,7 +959,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
         }
 
         free(selected);
-        selected = NULL;
+        selected = nullptr;
         save_folder[0] = '\0';
         msk_save_folder[0] = '\0';
         save_path[0] = '\0';
@@ -1093,7 +1087,7 @@ tt_arr_handle* export_TMAP_tiles_POPUP(user_info* usr_info, Surface* srfc, Rect*
             overwrite = false;
             save_path[0] = '\0';
             save_fldr[0] = '\0';
-            return NULL;
+            return nullptr;
         }
 
         ImGui::EndPopup();
@@ -1118,15 +1112,15 @@ tt_arr_handle* export_TMAP_tiles_POPUP(user_info* usr_info, Surface* srfc, Rect*
         success = io_make_dir(save_fldr);
     }
 
-    tt_arr_handle* handle = NULL;
+    tt_arr_handle* handle = nullptr;
     if (save_fldr[0] != '\0' && success) {
         handle = crop_export_TMAP_tiles(offset, srfc, save_fldr, state, save_path, overwrite);
-        if (!handle) {
+        if (handle == nullptr) {
             success = false;
         }
     }
 
-    if (handle) {
+    if (handle != nullptr) {
         save_fldr[0] = '\0';
         save_path[0] = '\0';
         overwrite = false;
@@ -1134,11 +1128,11 @@ tt_arr_handle* export_TMAP_tiles_POPUP(user_info* usr_info, Surface* srfc, Rect*
         return handle;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 // used by save_tiles_SURFACE()
-void save_MSK_tile(uint8_t* tile_buffer, FILE* File_ptr, int width, int height) {
+void save_MSK_tile(const uint8_t* tile_buffer, FILE* File_ptr, int width, int height) {
     int buff_size = (width + 7) / 8 * height;
 
     // final output buffer
@@ -1152,7 +1146,7 @@ void save_MSK_tile(uint8_t* tile_buffer, FILE* File_ptr, int width, int height) 
         for (int pxl_x = 0; pxl_x < width; pxl_x++) {
             // don't need to flip for MSK (maybe need to flip for bitmaps?)
             bitmask <<= 1;
-            bitmask |= tile_buffer[pxl_x + pxl_y * width] ? 1 : 0;
+            bitmask |= (tile_buffer[pxl_x + (pxl_y * width)] != 0U) ? 1 : 0;
             if (++shift == 8) {
                 *outp = bitmask;
                 ++outp;

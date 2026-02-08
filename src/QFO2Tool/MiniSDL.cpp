@@ -1,16 +1,16 @@
 #include "MiniSDL.h"
 
-#include <assert.h>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
 #include <stb_image.h>
-#include <stdlib.h>
-#include <string.h>
 
 // create blank surface, 4-bytes per pixel (RGBA)
 Surface* Create_RGBA_Surface(int width, int height) {
-    int size = sizeof(Surface) + width * height * 4;
+    int size = sizeof(Surface) + (width * height * 4);
     Surface* surface = (Surface*)malloc(size);
-    if (!surface) {
-        return NULL;
+    if (surface == nullptr) {
+        return nullptr;
     }
     surface->w = width;
     surface->h = height;
@@ -23,10 +23,10 @@ Surface* Create_RGBA_Surface(int width, int height) {
 }
 
 Surface* Create_8Bit_Surface(int width, int height, Palette* pal) {
-    int size = sizeof(Surface) + width * height;
+    int size = sizeof(Surface) + (width * height);
     Surface* surface = (Surface*)calloc(1, size);
-    if (!surface) {
-        return NULL;
+    if (surface == nullptr) {
+        return nullptr;
     }
     surface->w = width;
     surface->h = height;
@@ -45,8 +45,8 @@ Surface* Create_8Bit_Surface(int width, int height, Palette* pal) {
 // returns RGBA Surface pointer
 Surface* Convert_Surface_to_RGBA(Surface* src) {
     Surface* RGBA_surface = Create_RGBA_Surface(src->w, src->h);
-    if (!RGBA_surface) {
-        return NULL;
+    if (RGBA_surface == nullptr) {
+        return nullptr;
     }
 
     Color* dst_pxl = (Color*)RGBA_surface->pxls;
@@ -64,7 +64,9 @@ Surface* Convert_Surface_to_RGBA(Surface* src) {
         }
     } else if (src->channels == 3) {
         // convert from 24bit to 32bit
-        uint8_t r, g, b;
+        uint8_t r = 0;
+        uint8_t g = 0;
+        uint8_t b = 0;
         for (int i = 0; i < total_pxls; i++) {
             r = src_pxl[0];
             g = src_pxl[1];
@@ -86,16 +88,18 @@ Surface* Convert_Surface_to_RGBA(Surface* src) {
 // returns NULL on fail
 // always 4 channels even though stbi tracks original image number
 Surface* Load_File_to_RGBA(const char* filename) {
-    int w, h, channels;
+    int w = 0;
+    int h = 0;
+    int channels = 0;
     uint8_t* pxls = (uint8_t*)stbi_load(filename, &w, &h, &channels, 4);
-    if (!pxls) {
+    if (pxls == nullptr) {
         return nullptr;
     }
 
     Surface* surface = (Surface*)malloc(sizeof(Surface));
-    if (!surface) {
+    if (surface == nullptr) {
         stbi_image_free(pxls);
-        return NULL;
+        return nullptr;
     }
     surface->w = w;
     surface->h = h;
@@ -115,8 +119,8 @@ void BlitSurface(Surface* src, Rect src_rect, Surface* dst, Rect dst_rect) {
     assert(src_rect.w == dst_rect.w);
     assert(src_rect.h == dst_rect.h);
     // set starting position for top left corner of rectangle to copy
-    uint8_t* src_pxls = &src->pxls[src_rect.y * src->pitch + src_rect.x * src->channels];
-    uint8_t* dst_pxls = &dst->pxls[dst_rect.y * dst->pitch + dst_rect.x * dst->channels];
+    uint8_t* src_pxls = &src->pxls[(src_rect.y * src->pitch) + (src_rect.x * src->channels)];
+    uint8_t* dst_pxls = &dst->pxls[(dst_rect.y * dst->pitch) + (dst_rect.x * dst->channels)];
 
     // copy each row of src rectangle to dst surface
     for (int row = 0; row < src_rect.h; row++) {
@@ -128,12 +132,12 @@ void BlitSurface(Surface* src, Rect src_rect, Surface* dst, Rect dst_rect) {
 
 // returns copy of surface
 Surface* Copy8BitSurface(Surface* src) {
-    if (!src) {
-        return NULL;
+    if (src == nullptr) {
+        return nullptr;
     }
     Surface* dst = Create_8Bit_Surface(src->w, src->h, src->palette);
-    if (!dst) {
-        return NULL;
+    if (dst == nullptr) {
+        return nullptr;
     }
     memcpy(dst->pxls, src->pxls, src->w * src->h);
     dst->channels = src->channels;
@@ -153,7 +157,7 @@ void PaintSurface(Surface* dst, Rect brush_rect, uint8_t color) {
     if (dst == nullptr) {
         return;
     }
-    uint8_t* dst_pxls = &dst->pxls[brush_rect.y * dst->pitch + brush_rect.x * dst->channels];
+    uint8_t* dst_pxls = &dst->pxls[(brush_rect.y * dst->pitch) + (brush_rect.x * dst->channels)];
     // copy each row of src rectangle to dst surface
     for (int row = 0; row < brush_rect.h; row++) {
         memset(dst_pxls, color, brush_rect.w);
@@ -188,14 +192,14 @@ void print_SURFACE_pxls(Surface* src) {
         for (int x = 0; x < src->pitch; x += src->channels) {
             if (src->channels == 4) {
                 Color pxl;
-                memcpy(&pxl, &src->pxls[y * src->pitch + x], sizeof(Color));
+                memcpy(&pxl, &src->pxls[(y * src->pitch) + x], sizeof(Color));
                 printf("%02x%02x%02x%02x", pxl.r, pxl.g, pxl.b, pxl.a);
             } else if (src->channels == 3) {
                 Color pxl;
-                memcpy(&pxl, &src->pxls[y * src->pitch + x], 3);
+                memcpy(&pxl, &src->pxls[(y * src->pitch) + x], 3);
                 printf("%02x%02x%02x", pxl.r, pxl.g, pxl.b);
             } else if (src->channels == 1) {
-                printf("%02x", src->pxls[y * src->pitch + x]);
+                printf("%02x", src->pxls[(y * src->pitch) + x]);
             }
         }
         printf("\n");

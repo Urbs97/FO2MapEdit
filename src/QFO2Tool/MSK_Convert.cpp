@@ -1,15 +1,14 @@
-#define _CRT_SECURE_NO_WARNINGS
+#define CRT_SECURE_NO_WARNINGS
 
 #include "MSK_Convert.h"
 
 #include "ImGui_Warning.h"
 #include "Image2Texture.h"
 
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <memory.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 // Windows BITMAPINFOHEADER format, for historical reasons
 uint8_t bmpHeader[62] = {
@@ -63,7 +62,7 @@ void Read_MSK_Tile(FILE* file, uint8_t vOutput[MAX_LINES][44]) {
 bool IsBMPFile(FILE* infile) {
     // Super lazy - is the first character a "B"?
     // False positives for MSK files that have this as the first set of bits
-    int firstChar;
+    int firstChar = 0;
     firstChar = fgetc(infile);
     ungetc(firstChar, infile);
     printf("File is a %c\n", firstChar);
@@ -84,7 +83,9 @@ bool ReadBmpLines(FILE* file, line_array_t vOutput) {
     int HeaderSize = BytesToInt(bmpHeader + 0x0E, 4);
     char bmpSubHeader[128];
     fread(bmpSubHeader, sizeof(char), ((HeaderSize > 132) ? 128 : (HeaderSize - 4)), file);
-    int BitmapWidth, BitmapHeight, BitsPerPixel;
+    int BitmapWidth = 0;
+    int BitmapHeight = 0;
+    int BitsPerPixel = 0;
     int Compression = 0;
     if (HeaderSize == 12) {
         BitmapWidth = BytesToInt(bmpSubHeader, 2);
@@ -118,7 +119,7 @@ bool ReadBmpLines(FILE* file, line_array_t vOutput) {
 
 // Ensure Little Endian Interpretation - I think there is a built-in for this,
 // But too lazy to look it up.
-int BytesToInt(char* C, int numBytes) {
+int BytesToInt(const char* C, int numBytes) {
     // if (!numBytes) numBytes = 4;
     int ReturnVal = 0;
     for (int rOff = 1; rOff <= numBytes; ++rOff) {
@@ -130,9 +131,7 @@ int BytesToInt(char* C, int numBytes) {
 }
 
 // Fallout map tile size hardcoded in engine to 350x300 pixels WxH
-#define TILE_W (350)
-#define TILE_H (300)
-#define TILE_SIZE (350 * 300)
+enum { TILE_W = (350), TILE_H = (300), TILE_SIZE = (350 * 300) };
 
 bool Load_MSK_Tile_SURFACE(char* FileName, image_data* img_data) {
     // if (img_data->FRM_data == NULL) {
@@ -160,11 +159,11 @@ bool load_MSK_SURFACE(char* FileName, image_data* img_data, int width, int heigh
     // TODO: refactor this and make sure the inputLines/file_buffer
     //       matches the other buffer for exporting
 
-    FILE* File_ptr;
+    FILE* File_ptr = nullptr;
 
     int buffsize = (width + 7) / 8 * height;
     uint8_t* MSK_buffer = (uint8_t*)malloc(buffsize);
-    if (!MSK_buffer) {
+    if (MSK_buffer == nullptr) {
         set_popup_warning("[ERROR] load_MSK_SURFACE\n\n"
                           "Failed to allocate memory for MSK_buffer.\n");
         printf("[ERROR] Failed to allocate memory for MSK_buffer.\n");
@@ -179,7 +178,7 @@ bool load_MSK_SURFACE(char* FileName, image_data* img_data, int width, int heigh
     File_ptr = fopen(FileName, "rb");
 #endif
 
-    if (File_ptr == NULL) {
+    if (File_ptr == nullptr) {
         set_popup_warning("[ERROR] load_MSK_SURFACE\n\n"
                           "Unable to open file.\n");
         // TODO: fprintf? or printf? (stderr or stdout)?
@@ -197,7 +196,7 @@ bool load_MSK_SURFACE(char* FileName, image_data* img_data, int width, int heigh
     uint8_t* bin_ptr = MSK_buffer;
     Surface* MSK_srfc = Create_8Bit_Surface(width, height, nullptr);
 
-    if (!MSK_srfc) {
+    if (MSK_srfc == nullptr) {
         set_popup_warning("[ERROR] load_MSK_SURFACE\n\n"
                           "Failed to allocate memory for MSK surface.\n");
         printf("[ERROR] Failed to allocate memory for MSK surface.\n");
@@ -211,7 +210,7 @@ bool load_MSK_SURFACE(char* FileName, image_data* img_data, int width, int heigh
         for (int pxl_x = 0; pxl_x < width; pxl_x++) {
 
             uint8_t buff = *bin_ptr;
-            bool mask_1_or_0 = (buff & bitmask);
+            bool mask_1_or_0 = (buff & bitmask) != 0;
             if (mask_1_or_0) {
                 *(MSK_srfc->pxls + (pxl_y * width) + pxl_x) = white;
             }
@@ -230,10 +229,10 @@ bool load_MSK_SURFACE(char* FileName, image_data* img_data, int width, int heigh
 
     img_data->MSK_texture = init_texture(MSK_srfc, MSK_srfc->w, MSK_srfc->h, MSK);
 
-    if (img_data->MSK_srfc) {
+    if (img_data->MSK_srfc != nullptr) {
         free(img_data->MSK_srfc);
     }
-    if (img_data->MSK_data) {
+    if (img_data->MSK_data != nullptr) {
         free(img_data->MSK_data);
     }
 
@@ -252,7 +251,7 @@ void Convert_SURFACE_to_MSK(Surface* surface, image_data* img_data, int cutoff) 
     uint8_t* data = (uint8_t*)calloc(1, size);
 
     Surface* Surface_32 = Convert_Surface_to_RGBA(surface);
-    if (!Surface_32) {
+    if (Surface_32 == nullptr) {
         set_popup_warning("[ERROR] Convert_SURFACE_to_MSK()\n\n"
                           "Unable to allocate surface for MSK");
         printf("[ERROR] Unable to allocate surface for MSK\n");
@@ -262,14 +261,14 @@ void Convert_SURFACE_to_MSK(Surface* surface, image_data* img_data, int cutoff) 
 
     Color rgba;
     int white = 1;
-    int i;
+    int i = 0;
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            i = (Surface_32->pitch * y) + x * (sizeof(Color));
-            memcpy(&rgba, (uint8_t*)Surface_32->pxls + i, sizeof(Color));
+            i = (Surface_32->pitch * y) + (x * (sizeof(Color)));
+            memcpy(&rgba, Surface_32->pxls + i, sizeof(Color));
 
             if (rgba.r > cutoff || rgba.g > cutoff || rgba.b > cutoff) {
-                data[y * width + x] = white;
+                data[(y * width) + x] = white;
             }
         }
     }

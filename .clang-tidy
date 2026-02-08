@@ -1,1 +1,24 @@
-HeaderFilterRegex: 'src/QFO2Tool/[^.]'
+Checks: '
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  cppcoreguidelines-*,
+  readability-*,
+  -modernize-use-trailing-return-type,
+  -readability-magic-numbers,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-identifier-length,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-avoid-c-arrays,
+  -modernize-avoid-c-arrays,
+  -cppcoreguidelines-pro-type-cstyle-cast,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -modernize-use-auto,
+  -llvmlibc-*,
+  -fuchsia-*,
+  -android-*,
+  -objc-*,
+  -readability-function-cognitive-complexity,
+'
+HeaderFilterRegex: 'src/QFO2Tool/[a-zA-Z0-9_].*'

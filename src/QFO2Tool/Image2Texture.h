@@ -4,17 +4,17 @@
 #include "imgui.h"
 
 struct variables {
-    char* exe_directory = NULL;
+    char* exe_directory = nullptr;
 
     // TODO: maybe store Color_Pick in config settings?
     Palette* FO_Palette = nullptr;
-    GLuint tile_texture_prev;
-    GLuint tile_texture_rend;
+    GLuint tile_texture_prev{};
+    GLuint tile_texture_rend{};
     shader_info shaders;
-    ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-    ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);
-    ImVec2 uv_min = ImVec2(0.0f, 0.0f); // Top-left
-    ImVec2 uv_max = ImVec2(1.0f, 1.0f); // Bottom-right
+    ImVec4 tint_col = ImVec4(1.0F, 1.0F, 1.0F, 1.0F);
+    ImVec4 border_col = ImVec4(1.0F, 1.0F, 1.0F, 0.5F);
+    ImVec2 uv_min = ImVec2(0.0F, 0.0F); // Top-left
+    ImVec2 uv_max = ImVec2(1.0F, 1.0F); // Bottom-right
     bool link_brush_sizes = true;
     ImVec2 brush_size{10, 10};
     bool pixel_perfect = false;
@@ -37,7 +37,7 @@ struct variables {
     bool tile_window_focused = false;
     bool render_wind_focused = false;
 
-    ImFont* Font;
+    ImFont* Font{};
     int global_font_size = 32;
     int window_number_focus = -1;
 

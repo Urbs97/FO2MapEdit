@@ -1,6 +1,6 @@
 #include <cstdint>
-#include <stdio.h>
-#include <time.h>
+#include <cstdio>
+#include <ctime>
 
 #ifdef QFO2_WINDOWS
 #include <Windows.h>
@@ -44,7 +44,7 @@ void print_timer(uint64_t StartingTime) {
 
 // TODO: move the timing stuff to it's own translation unit/header
 uint64_t nano_time() {
-    struct timespec start;
+    struct timespec start{};
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     uint64_t nanotime = (uint64_t)start.tv_sec * 1'000'000'000ULL;
     nanotime += start.tv_nsec;
@@ -54,7 +54,7 @@ uint64_t nano_time() {
 
 uint64_t start_timer() {
     // timing code for LINUX
-    uint64_t StartingTime;
+    uint64_t StartingTime = 0;
     StartingTime = nano_time();
     return StartingTime;
 }

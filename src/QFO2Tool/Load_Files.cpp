@@ -1,6 +1,6 @@
+#include <cstdio>
+#include <cstring>
 #include <stb_image.h>
-#include <stdio.h>
-#include <string.h>
 
 #ifdef QFO2_WINDOWS
 #include <Windows.h>
@@ -40,7 +40,7 @@ char* Program_Directory() {
                           "Error reading program .exe location.");
         printf("Error reading program .exe location, read_size: %zd", read_size);
         free(utf8_buff);
-        return NULL;
+        return nullptr;
     }
     utf8_buff[read_size] = '\0'; // append null to entire string
 
@@ -61,7 +61,7 @@ char* Program_Directory() {
 bool drag_drop_POPUP(variables* My_Variables, LF* F_Prop, image_paths* images_arr, int* counter) {
     bool open = true;
     if (ImGui::BeginPopupModal("Drag_Drop_Folder", &open)) {
-        const char* name_ptr;
+        const char* name_ptr = nullptr;
         for (int i = 0; i < 6; i++) {
             if (!images_arr[i].animation_images.empty()) {
                 // name_ptr = (char*)images_arr[i].animation_images[0].c_str();
@@ -101,9 +101,9 @@ bool drag_drop_POPUP(variables* My_Variables, LF* F_Prop, image_paths* images_ar
             ImGui::EndPopup();
 
             for (int i = 0; i < 6; i++) {
-                for (int j = 0; j < images_arr[i].animation_images.size(); j++) {
+                for (const auto& animation_image : images_arr[i].animation_images) {
                     LF* F_Prop = &My_Variables->F_Prop[*counter];
-                    const char* path = (char*)images_arr[i].animation_images[j].c_str();
+                    const char* path = (char*)animation_image.c_str();
                     F_Prop->file_open_window =
                         File_Type_Check(F_Prop, &My_Variables->shaders, &F_Prop->img_data, path);
                     if (F_Prop->file_open_window) {
@@ -175,7 +175,8 @@ std::vector<std::filesystem::path> handle_subdirectory_vec(const std::filesystem
             // TODO: handle different directions in subdirectories?
             // animation_images = handle_subdirectory_vec(file.path());
             continue;
-        } else if (Supported_Format(file)) {
+        }
+        if (Supported_Format(file)) {
             animation_images.push_back(file);
         }
     }
@@ -312,50 +313,46 @@ void Next_Prev_File(char* next, char* prev, char* frst, char* last, char* curren
             // TODO: handle different directions in subdirectories?
             // handle_subdirectory(file.path());
             continue;
-        } else {
-            if (Supported_Format(file)) {
-                NATIVE_STRING_TYPE* iter_file = (file.path().c_str() + parent_path_size);
-                // TODO:
-                // move all filesystem things (includeing std::filesystem) into platform
-                // layer and use windows conversion funcs to convert from wchar_t to
-                // utf8
+        }
+        if (Supported_Format(file)) {
+            NATIVE_STRING_TYPE* iter_file = (file.path().c_str() + parent_path_size);
+            // TODO:
+            // move all filesystem things (includeing std::filesystem) into platform
+            // layer and use windows conversion funcs to convert from wchar_t to
+            // utf8
 
-                if (w_frst.empty() ||
-                    // io_strncasecmp(iter_file, w_frst.filename().u8string().c_str(),
-                    // MAX_PATH) < 0)
-                    (io_strncasecmp(iter_file, (w_frst.c_str() + parent_path_size), MAX_PATH) <
-                     0)) {
-                    w_frst = file;
-                }
-                if (w_last.empty() ||
-                    // io_strncasecmp(iter_file, w_last.filename().u8string().c_str(),
+            if (w_frst.empty() ||
+                // io_strncasecmp(iter_file, w_frst.filename().u8string().c_str(),
+                // MAX_PATH) < 0)
+                (io_strncasecmp(iter_file, (w_frst.c_str() + parent_path_size), MAX_PATH) < 0)) {
+                w_frst = file;
+            }
+            if (w_last.empty() ||
+                // io_strncasecmp(iter_file, w_last.filename().u8string().c_str(),
+                // MAX_PATH) > 0)
+                (io_strncasecmp(iter_file, (w_last.c_str() + parent_path_size), MAX_PATH) > 0)) {
+                w_last = file;
+            }
+
+            // int cmp = io_strncasecmp(iter_file,
+            // w_current.filename().u8string().c_str(), MAX_PATH);
+            int cmp = io_strncasecmp(iter_file, (w_current.c_str() + parent_path_size), MAX_PATH);
+
+            if (cmp < 0) {
+                if (w_prev.empty() ||
+                    // io_strncasecmp(iter_file, w_prev.filename().u8string().c_str(),
                     // MAX_PATH) > 0)
-                    (io_strncasecmp(iter_file, (w_last.c_str() + parent_path_size), MAX_PATH) >
+                    (io_strncasecmp(iter_file, (w_prev.c_str() + parent_path_size), MAX_PATH) >
                      0)) {
-                    w_last = file;
+                    w_prev = file;
                 }
-
-                // int cmp = io_strncasecmp(iter_file,
-                // w_current.filename().u8string().c_str(), MAX_PATH);
-                int cmp =
-                    io_strncasecmp(iter_file, (w_current.c_str() + parent_path_size), MAX_PATH);
-
-                if (cmp < 0) {
-                    if (w_prev.empty() ||
-                        // io_strncasecmp(iter_file, w_prev.filename().u8string().c_str(),
-                        // MAX_PATH) > 0)
-                        (io_strncasecmp(iter_file, (w_prev.c_str() + parent_path_size), MAX_PATH) >
-                         0)) {
-                        w_prev = file;
-                    }
-                } else if (cmp > 0) {
-                    if (w_next.empty() ||
-                        // io_strncasecmp(iter_file, w_next.filename().u8string().c_str(),
-                        // MAX_PATH) < 0)
-                        (io_strncasecmp(iter_file, (w_next.c_str() + parent_path_size), MAX_PATH) <
-                         0)) {
-                        w_next = file;
-                    }
+            } else if (cmp > 0) {
+                if (w_next.empty() ||
+                    // io_strncasecmp(iter_file, w_next.filename().u8string().c_str(),
+                    // MAX_PATH) < 0)
+                    (io_strncasecmp(iter_file, (w_next.c_str() + parent_path_size), MAX_PATH) <
+                     0)) {
+                    w_next = file;
                 }
             }
         }
@@ -388,7 +385,7 @@ bool handle_directory_drop_POPUP(char* dir_name, image_paths* image_arr) {
     }
 
     void* directory = io_open_dir(dir_name);
-    if (directory == NULL) {
+    if (directory == nullptr) {
         // TODO: log to file
         set_popup_warning("[ERROR] handle_directory_drop_POPUP()\n\n"
                           "Error occurred when opening directory\n");
@@ -400,8 +397,8 @@ bool handle_directory_drop_POPUP(char* dir_name, image_paths* image_arr) {
     //   storing each direction's animations
     //   (NE/E/SE/SW/W/NW)
     Direction dir;
-    char* name;
-    while ((name = io_scan_dir(directory)) != NULL) {
+    char* name = nullptr;
+    while ((name = io_scan_dir(directory)) != nullptr) {
         if (name[0] == '.') {
             // this also skips hidden directories in Linux (possibly also windows?)
             // need to change if I want to scan those
@@ -454,7 +451,7 @@ bool handle_directory_drop_POPUP(char* dir_name, image_paths* image_arr) {
 bool prep_extension(LF* F_Prop, user_info* usr_info, const char* file_name) {
     snprintf(F_Prop->Opened_File, MAX_PATH, "%s", file_name);
     F_Prop->c_name = strrchr(F_Prop->Opened_File, PLATFORM_SLASH) + 1;
-    if (!strrchr(F_Prop->Opened_File, '.')) {
+    if (strrchr(F_Prop->Opened_File, '.') == nullptr) {
         return false;
     }
     F_Prop->extension = strrchr(F_Prop->Opened_File, '.') + 1;
@@ -463,7 +460,7 @@ bool prep_extension(LF* F_Prop, user_info* usr_info, const char* file_name) {
     Next_Prev_File(F_Prop->Next_File, F_Prop->Prev_File, F_Prop->Frst_File, F_Prop->Last_File,
                    F_Prop->Opened_File);
 
-    if (usr_info != NULL) {
+    if (usr_info != nullptr) {
         std::filesystem::path file_path(F_Prop->Opened_File);
         snprintf(usr_info->default_load_path, MAX_PATH, "%s",
                  file_path.parent_path().string().c_str());
@@ -504,8 +501,8 @@ void set_game_path_POPUP(user_info* usr_nfo) {
     if (ifd::FileDialog::Instance().IsDone("Fallout2exe_path")) {
         if (ifd::FileDialog::Instance().HasResult()) {
 
-            NATIVE_STRING_TYPE* fallout2_exe;
-            NATIVE_STRING_TYPE* fallout2HR_exe;
+            NATIVE_STRING_TYPE* fallout2_exe = nullptr;
+            NATIVE_STRING_TYPE* fallout2HR_exe = nullptr;
 #ifdef QFO2_WINDOWS
             fallout2_exe = L"fallout2.exe";
             fallout2HR_exe = L"fallout2HR.exe";
@@ -517,8 +514,8 @@ void set_game_path_POPUP(user_info* usr_nfo) {
             std::filesystem::path game_path = ifd::FileDialog::Instance().GetResult();
             std::filesystem::path filename = game_path.filename();
 
-            if (io_strncasecmp(filename.c_str(), fallout2_exe, 13) &&
-                io_strncasecmp(filename.c_str(), fallout2HR_exe, 15)) {
+            if ((io_strncasecmp(filename.c_str(), fallout2_exe, 13) != 0) &&
+                (io_strncasecmp(filename.c_str(), fallout2HR_exe, 15) != 0)) {
 
                 ImGui::OpenPopup("Fallout2.exe Not Found");
                 ifd::FileDialog::Instance().Close();
@@ -543,7 +540,7 @@ void set_game_path_POPUP(user_info* usr_nfo) {
 void Set_Default_Game_Path(user_info* usr_nfo, char* exe_path) {
     // TODO: move this to some initializing function
     ifd::FileDialog::Instance().CreateTexture = [](uint8_t* data, int w, int h, char fmt) -> void* {
-        GLuint tex;
+        GLuint tex = 0;
         // https://github.com/dfranx/ImFileDialog
         glGenTextures(1, &tex);
         glBindTexture(GL_TEXTURE_2D, tex);
@@ -572,7 +569,7 @@ void Set_Default_Game_Path(user_info* usr_nfo, char* exe_path) {
     snprintf(path_buff, MAX_PATH, "%s", file_path);
 
     char* ptr = strrchr(path_buff, PLATFORM_SLASH);
-    if (ptr) {
+    if (ptr != nullptr) {
         ptr[0] = '\0';
     }
 
@@ -600,7 +597,7 @@ bool ImDialog_load_files(LF* F_Prop, image_data* img_data, user_info* usr_info,
                          shader_info* shaders, LF* all_F_Prop, int open_count) {
     // TODO: move this to some initializing function
     ifd::FileDialog::Instance().CreateTexture = [](uint8_t* data, int w, int h, char fmt) -> void* {
-        GLuint tex;
+        GLuint tex = 0;
         // https://github.com/dfranx/ImFileDialog
         glGenTextures(1, &tex);
         glBindTexture(GL_TEXTURE_2D, tex);
@@ -623,7 +620,7 @@ bool ImDialog_load_files(LF* F_Prop, image_data* img_data, user_info* usr_info,
     static bool load_file;
     static char load_name[MAX_PATH];
     if (ImGui::Button("Load File")) {
-        const char* ext_filter;
+        const char* ext_filter = nullptr;
         ext_filter = "FRM/MSK/WMAP and image files"
                      "(*.png;"
                      // "*.apng;"
@@ -677,13 +674,10 @@ bool ImDialog_load_files(LF* F_Prop, image_data* img_data, user_info* usr_info,
 // Check file extension to make sure it's one of the varieties of FRM
 // TODO: maybe combine with Supported_Format()?
 bool FRx_check(char* ext) {
-    if ((io_strncmp(ext, "FRM", 4) == 0) || (io_strncmp(ext, "FR0", 4) == 0) ||
-        (io_strncmp(ext, "FR1", 4) == 0) || (io_strncmp(ext, "FR2", 4) == 0) ||
-        (io_strncmp(ext, "FR3", 4) == 0) || (io_strncmp(ext, "FR4", 4) == 0) ||
-        (io_strncmp(ext, "FR5", 4) == 0)) {
-        return true;
-    }
-    return false;
+    return (io_strncmp(ext, "FRM", 4) == 0) || (io_strncmp(ext, "FR0", 4) == 0) ||
+           (io_strncmp(ext, "FR1", 4) == 0) || (io_strncmp(ext, "FR2", 4) == 0) ||
+           (io_strncmp(ext, "FR3", 4) == 0) || (io_strncmp(ext, "FR4", 4) == 0) ||
+           (io_strncmp(ext, "FR5", 4) == 0);
 }
 
 // TODO: maybe combine with Supported_Format()?
@@ -692,7 +686,7 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
     // TODO: make a function that checks if image has a different palette
     //       besides the default Fallout 1/2 palette
     //       also need to convert all float* palettes to Palette*
-    bool success = prep_extension(F_Prop, NULL, file_name);
+    bool success = prep_extension(F_Prop, nullptr, file_name);
     if (!success) {
         return false;
     }
@@ -702,13 +696,13 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
     if (FRx_check(F_Prop->extension)) {
         // The new way to load FRM images using openGL
         F_Prop->file_open_window = load_FRM_OpenGL(F_Prop->Opened_File, img_data, shaders);
-        if (F_Prop->file_open_window == false) {
+        if (!F_Prop->file_open_window) {
             return false;
         }
         img_data->type = FRM;
     } else if (io_strncmp(F_Prop->extension, "MSK", 4) == 0) { // 0 == match
         F_Prop->file_open_window = Load_MSK_Tile_SURFACE(F_Prop->Opened_File, img_data);
-        if (F_Prop->file_open_window == false) {
+        if (!F_Prop->file_open_window) {
             return false;
         }
         bool success = false;
@@ -737,7 +731,7 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
     else { // all other more common (generic) image types
         Surface* temp_surface = nullptr;
         temp_surface = Load_File_to_RGBA(F_Prop->Opened_File);
-        if (!temp_surface) {
+        if (temp_surface == nullptr) {
             // TODO: log to file
             set_popup_warning("[ERROR] File_Type_Check()\n\n"
                               "Unable to load image.");
@@ -746,7 +740,7 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
         }
 
         img_data->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir) * 6);
-        if (!img_data->ANM_dir) {
+        if (img_data->ANM_dir == nullptr) {
             // TODO: log to file
             set_popup_warning("[ERROR] File_Type_Check()\n\n"
                               "Unable to allocate memory for ANM_dir.");
@@ -757,17 +751,17 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
         new (img_data->ANM_dir) ANM_Dir[6];
 
         img_data->ANM_dir[0].frame_data = (Surface**)malloc(sizeof(Surface*));
-        if (!img_data->ANM_dir[0].frame_data) {
+        if (img_data->ANM_dir[0].frame_data == nullptr) {
             // TODO: log to file
             set_popup_warning("[ERROR] File_Type_Check()\n\n"
                               "Unable to allocate memory for ANM_Frame.");
             printf("Unable to allocate memory for ANM_Frame: %d\n", __LINE__);
             free(img_data->ANM_dir);
-            img_data->ANM_dir = NULL;
+            img_data->ANM_dir = nullptr;
             return false;
         }
         Surface* srfc = img_data->ANM_dir[0].frame_data[0] = temp_surface;
-        if (img_data->ANM_dir->frame_data) {
+        if (img_data->ANM_dir->frame_data != nullptr) {
             img_data->width = srfc->w;
             img_data->height = srfc->h;
             img_data->ANM_dir[0].num_frames = 1;
@@ -786,22 +780,22 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
             F_Prop->file_open_window = true;
         }
 
-        if (!img_data->ANM_dir[0].frame_box) {
+        if (img_data->ANM_dir[0].frame_box == nullptr) {
             img_data->ANM_dir[0].frame_box = (rectangle*)calloc(1, sizeof(rectangle));
         }
-        if (!img_data->ANM_dir[0].frame_box) {
+        if (img_data->ANM_dir[0].frame_box == nullptr) {
             // TODO: log to file
             set_popup_warning("[ERROR] File_Type_Check()\n\n"
                               "Unable to allocate memory for ANM_dir[0].frame_box.");
             printf("Unable to allocate memory for ANM_dir[0].frame_box: %d\n", __LINE__);
             free(img_data->ANM_dir);
-            img_data->ANM_dir = NULL;
+            img_data->ANM_dir = nullptr;
             return false;
         }
     }
 
-    if (img_data->ANM_dir != NULL) {
-        if ((img_data->ANM_dir[img_data->display_orient_num].frame_data == NULL) &&
+    if (img_data->ANM_dir != nullptr) {
+        if ((img_data->ANM_dir[img_data->display_orient_num].frame_data == nullptr) &&
             img_data->type != FRM && img_data->type != MSK) {
             // TODO: log to file
             set_popup_warning("[ERROR] File_Type_Check()\n\n"

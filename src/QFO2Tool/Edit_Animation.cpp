@@ -4,7 +4,8 @@
 #include "ImGui_Warning.h"
 #include "Image2Texture.h"
 
-#include <limits.h>
+#include <algorithm>
+#include <climits>
 
 struct pxl_pos {
     int l_pxl = INT_MAX; // left most pixel
@@ -55,7 +56,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
 
     int dir = dst->display_orient_num = src->display_orient_num;
     dst->ANM_dir = (ANM_Dir*)calloc(1, sizeof(ANM_Dir) * 6);
-    if (!dst->ANM_dir) {
+    if (dst->ANM_dir == nullptr) {
         // TODO: log out to file
         set_popup_warning("[ERROR] crop_animation_SURFACE()\n\n"
                           "Failed to allocate for ANM_dir.");
@@ -73,7 +74,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
 
         num_frms = dst->ANM_dir[i].num_frames = src->ANM_dir[i].num_frames;
         dst->ANM_dir[i].frame_data = (Surface**)calloc(1, sizeof(Surface*) * num_frms);
-        if (!dst->ANM_dir[i].frame_data) {
+        if (dst->ANM_dir[i].frame_data == nullptr) {
             // TODO: log out to file
             set_popup_warning("[ERROR] crop_animation_SURFACE()\n\n"
                               "Couldn't convert image to FRM.");
@@ -82,7 +83,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
             return false;
         }
         dst->ANM_dir[i].frame_box = (rectangle*)malloc(sizeof(rectangle) * num_frms);
-        if (!dst->ANM_dir[i].frame_box) {
+        if (dst->ANM_dir[i].frame_box == nullptr) {
             // TODO: log out to file
             set_popup_warning("[ERROR] crop_animation_SURFACE()\n\n"
                               "Failed to allocate for ANM_dir[i].frame_box.");
@@ -104,14 +105,14 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
             int src_height = src_surface->h;
             int src_pitch = src_surface->pitch;
 
-            Surface* surface_32 = NULL;
+            Surface* surface_32 = nullptr;
 
             if (src_surface->channels != 4) {
                 surface_32 = Convert_Surface_to_RGBA(src_surface);
             } else {
                 surface_32 = src_surface;
             }
-            if (!surface_32) {
+            if (surface_32 == nullptr) {
                 // TODO: log out to file
                 set_popup_warning("[ERROR] crop_animation_SURFACE()\n\n"
                                   "Unable to allocate Surface_32.");
@@ -130,22 +131,14 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
             for (int y = 0; y < src_height; y++) {
                 for (int x = 0; x < src_width; x++) {
                     Color rgba;
-                    int i = src_pitch * y + x * sizeof(Color);
+                    int i = (src_pitch * y) + (x * sizeof(Color));
                     memcpy(&rgba, &surface_32->pxls[i], sizeof(Color));
 
                     if (rgba.a > src->alpha_threshold) {
-                        if (x < curr_pos.l_pxl) {
-                            curr_pos.l_pxl = x;
-                        }
-                        if (x > curr_pos.r_pxl) {
-                            curr_pos.r_pxl = x;
-                        }
-                        if (y < curr_pos.t_pxl) {
-                            curr_pos.t_pxl = y;
-                        }
-                        if (y > curr_pos.b_pxl) {
-                            curr_pos.b_pxl = y;
-                        }
+                        curr_pos.l_pxl = std::min(x, curr_pos.l_pxl);
+                        curr_pos.r_pxl = std::max(x, curr_pos.r_pxl);
+                        curr_pos.t_pxl = std::min(y, curr_pos.t_pxl);
+                        curr_pos.b_pxl = std::max(y, curr_pos.b_pxl);
                     }
                 }
             }
@@ -160,7 +153,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
             Surface* src_frame = src->ANM_dir[i].frame_data[j];
             dst->ANM_dir[i].frame_data[j] = crop_frame_SURFACE(&curr_pos, src_frame, pal, algo);
             Surface* dst_frame = dst->ANM_dir[i].frame_data[j];
-            if (!dst_frame) {
+            if (dst_frame == nullptr) {
                 // TODO: log out to file
                 set_popup_warning("[ERROR] crop_animation_SURFACE()\n\n"
                                   "Failed to allocate frame_data[j] surface8.");
@@ -175,8 +168,8 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
             }
 
             if (j > 0) {
-                dst_frame->x =
-                    (curr_pos.l_pxl + curr_pos.r_pxl) / 2 - (prev_pos.l_pxl + prev_pos.r_pxl) / 2;
+                dst_frame->x = ((curr_pos.l_pxl + curr_pos.r_pxl) / 2) -
+                               ((prev_pos.l_pxl + prev_pos.r_pxl) / 2);
                 dst_frame->y = curr_pos.b_pxl - prev_pos.b_pxl;
             } else {
                 // set frame 0 offset
@@ -195,7 +188,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
 
     // malloc a blank FRM_Header for use in editor/viewer
     dst->FRM_hdr = (FRM_Header*)calloc(1, sizeof(FRM_Header));
-    if (!dst->FRM_hdr) {
+    if (dst->FRM_hdr == nullptr) {
         // TODO: log out to file
         set_popup_warning("[ERROR] crop_animation_SURFACE()\n\n"
                           "Failed to allocate FRM_hdr.");
@@ -223,7 +216,7 @@ bool crop_animation_SURFACE(image_data* src, image_data* dst, Palette* pal, int 
 
     dst->FRM_texture =
         init_texture(dst->ANM_dir[dir].frame_data[0], dst->width, dst->height, dst->type);
-    if (!dst->FRM_texture) {
+    if (dst->FRM_texture == 0U) {
         // TODO: log out to file
         printf("init_texture failed: %d", __LINE__);
         return false;

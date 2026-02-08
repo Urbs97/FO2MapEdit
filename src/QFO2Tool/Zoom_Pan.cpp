@@ -38,22 +38,22 @@ void viewport_boundary(image_data* img_data, ImVec2 size) {
 
     ImVec2 window_size = ImGui::GetWindowSize();
     if (size.x >= window_size.x) {
-        img_data->offset.x = std::max((float)(window_size.x / 2 - size.x), img_data->offset.x);
+        img_data->offset.x = std::max(((window_size.x / 2) - size.x), img_data->offset.x);
         img_data->offset.x = std::min((float)(window_size.x / 2), img_data->offset.x);
         // technically should update corner_pos here if the offset changed
     } else {
         img_data->offset.x = std::max((float)(-size.x / 2), img_data->offset.x);
-        img_data->offset.x = std::min((float)(window_size.x - size.x / 2), img_data->offset.x);
+        img_data->offset.x = std::min((window_size.x - (size.x / 2)), img_data->offset.x);
         // technically should update corner_pos here if the offset changed
     }
 
     if (size.y >= window_size.y) {
-        img_data->offset.y = std::max((float)(window_size.y / 2 - size.y), img_data->offset.y);
+        img_data->offset.y = std::max(((window_size.y / 2) - size.y), img_data->offset.y);
         img_data->offset.y = std::min((float)(window_size.y / 2), img_data->offset.y);
         // technically should update corner_pos here if the offset changed
     } else {
         img_data->offset.y = std::max((float)(-size.y / 2), img_data->offset.y);
-        img_data->offset.y = std::min((float)(window_size.y - size.y / 2), img_data->offset.y);
+        img_data->offset.y = std::min((window_size.y - (size.y / 2)), img_data->offset.y);
         // technically should update corner_pos here if the offset changed
     }
 
@@ -88,9 +88,7 @@ void zoom(float zoom_level, ImVec2 focus_point, image_data* img_data) {
     float old_zoom = *scale;
     *scale *= zoom_level;
 
-    if (*scale < 0.125) {
-        *scale = 0.125;
-    }
+    *scale = std::max<double>(*scale, 0.125);
 
     // mouse position relative to window/screen code here
     ImVec2 zoom_center_offset;
@@ -98,8 +96,8 @@ void zoom(float zoom_level, ImVec2 focus_point, image_data* img_data) {
     zoom_center_offset.y = corner_pos.y - focus_point.y;
 
     ImVec2 new_corner;
-    new_corner.x = focus_point.x + (*scale / old_zoom) * zoom_center_offset.x;
-    new_corner.y = focus_point.y + (*scale / old_zoom) * zoom_center_offset.y;
+    new_corner.x = focus_point.x + ((*scale / old_zoom) * zoom_center_offset.x);
+    new_corner.y = focus_point.y + ((*scale / old_zoom) * zoom_center_offset.y);
 
     offset->x += new_corner.x - corner_pos.x;
     offset->y += new_corner.y - corner_pos.y;

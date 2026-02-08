@@ -1,6 +1,6 @@
 BUILD_DIR := build
 
-.PHONY: all configure build test clean rebuild run release lint lint-all format
+.PHONY: all configure build test clean rebuild run release lint lint-all fix fix-all format
 
 all: build
 
@@ -31,6 +31,12 @@ lint: configure
 
 lint-all: configure
 	clang-tidy -p $(BUILD_DIR) src/QFO2Tool/*.cpp src/QFO2Tool/*.h
+
+fix: configure
+	git diff --cached --name-only --diff-filter=d -- '*.cpp' '*.h' | xargs -r clang-tidy -p $(BUILD_DIR) --fix
+
+fix-all: configure
+	clang-tidy -p $(BUILD_DIR) --fix src/QFO2Tool/*.cpp src/QFO2Tool/*.h
 
 format:
 	clang-format -i src/QFO2Tool/*.cpp src/QFO2Tool/*.h

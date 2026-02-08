@@ -22,7 +22,7 @@
 
 struct export_state {
     char save_name[16] = "tile_";
-    char LST_path[MAX_PATH];
+    char LST_path[MAX_PATH]{};
     const char* language[4] = {"english", "french", "russian", "etc"};
     bool auto_export = false;
 
@@ -60,8 +60,8 @@ struct town_tile {
 };
 
 struct tt_arr {
-    char name_ptr[14]; // names can't be longer than 8 characters plus extension (plus '\0')
-    uint8_t frm_data[80 * 36];
+    char name_ptr[14]{}; // names can't be longer than 8 characters plus extension (plus '\0')
+    uint8_t frm_data[80 * 36]{};
     uint32_t row = 0;     // might not need these
     uint32_t col = 0;     // might not need these
     uint32_t tile_id = 0; // line number where it appears in TILES.LST (proto? or art?)

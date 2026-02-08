@@ -7,6 +7,8 @@
 #include "display_FRM_OpenGL.h"
 #include "platform_io.h"
 
+#include <algorithm>
+
 bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* shaders);
 
 bool framebuffer_init(GLuint* texture, GLuint* framebuffer, int w, int h) {
@@ -22,7 +24,7 @@ bool framebuffer_init(GLuint* texture, GLuint* framebuffer, int w, int h) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     // allocate video memory for texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
     // init framebuffer
     glGenFramebuffers(1, framebuffer);
@@ -48,24 +50,24 @@ bool framebuffer_init(GLuint* texture, GLuint* framebuffer, int w, int h) {
 }
 
 uint8_t* load_entire_file(const char* file_name, int* file_size) {
-    FILE* File_ptr;
+    FILE* File_ptr = nullptr;
     int file_length = 0;
 
     File_ptr = fopen(file_name, "rb");
-    if (!File_ptr) {
+    if (File_ptr == nullptr) {
         // TODO: log out to file
         set_popup_warning("[ERROR] load_entire_file()\n\n"
                           "Can't open file.");
         printf("Error: load_entire_file(), Can't open FRM file, error: %d\t%s : L%d\n", errno,
                strerror(errno), __LINE__);
-        return NULL;
+        return nullptr;
     }
 
     int error = fseek(File_ptr, 0, SEEK_END);
-    if (error) {
+    if (error != 0) {
         // TODO: maybe put a popup warning here?
         fclose(File_ptr);
-        return NULL;
+        return nullptr;
     }
     file_length = ftell(File_ptr);
     fseek(File_ptr, 0, SEEK_SET);
@@ -73,13 +75,13 @@ uint8_t* load_entire_file(const char* file_name, int* file_size) {
     if (file_length < 1) {
         // TODO: maybe put a popup warning here?
         fclose(File_ptr);
-        return NULL;
+        return nullptr;
     }
     uint8_t* buffer = (uint8_t*)malloc(file_length);
     fread(buffer, file_length, 1, File_ptr);
     fclose(File_ptr);
 
-    if (file_size != NULL) {
+    if (file_size != nullptr) {
         *file_size = file_length;
     }
 
@@ -102,24 +104,16 @@ uint8_t* load_entire_file(const char* file_name, int* file_size) {
 // used in crop_animation_SURFACE() in Edit_Animation.cpp
 void calculate_bounding_box_SURFACE(rectangle* bounding_box, rectangle* FRM_bounding_box,
                                     Surface* anm_frame, rectangle* box) {
-    bounding_box->x1 += anm_frame->x - anm_frame->w / 2;
+    bounding_box->x1 += anm_frame->x - (anm_frame->w / 2);
     bounding_box->y1 += anm_frame->y - anm_frame->h;
     bounding_box->x2 = bounding_box->x1 + anm_frame->w;
     bounding_box->y2 = bounding_box->y1 + anm_frame->h;
 
     *box = *bounding_box;
-    if (bounding_box->x1 < FRM_bounding_box->x1) {
-        FRM_bounding_box->x1 = bounding_box->x1;
-    }
-    if (bounding_box->y1 < FRM_bounding_box->y1) {
-        FRM_bounding_box->y1 = bounding_box->y1;
-    }
-    if (bounding_box->x2 > FRM_bounding_box->x2) {
-        FRM_bounding_box->x2 = bounding_box->x2;
-    }
-    if (bounding_box->y2 > FRM_bounding_box->y2) {
-        FRM_bounding_box->y2 = bounding_box->y2;
-    }
+    FRM_bounding_box->x1 = std::min(bounding_box->x1, FRM_bounding_box->x1);
+    FRM_bounding_box->y1 = std::min(bounding_box->y1, FRM_bounding_box->y1);
+    FRM_bounding_box->x2 = std::max(bounding_box->x2, FRM_bounding_box->x2);
+    FRM_bounding_box->y2 = std::max(bounding_box->y2, FRM_bounding_box->y2);
 
     bounding_box->x1 += anm_frame->w / 2;
     bounding_box->y1 += anm_frame->h;
@@ -128,7 +122,7 @@ void calculate_bounding_box_SURFACE(rectangle* bounding_box, rectangle* FRM_boun
 // used in load_FRM_to_SURFACE() here
 void calculate_bounding_box(rectangle* bounding_box, rectangle* FRM_bounding_box,
                             FRM_Frame* frame_start, rectangle* box) {
-    bounding_box->x1 += frame_start->Shift_Offset_x - frame_start->Frame_Width / 2;
+    bounding_box->x1 += frame_start->Shift_Offset_x - (frame_start->Frame_Width / 2);
     bounding_box->y1 += frame_start->Shift_Offset_y - frame_start->Frame_Height;
 
     bounding_box->x2 = bounding_box->x1 + frame_start->Frame_Width;
@@ -136,40 +130,32 @@ void calculate_bounding_box(rectangle* bounding_box, rectangle* FRM_bounding_box
 
     *box = *bounding_box;
 
-    if (bounding_box->x1 < FRM_bounding_box->x1) {
-        FRM_bounding_box->x1 = bounding_box->x1;
-    }
-    if (bounding_box->y1 < FRM_bounding_box->y1) {
-        FRM_bounding_box->y1 = bounding_box->y1;
-    }
-    if (bounding_box->x2 > FRM_bounding_box->x2) {
-        FRM_bounding_box->x2 = bounding_box->x2;
-    }
-    if (bounding_box->y2 > FRM_bounding_box->y2) {
-        FRM_bounding_box->y2 = bounding_box->y2;
-    }
+    FRM_bounding_box->x1 = std::min(bounding_box->x1, FRM_bounding_box->x1);
+    FRM_bounding_box->y1 = std::min(bounding_box->y1, FRM_bounding_box->y1);
+    FRM_bounding_box->x2 = std::max(bounding_box->x2, FRM_bounding_box->x2);
+    FRM_bounding_box->y2 = std::max(bounding_box->y2, FRM_bounding_box->y2);
 
     bounding_box->x1 += frame_start->Frame_Width / 2;
     bounding_box->y1 += frame_start->Frame_Height;
 }
 
 Direction assign_direction_FRM(const char* direction) {
-    if (!io_strncmp(direction, "FR0\n", sizeof("FR0\n"))) {
+    if (io_strncmp(direction, "FR0\n", sizeof("FR0\n")) == 0) {
         return NE;
     }
-    if (!io_strncmp(direction, "FR1\0", sizeof("FR1\0"))) {
+    if (io_strncmp(direction, "FR1\0", sizeof("FR1\0")) == 0) {
         return E;
     }
-    if (!io_strncmp(direction, "FR2\0", sizeof("FR2\0"))) {
+    if (io_strncmp(direction, "FR2\0", sizeof("FR2\0")) == 0) {
         return SE;
     }
-    if (!io_strncmp(direction, "FR3\0", sizeof("FR3\0"))) {
+    if (io_strncmp(direction, "FR3\0", sizeof("FR3\0")) == 0) {
         return SW;
     }
-    if (!io_strncmp(direction, "FR4\0", sizeof("FR4\0"))) {
+    if (io_strncmp(direction, "FR4\0", sizeof("FR4\0")) == 0) {
         return W;
     }
-    if (!io_strncmp(direction, "FR5\0", sizeof("FR5\0"))) {
+    if (io_strncmp(direction, "FR5\0", sizeof("FR5\0")) == 0) {
         return NW;
     }
     // default
@@ -178,14 +164,14 @@ Direction assign_direction_FRM(const char* direction) {
 
 bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* shaders) {
     uint8_t* buffer = load_entire_file(file, &img_data->FRM_size);
-    if (!buffer) {
+    if (buffer == nullptr) {
         return false;
     }
     FRM_Header* header = (FRM_Header*)buffer;
     B_Endian::flip_header_endian(header);
     img_data->FRM_hdr = header;
 
-    int num_orients = (header->Frame_0_Offset[1]) ? 6 : 1;
+    int num_orients = ((header->Frame_0_Offset[1]) != 0U) ? 6 : 1;
     int num_frames = header->Frames_Per_Orient;
     Direction dir = no_data;
     const char* ext_ptr = strrchr(file, '.') + 1;
@@ -195,13 +181,13 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
     }
 
     img_data->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir) * 6);
-    if (!img_data->ANM_dir) {
+    if (img_data->ANM_dir == nullptr) {
         // TODO: log out to file
         set_popup_warning("[ERROR] load_FRM_to_SURFACE()\n\n"
                           "Unable to allocate memory for ANM_dir.");
         printf("Unable to allocate memory for ANM_dir: %d", __LINE__);
         free(buffer);
-        img_data->FRM_hdr = NULL;
+        img_data->FRM_hdr = nullptr;
         return false;
     }
     for (int k = 0; k < 6; k++) {
@@ -220,18 +206,18 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
 
         // TODO: change to ptr assignment after malloc-ing entire memory above ^^
         anm_dir[i].frame_data = (Surface**)malloc(sizeof(Surface*) * num_frames);
-        if (!anm_dir[i].frame_data) {
+        if (anm_dir[i].frame_data == nullptr) {
             // TODO: log out to file
             set_popup_warning("[ERROR] load_FRM_to_SURFACE()\n\n"
                               "Unable to allocate memory for anm_dir[i].frame_data");
             printf("Unable to allocate memory for anm_dir[%d].frame_data: %d", i, __LINE__);
             free(anm_dir);
             free(buffer);
-            img_data->FRM_hdr = NULL;
+            img_data->FRM_hdr = nullptr;
             return false;
         }
         anm_dir[i].frame_box = (rectangle*)malloc(sizeof(rectangle) * num_frames);
-        if (!anm_dir[i].frame_box) {
+        if (anm_dir[i].frame_box == nullptr) {
             // TODO: log out to file
             set_popup_warning("[ERROR] load_FRM_to_SURFACE()\n\n"
                               "Unable to allocate memory for anm_dir[i].frame_data");
@@ -241,7 +227,7 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
             }
             free(anm_dir);
             free(buffer);
-            img_data->FRM_hdr = NULL;
+            img_data->FRM_hdr = nullptr;
             return false;
         }
 
@@ -257,7 +243,7 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
             int w = frame_start->Frame_Width;
             int h = frame_start->Frame_Height;
             Surface* img = Create_8Bit_Surface(w, h, shaders->FO_pal);
-            if (!img) {
+            if (img == nullptr) {
                 // TODO: log out to file
                 set_popup_warning("[ERROR] load_FRM_to_SURFACE()\n\n"
                                   "Unable to allocate memory for Surface.");
@@ -268,7 +254,7 @@ bool load_FRM_to_SURFACE(const char* file, image_data* img_data, shader_info* sh
                 }
                 free(anm_dir);
                 free(buffer);
-                img_data->FRM_hdr = NULL;
+                img_data->FRM_hdr = nullptr;
                 return false;
             }
 
@@ -313,7 +299,7 @@ bool load_FRM_OpenGL(const char* file_name, image_data* img_data, shader_info* s
     img_data->FRM_texture = init_texture(img_data->ANM_dir[dir].frame_data[0], img_data->width,
                                          img_data->height, img_data->type);
 
-    if (!img_data->FRM_texture) {
+    if (img_data->FRM_texture == 0U) {
         // TODO: log out to file
         // init_texture() has its own popup warning
         printf("init_texture failed: %d", __LINE__);

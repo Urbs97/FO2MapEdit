@@ -5,7 +5,7 @@
 #include "platform_io.h"
 
 #include <algorithm>
-#include <stdio.h>
+#include <cstdio>
 
 bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* F_Prop) {
     char buffer[MAX_PATH];
@@ -27,9 +27,9 @@ bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* 
     Next_Prev_File(F_Prop->Next_File, F_Prop->Prev_File, F_Prop->Frst_File, F_Prop->Last_File,
                    F_Prop->Opened_File);
 
-    if (img_data->ANM_dir == NULL) {
+    if (img_data->ANM_dir == nullptr) {
         img_data->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir) * 6);
-        if (!img_data->ANM_dir) {
+        if (img_data->ANM_dir == nullptr) {
             // TODO: log out to txt file
             set_popup_warning("[ERROR] Drag_Drop_Load_Animation()\n\n"
                               "Unable to allocate enough memory.");
@@ -40,16 +40,16 @@ bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* 
     }
 
     for (int i = 0; i < 6; i++) {
-        if (!img_data->ANM_dir[i].frame_box) {
+        if (img_data->ANM_dir[i].frame_box == nullptr) {
             img_data->ANM_dir[i].frame_box = (rectangle*)calloc(1, sizeof(rectangle));
         }
-        if (!img_data->ANM_dir[i].frame_box) {
+        if (img_data->ANM_dir[i].frame_box == nullptr) {
             // TODO: log to file
             set_popup_warning("[ERROR] Drag_Drop_Load_Animation()\n\n"
                               "Unable to allocate memory for ANM_dir[i].frame_box.");
             printf("Unable to allocate memory for ANM_dir[i].frame_box: %d", __LINE__);
             for (int j = 0; j < 6; j++) {
-                if (img_data->ANM_dir[j].frame_box) {
+                if (img_data->ANM_dir[j].frame_box != nullptr) {
                     free(img_data->ANM_dir[j].frame_box);
                 }
             }
@@ -59,12 +59,12 @@ bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* 
     }
 
     Surface** frame_data = img_data->ANM_dir[dir].frame_data;
-    if (frame_data != NULL) {
+    if (frame_data != nullptr) {
         free(frame_data);
-        frame_data = NULL;
+        frame_data = nullptr;
     }
     frame_data = (Surface**)calloc(1, sizeof(Surface*) * num_frames);
-    if (!frame_data) {
+    if (frame_data == nullptr) {
         // TODO: log out to txt file
         set_popup_warning("[ERROR] Drag_Drop_Load_Animation()\n\n"
                           "Unable to allocate enough memory for frame_data");
@@ -81,12 +81,12 @@ bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* 
     int i = 0;
     for (const std::filesystem::path& path : path_set) {
         frame_data[i] = Load_File_to_RGBA(path.u8string().c_str());
-        if (frame_data[i] != NULL) {
+        if (frame_data[i] != nullptr) {
             // only increment if current frame_data[] has been filled
             i++;
         }
     }
-    if (frame_data[0] == NULL) {
+    if (frame_data[0] == nullptr) {
         // nothing could be loaded in this folder
         free(frame_data);
         return false;
@@ -119,22 +119,22 @@ bool Drag_Drop_Load_Animation(std::vector<std::filesystem::path>& path_set, LF* 
 
 // If folder name is not matched, default NE is assigned
 Direction assign_direction(char* direction) {
-    if (!strncmp(direction, "NE\0", sizeof("NE\0"))) {
+    if (strncmp(direction, "NE\0", sizeof("NE\0")) == 0) {
         return NE;
     }
-    if (!strncmp(direction, "E\0", sizeof("E\0"))) {
+    if (strncmp(direction, "E\0", sizeof("E\0")) == 0) {
         return E;
     }
-    if (!strncmp(direction, "SE\0", sizeof("SE\0"))) {
+    if (strncmp(direction, "SE\0", sizeof("SE\0")) == 0) {
         return SE;
     }
-    if (!strncmp(direction, "SW\0", sizeof("SW\0"))) {
+    if (strncmp(direction, "SW\0", sizeof("SW\0")) == 0) {
         return SW;
     }
-    if (!strncmp(direction, "W\0", sizeof("W\0"))) {
+    if (strncmp(direction, "W\0", sizeof("W\0")) == 0) {
         return W;
     }
-    if (!strncmp(direction, "NW\0", sizeof("NW\0"))) {
+    if (strncmp(direction, "NW\0", sizeof("NW\0")) == 0) {
         return NW;
     }
     // default
@@ -142,11 +142,11 @@ Direction assign_direction(char* direction) {
 }
 
 void set_directions(const char** names_array, image_data* img_data) {
-    Direction* dir_ptr = NULL;
+    Direction* dir_ptr = nullptr;
 
     for (int i = 0; i < 6; i++) {
         dir_ptr = &img_data->ANM_dir[i].orientation;
-        assert(dir_ptr != NULL && "Not FRM or OTHER?");
+        assert(dir_ptr != nullptr && "Not FRM or OTHER?");
         switch (*dir_ptr) {
             case (NE):
                 names_array[i] = "NE";
@@ -174,38 +174,38 @@ void set_directions(const char** names_array, image_data* img_data) {
 }
 
 void Clear_img_data(image_data* img_data) {
-    if (img_data->MSK_data) {
+    if (img_data->MSK_data != nullptr) {
         free(img_data->MSK_data);
-        img_data->MSK_data = NULL;
+        img_data->MSK_data = nullptr;
     }
-    if (img_data->MSK_srfc) {
+    if (img_data->MSK_srfc != nullptr) {
         FreeSurface(img_data->MSK_srfc);
-        img_data->MSK_srfc = NULL;
+        img_data->MSK_srfc = nullptr;
     }
-    if (img_data->FRM_data) {
+    if (img_data->FRM_data != nullptr) {
         free(img_data->FRM_data);
-        img_data->FRM_data = NULL;
-        img_data->FRM_hdr = NULL;
-    } else if (img_data->FRM_hdr) {
+        img_data->FRM_data = nullptr;
+        img_data->FRM_hdr = nullptr;
+    } else if (img_data->FRM_hdr != nullptr) {
         // FRM_hdr allocated separately (OTHER path in prep_image_SURFACE)
         free(img_data->FRM_hdr);
-        img_data->FRM_hdr = NULL;
+        img_data->FRM_hdr = nullptr;
     }
-    if (img_data->ANM_dir) {
+    if (img_data->ANM_dir != nullptr) {
         for (int i = 0; i < 6; i++) {
-            if (img_data->ANM_dir[i].frame_data) {
+            if (img_data->ANM_dir[i].frame_data != nullptr) {
                 // TODO: check if number of frames are set for individual images
                 for (int j = 0; j < img_data->ANM_dir[i].num_frames; j++) {
                     FreeSurface(img_data->ANM_dir[i].frame_data[j]);
                 }
                 free(img_data->ANM_dir[i].frame_data);
-                img_data->ANM_dir[i].frame_data = NULL;
+                img_data->ANM_dir[i].frame_data = nullptr;
             }
             free(img_data->ANM_dir[i].frame_box);
-            img_data->ANM_dir[i].frame_box = NULL;
+            img_data->ANM_dir[i].frame_box = nullptr;
         }
         free(img_data->ANM_dir);
-        img_data->ANM_dir = NULL;
+        img_data->ANM_dir = nullptr;
     }
     img_data->type = UNK;
 }
@@ -281,7 +281,7 @@ void Gui_Video_Controls(image_data* img_data, img_type type) {
         if (num_frames > 0) {
             max_frame = num_frames - 1;
         }
-        ImGui::SliderInt("Frame Number", &img_data->display_frame_num, 0, max_frame, NULL);
+        ImGui::SliderInt("Frame Number", &img_data->display_frame_num, 0, max_frame, nullptr);
     }
 
     if (img_data->display_frame_num > max_frame) {

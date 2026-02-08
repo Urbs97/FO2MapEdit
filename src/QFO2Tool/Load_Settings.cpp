@@ -1,16 +1,16 @@
 #include "Load_Settings.h"
 
+#include <cstring>
 #include <filesystem>
-#include <string.h>
 
 char* folder_name;
 
 struct config_data {
     int char_ptr = 0;
-    int column;
+    int column{};
     // regular char buffers
-    char key_buffer[MAX_KEY];
-    char val_buffer[MAX_PATH];
+    char key_buffer[MAX_KEY]{};
+    char val_buffer[MAX_PATH]{};
 } config_data_struct;
 
 // TODO: config file needs to be stored in a writeable directory
@@ -38,7 +38,7 @@ struct config_data {
 // environment variables on Linux as well. Like XDG_DESKTOP_SOMETHING
 
 void Load_Config(struct user_info* usr_info, char* exe_path) {
-    char* file_data;
+    char* file_data = nullptr;
 
     char path_buffer[MAX_PATH];
     snprintf(path_buffer, sizeof(path_buffer), "%s%s", exe_path, "config/msk2bmpGUI.cfg");
@@ -46,7 +46,7 @@ void Load_Config(struct user_info* usr_info, char* exe_path) {
     // TODO: Need to be able to check if directory exists,
     //       and create it if it doesn't
     //       (wait, did I already fix this?)
-    FILE* config_file_ptr = NULL;
+    FILE* config_file_ptr = nullptr;
 
 #ifdef QFO2_WINDOWS
     errno_t error = _wfopen_s(&config_file_ptr, io_utf8_wchar(path_buffer), L"rb");
@@ -54,7 +54,7 @@ void Load_Config(struct user_info* usr_info, char* exe_path) {
     config_file_ptr = fopen(path_buffer, "rb");
 #endif
 
-    if (!config_file_ptr) {
+    if (config_file_ptr == nullptr) {
 
 #ifdef QFO2_WINDOWS
         printf("error, can't open config file to read, error: %d", error);
@@ -116,7 +116,7 @@ void parse_data(char* file_data, size_t size, struct user_info* usr_info) {
         }
     }
 }
-void parse_key(char* file_data, size_t size, struct config_data* config) {
+void parse_key(const char* file_data, size_t size, struct config_data* config) {
     int i = 0;
     while (config->char_ptr < size) {
         switch (file_data[config->char_ptr]) {
@@ -130,7 +130,7 @@ void parse_key(char* file_data, size_t size, struct config_data* config) {
         config->key_buffer[i++] = file_data[config->char_ptr++];
     }
 }
-void parse_comment(char* file_data, size_t size, struct config_data* config) {
+void parse_comment(const char* file_data, size_t size, struct config_data* config) {
     while (config->char_ptr < size) {
         switch (file_data[config->char_ptr]) {
             case '\r':
@@ -141,7 +141,7 @@ void parse_comment(char* file_data, size_t size, struct config_data* config) {
         config->char_ptr++;
     }
 }
-void parse_value(char* file_data, size_t size, struct config_data* config,
+void parse_value(const char* file_data, size_t size, struct config_data* config,
                  struct user_info* usr_info) {
     int i = 0;
     config->char_ptr++;
@@ -197,7 +197,7 @@ void write_cfg_file(struct user_info* usr_info, char* exe_path) {
     char path_buffer[MAX_PATH];
     snprintf(path_buffer, sizeof(path_buffer), "%s%s", exe_path, "config/msk2bmpGUI.cfg");
 
-    FILE* config_file_ptr = NULL;
+    FILE* config_file_ptr = nullptr;
     // fopen_s(&config_file_ptr, "config\\msk2bmpGUI.cfg", "wt");
 
 #ifdef QFO2_WINDOWS
@@ -206,7 +206,7 @@ void write_cfg_file(struct user_info* usr_info, char* exe_path) {
     config_file_ptr = fopen(path_buffer, "wb");
 #endif
 
-    if (config_file_ptr == NULL) {
+    if (config_file_ptr == nullptr) {
 
 #ifdef QFO2_WINDOWS
         printf("error, can't open config file to write, error: %d", err);
@@ -229,7 +229,7 @@ void write_cfg_file(struct user_info* usr_info, char* exe_path) {
 
     char buffer[2];
     fwrite("\r\nShow_Image_Stats=", strlen("\r\nShow_Image_Stats="), 1, config_file_ptr);
-    snprintf(buffer, 2, "%d", usr_info->show_image_stats);
+    snprintf(buffer, 2, "%d", static_cast<int>(usr_info->show_image_stats));
     fwrite(buffer, strlen(buffer), 1, config_file_ptr);
 
     for (int i = 0; i < usr_info->recent_files_count; i++) {
@@ -243,7 +243,7 @@ void write_cfg_file(struct user_info* usr_info, char* exe_path) {
 }
 
 void add_recent_file(struct user_info* usr_info, const char* file_path) {
-    if (!file_path || file_path[0] == '\0') {
+    if ((file_path == nullptr) || file_path[0] == '\0') {
         return;
     }
 
@@ -267,7 +267,7 @@ void add_recent_file(struct user_info* usr_info, const char* file_path) {
     }
 
     // Shift entries down to make room at index 0
-    int shift_count;
+    int shift_count = 0;
     if (existing_index > 0) {
         // Move existing entry to top: shift entries 0..existing_index-1 down by one
         shift_count = existing_index;

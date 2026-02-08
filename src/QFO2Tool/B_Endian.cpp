@@ -12,7 +12,7 @@ void B_Endian::swap_16(void* in) {
     p[1] = tmp;
 }
 void B_Endian::swap_32(void* in) {
-    uint32_t val;
+    uint32_t val = 0;
     memcpy(&val, in, sizeof(val));
     val = (val & 0x000000ff) << 24 | (val & 0x0000ff00) << 8 | (val & 0x00ff0000) >> 8 |
           (val & 0xff000000) >> 24;
@@ -71,7 +71,7 @@ void B_Endian::flip_proto_endian(tile_proto* proto) {
 
 // Unsigned conversions
 uint32_t B_Endian::read_u32(std::istream& f) {
-    uint32_t val;
+    uint32_t val = 0;
     uint8_t bytes[4];
     f.read((char*)bytes, 4);
 
@@ -84,7 +84,7 @@ uint32_t B_Endian::write_u32(int f) {
     return val;
 }
 uint16_t B_Endian::read_u16(std::istream& f) {
-    uint16_t val;
+    uint16_t val = 0;
     uint8_t bytes[2];
     f.read((char*)bytes, 2);
     val = bytes[1] | (bytes[0] << 8);
@@ -97,7 +97,7 @@ uint16_t B_Endian::write_u16(int f) {
 }
 uint8_t B_Endian::read_u8(std::istream& f) {
     // lol this does nothing
-    uint8_t val;
+    uint8_t val = 0;
     uint8_t bytes[1];
     f.read((char*)bytes, 1);
     val = bytes[0];

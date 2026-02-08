@@ -2,12 +2,12 @@
 
 #include "Load_Files.h"
 
-#define ms_PER_sec (1000)
+enum { ms_PER_sec = (1000) };
 
 mesh load_giant_triangle() {
     float vertices[] = {// giant triangle     uv coordinates?
-                        -1.0f, -1.0f, 0.0f,  0.0f, 0.0f, 3.0f, -1.0f, 0.0f,
-                        2.0f,  0.0f,  -1.0f, 3.0f, 0.0f, 0.0f, 2.0f};
+                        -1.0F, -1.0F, 0.0F,  0.0F, 0.0F, 3.0F, -1.0F, 0.0F,
+                        2.0F,  0.0F,  -1.0F, 3.0F, 0.0F, 0.0F, 2.0F};
 
     mesh triangle;
     triangle.vertexCount = 3;
@@ -19,7 +19,7 @@ mesh load_giant_triangle() {
     glBindBuffer(GL_ARRAY_BUFFER, triangle.VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)nullptr);
     glEnableVertexAttribArray(0);
 
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
@@ -38,11 +38,11 @@ void render_OTHER_OpenGL(image_data* img_data, int width, int height) {
     int frame_num = img_data->display_frame_num;
     ANM_Dir* anm_dir = img_data->ANM_dir;
 
-    uint8_t* pxls;
-    if (anm_dir[orient].frame_data[frame_num] == NULL) {
+    uint8_t* pxls = nullptr;
+    if (anm_dir[orient].frame_data[frame_num] == nullptr) {
         width = 0;
         height = 0;
-        pxls = NULL;
+        pxls = nullptr;
     } else {
         pxls = anm_dir[orient].frame_data[frame_num]->pxls;
     }
@@ -57,7 +57,7 @@ void render_OTHER_OpenGL(image_data* img_data, int width, int height) {
 // TODO: this is still being used, maybe refactor?
 void animate_OTHER_to_framebuff(Shader* shader, mesh* triangle, image_data* img_data,
                                 uint64_t current_time) {
-    float constexpr static playback_speeds[5] = {0.0f, .25f, 0.5f, 1.0f, 2.0f};
+    float constexpr static playback_speeds[5] = {0.0F, .25f, 0.5F, 1.0F, 2.0F};
 
     float fps = 10 * playback_speeds[img_data->playback_speed];
 
@@ -73,7 +73,7 @@ void animate_OTHER_to_framebuff(Shader* shader, mesh* triangle, image_data* img_
     //       but we can add one with a button if we
     //       want, also can add a "num" entry at the
     //       end (or possibly in between frames?)
-    if (anm_dir[dir].frame_data[num]) {
+    if (anm_dir[dir].frame_data[num] != nullptr) {
         img_width = img_data->ANM_dir[dir].frame_data[num]->w;
         img_height = img_data->ANM_dir[dir].frame_data[num]->h;
     } else {
@@ -119,7 +119,7 @@ void animate_OTHER_to_framebuff(Shader* shader, mesh* triangle, image_data* img_
 }
 
 void SURFACE_to_texture(Surface* src, GLuint texture, int width, int height, int alignment) {
-    if (!src) {
+    if (src == nullptr) {
         return;
     }
 
@@ -150,7 +150,8 @@ void SURFACE_to_texture(Surface* src, GLuint texture, int width, int height, int
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, pxl_type, GL_UNSIGNED_BYTE,
                      src->pxls);
     } else {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, pxl_type, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, pxl_type, GL_UNSIGNED_BYTE,
+                     nullptr);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, src->w, src->h, pxl_type, GL_UNSIGNED_BYTE,
                         src->pxls);
     }
@@ -172,18 +173,18 @@ void PAL_SURFACE_to_sub_texture(uint8_t* pxls, GLuint texture, int x_offset, int
     glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
     // bind blank background to FRM_texture for display, then paint data onto texture
     // use static buffer to avoid calloc/free every frame
-    static uint8_t* blank = NULL;
+    static uint8_t* blank = nullptr;
     static int blank_size = 0;
     int needed = total_width * total_height;
     if (needed > blank_size) {
         free(blank);
         blank = (uint8_t*)calloc(1, needed);
-        if (!blank) {
+        if (blank == nullptr) {
             blank_size = 0;
             return;
         }
         blank_size = needed;
-    } else if (blank) {
+    } else if (blank != nullptr) {
         memset(blank, 0, needed);
     }
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, total_width, total_height, 0, pxl_type, GL_UNSIGNED_BYTE,
@@ -197,7 +198,7 @@ void PAL_SURFACE_to_sub_texture(uint8_t* pxls, GLuint texture, int x_offset, int
 //       changing either a frame or a palette color-cycle
 void animate_SURFACE_to_sub_texture(image_data* img_data, Surface* edit_srfc,
                                     uint64_t current_time) {
-    if (!edit_srfc) {
+    if (edit_srfc == nullptr) {
         return;
     }
     // TODO: maybe handle single image FRM's slightly differently with dropdown?
@@ -218,7 +219,7 @@ void animate_SURFACE_to_sub_texture(image_data* img_data, Surface* edit_srfc,
     int y_offset =
         img_data->ANM_dir[dir].frame_box[frame_num].y1 - img_data->ANM_bounding_box[dir].y1;
 
-    float constexpr static playback_speeds[5] = {0.0f, .25f, 0.5f, 1.0f, 2.0f};
+    float constexpr static playback_speeds[5] = {0.0F, .25f, 0.5F, 1.0F, 2.0F};
     int FRM_fps = (img_data->FRM_hdr->FPS == 0 && img_data->ANM_dir[dir].num_frames > 1)
                       ? 10
                       : img_data->FRM_hdr->FPS;
@@ -255,7 +256,7 @@ void draw_FRM_to_framebuffer(shader_info* shader_i, int width, int height, GLuin
     shader_i->render_FRM_shader->setInt("Indexed_FRM", 0);
 
     int err = glGetError();
-    if (err) {
+    if (err != 0) {
         printf("draw_FRM_to_framebuffer() glGetError: %d\n", err);
     }
     glDrawArrays(GL_TRIANGLES, 0, shader_i->giant_triangle.vertexCount);
@@ -297,7 +298,7 @@ void draw_PAL_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
     shader->setInt("Indexed_MSK", 2);
 
     int err = glGetError();
-    if (err) {
+    if (err != 0) {
         printf("draw_PAL_to_framebuffer() glGetError: %d\n", err);
     }
 
@@ -324,7 +325,7 @@ void draw_texture_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle, G
     glUniform1uiv(t, 256, (GLuint*)pal->colors);
 
     GLenum err = glGetError();
-    if (err) {
+    if (err != 0U) {
         printf("draw_texture_to_framebuffer() glGetError: %d\n", err);
         // GL_INVALID_OPERATION
     }
@@ -356,7 +357,7 @@ void draw_MSK_to_framebuffer(Palette* pal, Shader* shader, mesh* triangle,
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     GLenum err = glGetError();
-    if (err) {
+    if (err != 0U) {
         printf("draw_MSK_to_framebuffer() glGetError: %d\n", err);
         // GL_INVALID_OPERATION
     }

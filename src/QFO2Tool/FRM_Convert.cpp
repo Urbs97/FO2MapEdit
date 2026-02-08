@@ -4,19 +4,18 @@
 #include "platform_io.h"
 
 #include <cerrno>
+#include <climits>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <limits.h>
-#include <math.h>
 
 // Used to convert Fallout's palette colors to normal values
 uint8_t convert_colors(uint8_t bytes) {
     if (bytes < 64) {
         return 4 * bytes;
-    } else {
-        return bytes;
     }
+    return bytes;
 }
 
 // TODO: rewrite this to more generically load palettes
@@ -28,7 +27,7 @@ uint8_t convert_colors(uint8_t bytes) {
 // TODO: also, move this function to load_files.h/cpp
 Palette* load_palette_from_path(const char* path) {
     FILE* file_ptr = fopen(path, "rb");
-    if (file_ptr == NULL) {
+    if (file_ptr == nullptr) {
         // TODO: replace color.pal w/name
         //       (possibly modify messagebox for user provided palette)
         // TODO: log out to file
@@ -36,12 +35,14 @@ Palette* load_palette_from_path(const char* path) {
                           "Unable to load color.pal, the default Fallout color palette.");
         printf("Error opening color.pal \n%d: %s\n", errno, strerror(errno));
         printf("Current Working Directory: %s\n", io_get_cwd());
-        return NULL;
+        return nullptr;
     }
 
     Palette* path_palette = (Palette*)malloc(sizeof(Palette));
 
-    uint8_t r, g, b;
+    uint8_t r = 0;
+    uint8_t g = 0;
+    uint8_t b = 0;
     Color* PaletteColors = path_palette->colors;
     for (int i = 0; i < 256; i++) {
         uint8_t bytes[4] = {};
@@ -68,7 +69,7 @@ Surface* PAL_Color_Convert(Surface* src, Palette* pal, int color_match_algo) {
         // Convert input surface to 32bit format for easy palettization
         Surface_32 = Convert_Surface_to_RGBA(src);
     }
-    if (!Surface_32) {
+    if (Surface_32 == nullptr) {
         // TODO: log out to file
         set_popup_warning("[ERROR] FRM_Color_Convert()"
                           "Unable to allocate 32-bit surface.");
@@ -78,7 +79,7 @@ Surface* PAL_Color_Convert(Surface* src, Palette* pal, int color_match_algo) {
 
     // Setup for palettizing image
     Surface* Surface_8 = Create_8Bit_Surface(src->w, src->h, pal);
-    if (!Surface_8) {
+    if (Surface_8 == nullptr) {
         // TODO: log out to file
         set_popup_warning("[ERROR] FRM_Color_Convert()"
                           "Unable to allocate 8-bit surface.");
@@ -102,13 +103,13 @@ Surface* PAL_Color_Convert(Surface* src, Palette* pal, int color_match_algo) {
 void Euclidian_Distance_Color_Match(Surface* Surface_32, Surface* Surface_8) {
     uint8_t w_PaletteColor = 0;
     Color rgba;
-    Pxl_Err err;
+    Pxl_Err err{};
 
-    int s;
-    int t;
-    int u;
-    int v;
-    int w;
+    int s = 0;
+    int t = 0;
+    int u = 0;
+    int v = 0;
+    int w = 0;
 
     int c = 100; // TODO: remove this counter
     Color* PaletteColors = Surface_8->palette->colors;
@@ -208,7 +209,7 @@ void clamp_dither(Surface* Surface_32, Pxl_Err* err, int pixel_idx, int factor) 
     // appropriate pixel
     for (int i = 0; i < 4; i++) {
         // clamp 255 or 0
-        int total_error = (rgba.clr[i] + err->arr[i] * factor / 16);
+        int total_error = (rgba.clr[i] + (err->arr[i] * factor / 16));
 
         if (total_error > 255) {
             *pxl_color[i] = 255;
@@ -216,7 +217,8 @@ void clamp_dither(Surface* Surface_32, Pxl_Err* err, int pixel_idx, int factor) 
             *pxl_color[i] = 0;
         }
         // if not clamp, then store error info
-        else
+        else {
             *pxl_color[i] = total_error;
+        }
     }
 }

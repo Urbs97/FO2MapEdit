@@ -3,10 +3,10 @@
 
 #include "platform_io.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
 
 #ifdef QFO2_WINDOWS
 #include <Windows.h>
@@ -233,14 +233,13 @@ bool io_make_dir(char* dir_path) {
 }
 
 #elif defined(QFO2_LINUX)
+#include <cerrno>
 #include <dirent.h>
-#include <errno.h>
-#include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-char* io_get_cwd() { return getcwd(NULL, 0); }
+char* io_get_cwd() { return getcwd(nullptr, 0); }
 
 int io_strncasecmp(NATIVE_STRING_TYPE* str1, NATIVE_STRING_TYPE* str2, int num_char) {
     return strncasecmp(str1, str2, num_char);
@@ -254,16 +253,16 @@ int io_strncmp(NATIVE_STRING_TYPE* str1, NATIVE_STRING_TYPE* str2, int num_char)
 // returns true if path exists and is a directory
 // false otherwise, or if error occurs
 bool io_isdir(char* dir_path) {
-    struct stat stat_info;
+    struct stat stat_info{};
     int error = stat(dir_path, &stat_info);
-    if (error) {
+    if (error != 0) {
         // TODO: log to file
         if (errno != ENOENT) {
             printf("Error checking directory? %s\n", strerror(errno));
         }
         return false;
     }
-    return (stat_info.st_mode & S_IFDIR);
+    return (stat_info.st_mode & S_IFDIR) != 0U;
 }
 
 // returns DIR* stream for linux
@@ -278,14 +277,14 @@ void* io_open_dir(char* dir_name) {
 // returns folders/files inside dir_stream location
 char* io_scan_dir(void* dir_stream) {
     errno = 0;
-    struct dirent* iterator;
+    struct dirent* iterator = nullptr;
     iterator = readdir((DIR*)dir_stream);
-    if (iterator == NULL) {
+    if (iterator == nullptr) {
         if (errno != 0) {
             // TODO: log to file
             printf("Error: io_scan_dir() : errno: %d\n", errno);
         }
-        return NULL;
+        return nullptr;
     }
 
     char* file_name = iterator->d_name;
@@ -295,7 +294,7 @@ char* io_scan_dir(void* dir_stream) {
 
 bool io_close_dir(void* dir_stream) {
     int error = closedir((DIR*)dir_stream);
-    if (error) {
+    if (error != 0) {
         // TODO: log to file
         printf("Error: io_close_dir() %s\n", strerror(errno));
         return false;
@@ -312,14 +311,14 @@ char* io_path_check(char* file_name) {
     strncpy(full_path, file_name, MAX_PATH);
 
     bool isdir = 0;
-    char* curr = NULL;
-    char* last = NULL;
+    char* curr = nullptr;
+    char* last = nullptr;
     while (!isdir) {
         curr = strrchr(full_path, '/');
-        if (!curr) {
-            return NULL;
+        if (curr == nullptr) {
+            return nullptr;
         }
-        if (last) {
+        if (last != nullptr) {
             last[0] = '/';
         }
         last = curr;
@@ -331,19 +330,19 @@ char* io_path_check(char* file_name) {
         DIR* stream = (DIR*)io_open_dir(full_path);
 
         int match = -1;
-        char* dir = NULL;
+        char* dir = nullptr;
         char* next = strchr(curr + 1, '/');
-        if (!next) {
+        if (next == nullptr) {
             io_close_dir(stream);
             curr[0] = '/';
             break;
         }
         next[0] = '\0';
-        while (match) {
+        while (match != 0) {
             dir = io_scan_dir(stream);
             // no match found for this folder
             // pass full path back so new folders can be made
-            if (dir == NULL) {
+            if (dir == nullptr) {
                 io_close_dir(stream);
                 curr[0] = '/';
                 next[0] = '/';
@@ -364,22 +363,22 @@ char* io_path_check(char* file_name) {
 //  #include <stdbool.h>  //bool type ?
 // returns true if the file exists, false otherwise
 bool io_file_exists(const char* filename) {
-    struct stat stat_info;
+    struct stat stat_info{};
     int error = stat(filename, &stat_info);
-    if (error) {
+    if (error != 0) {
         if (errno != ENOENT) {
             // TODO: log to file
             printf("Error io_file_exists(): %s\n", strerror(errno));
         }
         return false;
     }
-    return (stat_info.st_mode & S_IFREG);
+    return (stat_info.st_mode & S_IFREG) != 0U;
 }
 
 int io_file_size(const char* filename) {
-    struct stat stat_info;
+    struct stat stat_info{};
     int error = stat(filename, &stat_info);
-    if (error) {
+    if (error != 0) {
         // TODO: log to file
         printf("Error io_file_size() %s\n", strerror(errno));
         return 0;
@@ -391,7 +390,7 @@ int io_file_size(const char* filename) {
 // recursively makes leading directories if they don't exist
 // returns true on success or directory exists, false on error
 bool io_make_dir(char* dir_path) {
-    int error;
+    int error = 0;
     error = mkdir(dir_path, (S_IRWXU | S_IRWXG | S_IRWXO));
     if (error == 0 || errno == EEXIST) {
         // successfully created directory (or it was already there)
@@ -443,7 +442,7 @@ bool io_backup_file(char* src_path, char* dst_path) {
     char* extension = strrchr(src_path, '\0'); // get end of string position?
     char time_buff[32];
     char rename_buff[MAX_PATH];
-    time_t t = time(NULL);
+    time_t t = time(nullptr);
     tm* tp = localtime(&t);
     strftime(time_buff, 32, "_%Y%m%d_%H%M%S", tp);
     snprintf(rename_buff, MAX_PATH, "%s%s%s", dst_path, time_buff, extension - 4);
@@ -477,7 +476,7 @@ bool io_create_backup_dir(char* dir) {
     strncpy(dest_path, dir, MAX_PATH);
 
     char time_buff[32];
-    time_t t = time(NULL);
+    time_t t = time(nullptr);
     tm* tp = localtime(&t);
     strftime(time_buff, 32, "_%Y%m%d_%H%M%S", tp);
     snprintf(dir, MAX_PATH, "%s/backup%s", dest_path, time_buff);
@@ -488,7 +487,7 @@ bool io_create_backup_dir(char* dir) {
 // loads a text file into a buffer
 // returns the buffer
 char* io_load_txt_file(const char* full_path) {
-    if (io_file_exists(full_path) == false) {
+    if (!io_file_exists(full_path)) {
         return nullptr;
     }
 
@@ -497,7 +496,7 @@ char* io_load_txt_file(const char* full_path) {
     char* text_file_buff = (char*)malloc(file_size + 1);
 
     FILE* tiles_lst = fopen(full_path, "rb");
-    if (!tiles_lst) {
+    if (tiles_lst == nullptr) {
         free(text_file_buff);
         return nullptr;
     }
@@ -519,7 +518,7 @@ bool io_save_txt_file(char* path, char* txt) {
     }
 
     FILE* txt_file = fopen(path, "wb");
-    if (txt_file == NULL) {
+    if (txt_file == nullptr) {
         // TODO: log to file
         printf("Error: io_save_txt_file() : unable to open file to write to: %d\n", __LINE__);
         return false;

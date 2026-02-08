@@ -5,8 +5,7 @@
 #include "platform_io.h"
 
 // Fallout map tile size hardcoded in engine to 350x300 pixels WxH
-#define WMAP_TILE_W (350)
-#define WMAP_TILE_H (300)
+enum { WMAP_TILE_W = (350), WMAP_TILE_H = (300) };
 
 #pragma pack(push, 1)
 struct wmap_header {
@@ -32,7 +31,9 @@ struct wmap_info {
     char save_path[MAX_PATH];
 };
 
-#define WRLDMP_ART_IDX 339 // line index of wrldmp00.frm in vanilla intrface.lst (GOG/vanilla)
+enum {
+    WRLDMP_ART_IDX = 339 // line index of wrldmp00.frm in vanilla intrface.lst (GOG/vanilla)
+};
 
 bool write_worldmap_txt(const char* output_path, const char* base_name, int tiles_x, int tiles_y,
                         Surface* msk_srfc);

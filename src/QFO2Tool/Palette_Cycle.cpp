@@ -32,27 +32,29 @@ struct cycle {
     double g_dwLastCycleVeryFast = 0;
 } cycle_vals;
 
-void color_cycle_PAL(Palette* pal, int* g_dwCurrent, int pal_index, uint8_t* cycle_colors,
+void color_cycle_PAL(Palette* pal, int* g_dwCurrent, int pal_index, const uint8_t* cycle_colors,
                      int cycle_count) {
     uint16_t Current_Frame = *g_dwCurrent;
 
     for (int i = cycle_count; i >= 0; i--) {
-        pal->colors[pal_index + i].r = cycle_colors[Current_Frame * 3 + 0];
-        pal->colors[pal_index + i].g = cycle_colors[Current_Frame * 3 + 1];
-        pal->colors[pal_index + i].b = cycle_colors[Current_Frame * 3 + 2];
+        pal->colors[pal_index + i].r = cycle_colors[(Current_Frame * 3) + 0];
+        pal->colors[pal_index + i].g = cycle_colors[(Current_Frame * 3) + 1];
+        pal->colors[pal_index + i].b = cycle_colors[(Current_Frame * 3) + 2];
         // all cycle colors have alpha of 255
         pal->colors[pal_index + i].a = 255;
 
-        if (Current_Frame == cycle_count)
+        if (Current_Frame == cycle_count) {
             Current_Frame = 0;
-        else
+        } else {
             Current_Frame++;
+        }
     }
 
-    if (*g_dwCurrent == cycle_count)
+    if (*g_dwCurrent == cycle_count) {
         *g_dwCurrent = 0;
-    else
+    } else {
         (*g_dwCurrent)++;
+    }
 }
 
 // returns true if Palette is updated

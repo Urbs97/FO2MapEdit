@@ -30,12 +30,12 @@ void set_popup_warning(const char* str) //, const char* name)
     //  hopefully the next window opened is the popup one
     // ImVec2 center = ImGui::GetMainViewport()->GetCenter();
     ImVec2 center = ImGui::GetWindowViewport()->GetCenter();
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
 }
 
 void show_popup_warnings() // const char* modal_name, const char* str)
 {
-    if (ImGui::BeginPopupModal("Warning", NULL, ImGuiWindowFlags_MenuBar)) {
+    if (ImGui::BeginPopupModal("Warning", nullptr, ImGuiWindowFlags_MenuBar)) {
         ImGui::Text("%s", warn_str);
 
         if (ImGui::Button("Close")) {

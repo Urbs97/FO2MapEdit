@@ -33,9 +33,9 @@ void draw_TMAP_tiles(user_info* usr_nfo, image_data* img_data, shader_info* shad
     int row_h = (36 + 36 + 24); // 96
     int max_box_x = +2 * ((img_w + (col_w - 1) - offset->x) / col_w);
     int min_box_x = -3 * ((img_h + (row_h - 1) + offset->y) / row_h);
-    int max_box_y = +2 * ((img_w + (col_w - 1) - offset->y) / col_w) +
-                    3 * ((img_h + (row_h - 1) - offset->y) / row_h);
-    int min_box_y = -3 * offset->y / row_h - 2 * offset->x / col_w;
+    int max_box_y = (+2 * ((img_w + (col_w - 1) - offset->y) / col_w)) +
+                    (3 * ((img_h + (row_h - 1) - offset->y) / row_h));
+    int min_box_y = (-3 * offset->y / row_h) - (2 * offset->x / col_w);
 
     // #define pxl_per_row_x       (128)   //  ((80+80-32)    /1) tile per repeat
     // #define pxl_per_row_y        (32)   //  ((36+36+36-12) /3) tiles per repeat
@@ -52,32 +52,40 @@ void draw_TMAP_tiles(user_info* usr_nfo, image_data* img_data, shader_info* shad
     ImVec2 Origin;
     Origin.x = img_data->offset.x + ImGui::GetItemRectMin().x;
     Origin.y = img_data->offset.y + ImGui::GetItemRectMin().y;
-    ImVec2 Left, Top, Bottom, Right, new_origin;
+    ImVec2 Left;
+    ImVec2 Top;
+    ImVec2 Bottom;
+    ImVec2 Right;
+    ImVec2 new_origin;
     for (int y = min_box_y; y < max_box_y; y++) {
         for (int x = min_box_x; x < max_box_x; x++) {
             // new_origin.x = Origin.x + x * spacing_x * scale;
             // new_origin.y = Origin.y + y * spacing_y * scale;
-            new_origin.x = Origin.x + x * offset->w * scale;
-            new_origin.y = Origin.y + y * offset->h * scale;
+            new_origin.x = Origin.x + (x * offset->w * scale);
+            new_origin.y = Origin.y + (y * offset->h * scale);
 
-            Top_Left.x = new_origin.x + (x * 48 + y * 32) * scale;
-            Top_Left.y = new_origin.y + (x * -12 + y * 24) * scale;
+            Top_Left.x = new_origin.x + ((x * 48 + y * 32) * scale);
+            Top_Left.y = new_origin.y + ((x * -12 + y * 24) * scale);
 
-            Left.x = Top_Left.x + L_Corner.x * scale;
-            Left.y = Top_Left.y + L_Corner.y * scale;
+            Left.x = Top_Left.x + (L_Corner.x * scale);
+            Left.y = Top_Left.y + (L_Corner.y * scale);
 
-            Top.x = Top_Left.x + T_Corner.x * scale;
-            Top.y = Top_Left.y + T_Corner.y * scale;
+            Top.x = Top_Left.x + (T_Corner.x * scale);
+            Top.y = Top_Left.y + (T_Corner.y * scale);
 
-            Right.x = Top_Left.x + R_Corner.x * scale;
-            Right.y = Top_Left.y + R_Corner.y * scale;
+            Right.x = Top_Left.x + (R_Corner.x * scale);
+            Right.y = Top_Left.y + (R_Corner.y * scale);
 
-            Bottom.x = Top_Left.x + B_Corner.x * scale;
-            Bottom.y = Top_Left.y + B_Corner.y * scale;
+            Bottom.x = Top_Left.x + (B_Corner.x * scale);
+            Bottom.y = Top_Left.y + (B_Corner.y * scale);
 
-            ImVec2 uv_l, uv_t, uv_r, uv_b, uv_ref;
-            uv_ref.x = (float)(x * 48 + y * 32 + offset->x);
-            uv_ref.y = (float)(x * -12 + y * 24 + offset->y);
+            ImVec2 uv_l;
+            ImVec2 uv_t;
+            ImVec2 uv_r;
+            ImVec2 uv_b;
+            ImVec2 uv_ref;
+            uv_ref.x = (float)((x * 48) + (y * 32) + offset->x);
+            uv_ref.y = (float)((x * -12) + (y * 24) + offset->y);
 
             uv_l.x = (uv_ref.x + L_Corner.x) / img_data->width;
             uv_l.y = (uv_ref.y + L_Corner.y) / img_data->height;
@@ -116,7 +124,7 @@ void export_button_table(tt_arr_handle* exported_tiles, user_info* usr_nfo, expo
         //////////////////////////////////////////
         ImGui::TableNextColumn();
         // button 1
-        if (exported_tiles == NULL) {
+        if (exported_tiles == nullptr) {
             ImGui::BeginDisabled();
         }
         if (ImGui::Button("Add to art/tiles/TILES.LST")) {
@@ -130,7 +138,7 @@ void export_button_table(tt_arr_handle* exported_tiles, user_info* usr_nfo, expo
                               "(NOTE: Currently can't load\n"
                               "TILES.LST from master.dat\n"
                               "but should be able too in the future)");
-        if (exported_tiles == NULL) {
+        if (exported_tiles == nullptr) {
             ImGui::EndDisabled();
         }
         // checkbox 1
@@ -147,13 +155,13 @@ void export_button_table(tt_arr_handle* exported_tiles, user_info* usr_nfo, expo
         //////////////////////////////////////////
         ImGui::TableNextColumn();
         // button 2
-        if (exported_tiles == NULL) {
+        if (exported_tiles == nullptr) {
             ImGui::BeginDisabled();
         }
         if (ImGui::Button("Export Protos")) {
             ImGui::OpenPopup("Proto Info");
         }
-        if (exported_tiles == NULL) {
+        if (exported_tiles == nullptr) {
             ImGui::EndDisabled();
         }
         ImGui::TableNextColumn();
@@ -169,13 +177,13 @@ void export_button_table(tt_arr_handle* exported_tiles, user_info* usr_nfo, expo
         //////////////////////////////////////////
         ImGui::TableNextColumn();
         // button 3
-        if (exported_tiles == NULL) {
+        if (exported_tiles == nullptr) {
             ImGui::BeginDisabled();
         }
         if (ImGui::Button("Export Pattern File")) {
             ImGui::OpenPopup("Pattern File");
         }
-        if (exported_tiles == NULL) {
+        if (exported_tiles == nullptr) {
             ImGui::EndDisabled();
         }
         ImGui::TableNextColumn();
@@ -201,8 +209,8 @@ void export_button_table(tt_arr_handle* exported_tiles, user_info* usr_nfo, expo
         }
         // Popups: Always center this window when appearing
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        if (ImGui::BeginPopupModal("Proto Info", NULL, ImGuiWindowFlags_MenuBar)) {
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+        if (ImGui::BeginPopupModal("Proto Info", nullptr, ImGuiWindowFlags_MenuBar)) {
             export_PRO_tiles_POPUP(usr_nfo, exported_tiles, state, false);
             if (ImGui::Button("Close")) {
                 set_false(state);
@@ -211,8 +219,8 @@ void export_button_table(tt_arr_handle* exported_tiles, user_info* usr_nfo, expo
             ImGui::EndPopup();
         }
         // Always center this window when appearing? does this even work?
-        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        if (ImGui::BeginPopupModal("Pattern File", NULL, ImGuiWindowFlags_MenuBar)) {
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+        if (ImGui::BeginPopupModal("Pattern File", nullptr, ImGuiWindowFlags_MenuBar)) {
             export_PAT_file_POPUP(usr_nfo, exported_tiles, state, false);
             if (ImGui::Button("Close")) {
                 set_false(state);
@@ -226,7 +234,7 @@ void export_button_table(tt_arr_handle* exported_tiles, user_info* usr_nfo, expo
 }
 
 void rename_tiles(tt_arr_handle* handle, char* name) {
-    if (!handle) {
+    if (handle == nullptr) {
         return;
     }
 
@@ -243,8 +251,8 @@ tt_arr_handle* TMAP_tile_buttons(user_info* usr_nfo, Surface* srfc, Rect* offset
                                  tt_arr_handle* handle) {
     static export_state state;
 
-    static tt_arr_handle* exported_tiles = NULL;
-    if (handle) {
+    static tt_arr_handle* exported_tiles = nullptr;
+    if (handle != nullptr) {
         exported_tiles = handle;
     }
     // Save tiles button
@@ -283,7 +291,7 @@ tt_arr_handle* TMAP_tile_buttons(user_info* usr_nfo, Surface* srfc, Rect* offset
         }
 
         tt_arr_handle* temp = export_TMAP_tiles_POPUP(usr_nfo, srfc, offset, &state);
-        if (temp) {
+        if (temp != nullptr) {
             // assign handle only if tiles have been fully exported
             // pressing cancel won't clear old handle
             exported_tiles = temp;
@@ -301,7 +309,7 @@ tt_arr_handle* TMAP_tile_buttons(user_info* usr_nfo, Surface* srfc, Rect* offset
 
         ImGui::EndPopup();
 
-        if (state.auto_export == true) {
+        if (state.auto_export) {
             ImGui::OpenPopup("Export Complete");
         }
         set_false(&state);
@@ -318,16 +326,16 @@ tt_arr_handle* TMAP_tile_buttons(user_info* usr_nfo, Surface* srfc, Rect* offset
 
     export_button_table(exported_tiles, usr_nfo, &state);
 
-    ImGui::SliderInt("Image Offset X", &offset->x, -400, 400, NULL);
-    ImGui::SliderInt("Image Offset Y", &offset->y, -400, 400, NULL);
+    ImGui::SliderInt("Image Offset X", &offset->x, -400, 400, nullptr);
+    ImGui::SliderInt("Image Offset Y", &offset->y, -400, 400, nullptr);
 
-    ImGui::SliderInt("Tile Spacing X", &offset->w, 0, 80, NULL);
-    ImGui::SliderInt("Tile Spacing Y", &offset->h, 0, 80, NULL);
+    ImGui::SliderInt("Tile Spacing X", &offset->w, 0, 80, nullptr);
+    ImGui::SliderInt("Tile Spacing Y", &offset->h, 0, 80, nullptr);
 
     if (exported_tiles != handle) {
         return exported_tiles;
     }
-    return NULL;
+    return nullptr;
 }
 
 void prev_TMAP_tiles_SURFACE(user_info* usr_info, variables* My_Variables, image_data* img_data) {
@@ -335,11 +343,11 @@ void prev_TMAP_tiles_SURFACE(user_info* usr_info, variables* My_Variables, image
     shader_info* shaders = &My_Variables->shaders;
 
     int dir = img_data->display_orient_num;
-    if (!img_data->ANM_dir) {
+    if (img_data->ANM_dir == nullptr) {
         ImGui::Text("No ANM_dir");
         return;
     }
-    if (img_data->ANM_dir[dir].frame_data == NULL) {
+    if (img_data->ANM_dir[dir].frame_data == nullptr) {
         ImGui::Text("No frame_data");
         return;
     }
@@ -396,11 +404,10 @@ void draw_red_squares(image_data* img_data, bool show_squares) {
 
         for (int j = 0; j < max_box_y; j++) {
             for (int i = 0; i < max_box_x; i++) {
-                Top_Left.x = Origin.x + (i * 350) * scale;
-                Top_Left.y = Origin.y + (j * 300) * scale;
-                Bottom_Right = {(float)(Top_Left.x + 350 * scale),
-                                (float)(Top_Left.y + 300 * scale)};
-                Draw_List->AddRect(Top_Left, Bottom_Right, 0xff0000ff, 0, 0, 5.0f);
+                Top_Left.x = Origin.x + ((i * 350) * scale);
+                Top_Left.y = Origin.y + ((j * 300) * scale);
+                Bottom_Right = {(Top_Left.x + (350 * scale)), (Top_Left.y + (300 * scale))};
+                Draw_List->AddRect(Top_Left, Bottom_Right, 0xff0000ff, 0, 0, 5.0F);
             }
         }
     }
@@ -426,8 +433,7 @@ void add_offset(ImVec2 offset, outline* square) {
 // TODO: remove these next few functions
 //       they were used to draw red tiles
 //       on the original image
-#define TMAP_W (80 + 48)
-#define TMAP_H (36 + 24)
+enum { TMAP_W = (80 + 48), TMAP_H = (36 + 24) };
 // draw tiles for the preview screen when checking the tiles box
 void draw_red_tiles(image_data* img_data, bool show_squares) {
     // Draw red boxes to indicate where the tiles will be cut from
@@ -453,17 +459,17 @@ void draw_red_tiles(image_data* img_data, bool show_squares) {
     static int offset2;
     static int offset3;
     static int offset4;
-    ImGui::SliderInt("offset1", &offset1, -80, 80, NULL);
-    ImGui::SliderInt("offset2", &offset2, -80, 80, NULL);
-    ImGui::SliderInt("offset3", &offset3, -80, 80, NULL);
-    ImGui::SliderInt("offset4", &offset4, -80, 80, NULL);
+    ImGui::SliderInt("offset1", &offset1, -80, 80, nullptr);
+    ImGui::SliderInt("offset2", &offset2, -80, 80, nullptr);
+    ImGui::SliderInt("offset3", &offset3, -80, 80, nullptr);
+    ImGui::SliderInt("offset4", &offset4, -80, 80, nullptr);
 
     Origin.x += offset3 * scale;
 
-    ImVec2 offset = {48 * scale + scale * offset1, -12 * scale + scale * offset2};
-    ImVec2 row_offset = {-16 * scale + scale * offset4, 36 * scale + scale * offset4};
+    ImVec2 offset = {(48 * scale) + (scale * offset1), (-12 * scale) + (scale * offset2)};
+    ImVec2 row_offset = {(-16 * scale) + (scale * offset4), (36 * scale) + (scale * offset4)};
 
-    Top_Left.x = Origin.x - 32 * scale;
+    Top_Left.x = Origin.x - (32 * scale);
     Top_Left.y = Origin.y;
 
     outline row_start;                 // used when incrementing rows
@@ -472,8 +478,8 @@ void draw_red_tiles(image_data* img_data, bool show_squares) {
     add_offset(Top_Left, &new_square); // move first tile position to image corner
     row_start = new_square;            // copy this position for re-use
 
-    int img_right = Origin.x + img_data->width * scale;
-    int img_bottom = Origin.y + img_data->height * scale;
+    int img_right = Origin.x + (img_data->width * scale);
+    int img_bottom = Origin.y + (img_data->height * scale);
     bool drew_row = true;
     int count = 0;
 
@@ -498,7 +504,7 @@ void draw_red_tiles(image_data* img_data, bool show_squares) {
             if ((new_square.Top.y < img_bottom) && // crop bottom
                 (new_square.Rgt.x > Origin.x)) {   // crop left
                 Draw_List->AddQuad(new_square.Lft, new_square.Btm, new_square.Rgt, new_square.Top,
-                                   0xff0000ff, 1.0f);
+                                   0xff0000ff, 1.0F);
                 drew_row = true;
                 count++;
             }

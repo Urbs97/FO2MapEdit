@@ -2,16 +2,16 @@
 
 #include "Palette_Cycle.h"
 
-#include <stdint.h>
+#include <cstdint>
 
-typedef struct Rect {
+using Rect = struct Rect {
     int x;
     int y;
     int w;
     int h;
-} Rect;
+};
 
-typedef struct Surface {
+using Surface = struct Surface {
     uint16_t w;
     uint16_t h;
     int16_t x;
@@ -20,7 +20,7 @@ typedef struct Surface {
     int pitch;        //== w*channels
     Palette* palette; // store a palette per image?
     uint8_t* pxls;    // actual pixel data
-} Surface;
+};
 
 void FreeSurface(Surface* src);
 Surface* Create_8Bit_Surface(int width, int height, Palette* palette);

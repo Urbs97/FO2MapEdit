@@ -7,7 +7,7 @@
 bool io_wstrncmp(NATIVE_STRING_TYPE* str1, NATIVE_STRING_TYPE* str2, int num_char);
 #elif defined(QFO2_LINUX)
 #define MAX_PATH 4096
-#define PLATFORM_SLASH ('/')
+enum { PLATFORM_SLASH = ('/') };
 #define NATIVE_STRING_TYPE const char
 #endif
 

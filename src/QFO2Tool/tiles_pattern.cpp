@@ -11,8 +11,8 @@
 
 #include <cctype>
 #include <cstdio>
+#include <cstring>
 #include <imgui.h>
-#include <string.h>
 
 // need to check if mapper can access above 4096
 // need to check pattern file can access above 4096
@@ -164,7 +164,7 @@ void export_TMAP_tiles_pattern(user_info* usr_info, tt_arr_handle* handle, char*
     u32_ptr[2] = 0; // unkown exactly what does this do?
 
     char* actual_path = io_path_check(save_path);
-    if (actual_path) {
+    if (actual_path != nullptr) {
         strncpy(save_path, actual_path, MAX_PATH);
     }
 
@@ -191,7 +191,7 @@ void export_TMAP_tiles_pattern(user_info* usr_info, tt_arr_handle* handle, char*
 }
 
 struct PAT_list {
-    char** list = NULL;
+    char** list = nullptr;
     int count = 0;
 };
 
@@ -232,14 +232,14 @@ char* select_PAT_name(PAT_list* filenames) {
 void free_PAT_list(PAT_list* filenames) {
     free(filenames->list[0]);
     free(filenames->list);
-    filenames->list = NULL;
+    filenames->list = nullptr;
     filenames->count = 0;
 }
 
 void export_PAT_file_POPUP(user_info* usr_nfo, tt_arr_handle* handle, export_state* state,
                            bool auto_export) {
     static PAT_list filenames;
-    if (!filenames.list) {
+    if (filenames.list == nullptr) {
         filenames = check_PAT_files(usr_nfo);
     }
 
@@ -262,7 +262,7 @@ void export_PAT_file_POPUP(user_info* usr_nfo, tt_arr_handle* handle, export_sta
         }
     }
 
-    if (!handle) {
+    if (handle == nullptr) {
         return;
     }
 

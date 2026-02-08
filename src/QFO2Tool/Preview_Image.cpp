@@ -4,8 +4,6 @@
 #include "display_FRM_OpenGL.h"
 #include "imgui_internal.h"
 
-void show_image_stats_FRM_SURFACE(image_data* img_data, ImFont* font);
-
 void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, bool show_stats) {
     ImVec2 top_of_window = ImGui::GetCursorPos();
 
@@ -14,11 +12,11 @@ void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, b
 
     // redraws FRM to framebuffer every time the palette update timer is true or animates
     shader_info* shaders = &My_Variables->shaders;
-    if (!img_data->ANM_dir) {
+    if (img_data->ANM_dir == nullptr) {
         ImGui::Text("No FRM_dir");
         return;
     }
-    if (img_data->ANM_dir[img_data->display_orient_num].frame_data == NULL) {
+    if (img_data->ANM_dir[img_data->display_orient_num].frame_data == nullptr) {
         ImGui::Text("No frame_data");
         return;
     }
@@ -27,7 +25,7 @@ void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, b
         img_data->ANM_dir[img_data->display_orient_num].frame_data[img_data->display_frame_num];
     animate_SURFACE_to_sub_texture(img_data, srfc, My_Variables->CurrentTime_ms);
 
-    if (img_data->MSK_srfc) {
+    if (img_data->MSK_srfc != nullptr) {
         draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
                                 &shaders->giant_triangle, img_data);
     } else {
@@ -70,7 +68,7 @@ void Preview_MSK_Image(variables* My_Variables, struct image_data* img_data, boo
     // handle zoom and panning for the image, plus update image position every frame
     zoom_pan(img_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
 
-    if (img_data->MSK_data == NULL) {
+    if (img_data->MSK_data == nullptr) {
         ImGui::Text("No Image Data");
         return;
     }
@@ -119,7 +117,7 @@ void Preview_Image(variables* My_Variables, struct image_data* img_data, bool sh
     ImVec2 uv_max = My_Variables->uv_max; // (1.0f,1.0f)
     ImVec2 size = ImVec2((float)(width * scale), (float)(height * scale));
 
-    if (img_data->ANM_dir[img_data->display_orient_num].frame_data == NULL) {
+    if (img_data->ANM_dir[img_data->display_orient_num].frame_data == nullptr) {
         ImGui::Text("No Image Data");
         return;
     }
@@ -137,7 +135,8 @@ void Preview_Image(variables* My_Variables, struct image_data* img_data, bool sh
 
     ///////////////////////////////////////////////////////////////////////
 
-    ImVec2 tile_corner, tile_bottom;
+    ImVec2 tile_corner;
+    ImVec2 tile_bottom;
     tile_corner = ImGui::GetWindowPos();
     tile_bottom.x = tile_corner.x + ImGui::GetWindowSize().x;
     tile_bottom.y = tile_corner.y + ImGui::GetWindowSize().y;
@@ -165,7 +164,7 @@ void Preview_Image(variables* My_Variables, struct image_data* img_data, bool sh
 void show_image_stats_FRM_SURFACE(image_data* img_data, ImFont* font) {
     int num = img_data->display_frame_num;
     int dir = img_data->display_orient_num;
-    if (!img_data->ANM_dir[dir].frame_data) {
+    if (img_data->ANM_dir[dir].frame_data == nullptr) {
         ImGui::Text("Like it says, No Image Data");
         return;
     }
@@ -214,7 +213,9 @@ void show_image_stats_FRM_SURFACE(image_data* img_data, ImFont* font) {
 }
 
 void show_image_stats_ANM(image_data* img_data, ImFont* font) {
-    int num, dir, max;
+    int num = 0;
+    int dir = 0;
+    int max = 0;
     num = img_data->display_frame_num;
     dir = img_data->display_orient_num;
     char buff[256];

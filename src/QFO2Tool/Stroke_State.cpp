@@ -1,6 +1,6 @@
 #include "Stroke_State.h"
 
-#include <string.h>
+#include <cstring>
 
 void stroke_begin(StrokeState* state, Surface* surface) {
     if (state->stroke_active) {
@@ -17,7 +17,7 @@ void stroke_commit(StrokeState* state) {
     }
 
     // Push the pre-stroke snapshot onto the undo stack
-    UndoEntry entry;
+    UndoEntry entry{};
     entry.snapshot = state->pre_stroke_snapshot;
     entry.target = state->pre_stroke_target;
 
@@ -29,8 +29,8 @@ void stroke_commit(StrokeState* state) {
     state->undo_stack.push_back(entry);
 
     // New stroke invalidates redo history
-    for (size_t i = 0; i < state->redo_stack.size(); i++) {
-        FreeSurface(state->redo_stack[i].snapshot);
+    for (auto& i : state->redo_stack) {
+        FreeSurface(i.snapshot);
     }
     state->redo_stack.clear();
 
@@ -44,7 +44,7 @@ void stroke_cancel(StrokeState* state) {
         return;
     }
     // Restore pixels from snapshot
-    if (state->pre_stroke_snapshot && state->pre_stroke_target) {
+    if ((state->pre_stroke_snapshot != nullptr) && (state->pre_stroke_target != nullptr)) {
         memcpy(state->pre_stroke_target->pxls, state->pre_stroke_snapshot->pxls,
                state->pre_stroke_target->w * state->pre_stroke_target->h);
         FreeSurface(state->pre_stroke_snapshot);
@@ -62,7 +62,7 @@ bool stroke_undo(StrokeState* state) {
     state->undo_stack.pop_back();
 
     // Save current state to redo stack before restoring
-    UndoEntry redo_entry;
+    UndoEntry redo_entry{};
     redo_entry.snapshot = Copy8BitSurface(entry.target);
     redo_entry.target = entry.target;
     state->redo_stack.push_back(redo_entry);
@@ -82,7 +82,7 @@ bool stroke_redo(StrokeState* state) {
     state->redo_stack.pop_back();
 
     // Save current state to undo stack before restoring
-    UndoEntry undo_entry;
+    UndoEntry undo_entry{};
     undo_entry.snapshot = Copy8BitSurface(entry.target);
     undo_entry.target = entry.target;
     if ((int)state->undo_stack.size() >= UNDO_STACK_MAX) {
@@ -99,20 +99,20 @@ bool stroke_redo(StrokeState* state) {
 }
 
 void stroke_state_cleanup(StrokeState* state) {
-    if (state->pre_stroke_snapshot) {
+    if (state->pre_stroke_snapshot != nullptr) {
         FreeSurface(state->pre_stroke_snapshot);
         state->pre_stroke_snapshot = nullptr;
     }
     state->pre_stroke_target = nullptr;
     state->stroke_active = false;
 
-    for (size_t i = 0; i < state->undo_stack.size(); i++) {
-        FreeSurface(state->undo_stack[i].snapshot);
+    for (auto& i : state->undo_stack) {
+        FreeSurface(i.snapshot);
     }
     state->undo_stack.clear();
 
-    for (size_t i = 0; i < state->redo_stack.size(); i++) {
-        FreeSurface(state->redo_stack[i].snapshot);
+    for (auto& i : state->redo_stack) {
+        FreeSurface(i.snapshot);
     }
     state->redo_stack.clear();
 

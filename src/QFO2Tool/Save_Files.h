@@ -23,7 +23,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
                                 Surface* msk_srfc = nullptr, const char* preset_name = nullptr);
 bool save_PNG_popup_INTERNAL(image_data* img_data, user_info* usr_info);
 void save_as_GIF(image_data* img_data, struct user_info* usr_nfo);
-void save_MSK_tile(uint8_t* texture_buffer, FILE* File_ptr, int width, int height);
+void save_MSK_tile(const uint8_t* texture_buffer, FILE* File_ptr, int width, int height);
 
 uint8_t* blend_PAL_texture(image_data* img_data);
 

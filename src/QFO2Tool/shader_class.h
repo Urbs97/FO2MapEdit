@@ -5,7 +5,7 @@
 #include <glad/glad.h>
 #include <string>
 
-void error_log(unsigned int* shader_var, int status_type);
+void error_log(const unsigned int* shader_var, int status_type);
 
 class Shader {
   public:
@@ -16,7 +16,7 @@ class Shader {
     // destructor to clean up GL program
     ~Shader();
     // use/activate shader
-    void use();
+    void use() const;
     void setBool(const std::string& name, bool value) const;
     void setInt(const std::string& name, int value) const;
     void setFloat(const std::string& name, float value) const;

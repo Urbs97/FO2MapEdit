@@ -4,8 +4,8 @@
 #include "Load_Settings.h"
 #include "imgui.h"
 
+#include <cstdlib>
 #include <glad/glad.h>
-#include <stdlib.h>
 
 struct mesh {
     GLuint VBO = 0;
@@ -39,42 +39,42 @@ struct FRM_Frame {
 struct FRM_Dir {
     int num_frames = 0;
     Direction orientation = no_data;
-    FRM_Frame** frame_data = NULL;
+    FRM_Frame** frame_data = nullptr;
     rectangle* bounding_box = {};
 };
 
 struct image_data {
-    FRM_Header* FRM_hdr = NULL; // same as FRM_data
+    FRM_Header* FRM_hdr = nullptr; // same as FRM_data
     // FRM_Dir*    FRM_dir = NULL;     //TODO: remove
     // rectangle FRM_bounding_box[6];  //TODO: remove
 
-    ANM_Header* ANM_hdr = NULL; // TODO: remove? leave FRM_hdr?
-    ANM_Dir* ANM_dir = NULL;
+    ANM_Header* ANM_hdr = nullptr; // TODO: remove? leave FRM_hdr?
+    ANM_Dir* ANM_dir = nullptr;
     rectangle ANM_bounding_box[6];
 
-    ANM_Dir* save_ptr = NULL;
+    ANM_Dir* save_ptr = nullptr;
 
     img_type type = UNK;
-    uint8_t* FRM_data = NULL; // duplicate of FRM_hdr?
-    uint8_t* MSK_data = NULL;
-    Surface* MSK_srfc = NULL;
+    uint8_t* FRM_data = nullptr; // duplicate of FRM_hdr?
+    uint8_t* MSK_data = nullptr;
+    Surface* MSK_srfc = nullptr;
 
-    GLuint FRM_texture;
-    GLuint MSK_texture;
-    GLuint PAL_texture;
-    GLuint render_texture;
-    GLuint framebuffer;
-    int width;
-    int height;
-    int display_frame_num;
-    int display_orient_num;
+    GLuint FRM_texture{};
+    GLuint MSK_texture{};
+    GLuint PAL_texture{};
+    GLuint render_texture{};
+    GLuint framebuffer{};
+    int width{};
+    int height{};
+    int display_frame_num{};
+    int display_orient_num{};
     int playback_speed = 3;
     int alpha_threshold = 5;
     int FRM_size = 0;
 
     float scale = 1.0;
 
-    ImVec2 offset{};
+    ImVec2 offset;
 };
 
 // FRM loading

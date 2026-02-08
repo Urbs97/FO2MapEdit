@@ -11,14 +11,14 @@ struct wmap_info;
 
 // File info
 struct LF {
-    char Frst_File[MAX_PATH];
-    char Prev_File[MAX_PATH];
-    char Opened_File[MAX_PATH];
-    char Next_File[MAX_PATH];
-    char Last_File[MAX_PATH];
+    char Frst_File[MAX_PATH]{};
+    char Prev_File[MAX_PATH]{};
+    char Opened_File[MAX_PATH]{};
+    char Next_File[MAX_PATH]{};
+    char Last_File[MAX_PATH]{};
 
-    char* c_name;
-    char* extension;
+    char* c_name{};
+    char* extension{};
     bool alpha = true;
     bool show_stats = false;
     bool show_squares = false;
@@ -44,10 +44,10 @@ struct LF {
 };
 
 struct shader_info {
-    Palette* FO_pal = NULL;
-    Shader* render_PAL_shader;
-    Shader* render_FRM_shader;
-    Shader* render_OTHER_shader;
+    Palette* FO_pal = nullptr;
+    Shader* render_PAL_shader{};
+    Shader* render_FRM_shader{};
+    Shader* render_OTHER_shader{};
     mesh giant_triangle;
 };
 

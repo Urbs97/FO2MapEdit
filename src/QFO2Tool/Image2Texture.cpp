@@ -5,8 +5,8 @@
 #include "ImGui_Warning.h"
 #include "Load_Animation.h"
 
+#include <cstdio>
 #include <glad/glad.h>
-#include <stdio.h>
 
 bool copy_it_all_ANM(image_data* src, image_data* dst) {
     ////////////////////////////////////////////////////////
@@ -15,7 +15,7 @@ bool copy_it_all_ANM(image_data* src, image_data* dst) {
     //   (keep this or do something with it)
     //   (right now it does nothing)
     dst->FRM_data = (uint8_t*)malloc(src->FRM_size);
-    if (!dst->FRM_data) {
+    if (dst->FRM_data == nullptr) {
         // TODO: log out to file
         set_popup_warning("[ERROR] copy_it_all_ANM()\n\n"
                           "Unable to allocate memory for dst->FRM_data.");
@@ -26,14 +26,14 @@ bool copy_it_all_ANM(image_data* src, image_data* dst) {
     FRM_Header* header = (FRM_Header*)dst->FRM_data;
     ////////////////////////////////////////////////////////
 
-    int num_orients = (header->Frame_0_Offset[1]) ? 6 : 1;
+    int num_orients = ((header->Frame_0_Offset[1]) != 0U) ? 6 : 1;
     int num_frames = header->Frames_Per_Orient;
     if (num_orients < 6) {
         dst->display_orient_num = src->display_orient_num;
     }
 
     dst->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir) * 6);
-    if (!dst->ANM_dir) {
+    if (dst->ANM_dir == nullptr) {
         // TODO: log out to file
         set_popup_warning("[ERROR] copy_it_all_ANM()\n\n"
                           "Unable to allocate memory for ANM_dir.");
@@ -53,12 +53,12 @@ bool copy_it_all_ANM(image_data* src, image_data* dst) {
         dst_dir[i].orientation = (Direction)i;
         dst_dir[i].num_frames = num_frames;
 
-        if (src->ANM_dir[i].frame_data == NULL) {
+        if (src->ANM_dir[i].frame_data == nullptr) {
             break;
         }
 
         dst_dir[i].frame_box = (rectangle*)malloc(sizeof(rectangle) * num_frames);
-        if (!dst_dir[i].frame_box) {
+        if (dst_dir[i].frame_box == nullptr) {
             set_popup_warning("[ERROR] copy_it_all_ANM()\n\n"
                               "Unable to allocate memory for anm_dir[i].bounding_box.");
             printf("Unable to allocate memory for anm_dir[%d].bounding_box: %d", i, __LINE__);
@@ -68,7 +68,7 @@ bool copy_it_all_ANM(image_data* src, image_data* dst) {
 
         // allocate frame space on dst, copy from image_data to dst
         dst_dir[i].frame_data = (Surface**)malloc(sizeof(Surface*) * num_frames);
-        if (!dst_dir[i].frame_data) {
+        if (dst_dir[i].frame_data == nullptr) {
             // TODO: log out to file
             set_popup_warning("[ERROR] copy_it_all_ANM()\n\n"
                               "Unable to allocate memory for dst_dir[i].frame_data.");
@@ -80,7 +80,7 @@ bool copy_it_all_ANM(image_data* src, image_data* dst) {
             // duplicate surface and assign to dst
             Surface* src_srfc = src_dir[i].frame_data[j];
             Surface* dst_srfc = Copy8BitSurface(src_srfc);
-            if (dst_srfc == NULL) {
+            if (dst_srfc == nullptr) {
                 // TODO: log out to file
                 set_popup_warning("[ERROR] copy_it_all_ANM()\n\n"
                                   "Unable to allocate memory for Surface* dst.");
@@ -104,8 +104,8 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
     // Free previous edit_data to prevent leaks on repeated calls
     // (e.g. Enable Editing -> Disable Editing -> Enable Editing).
     // MSK path copies the MSK_data pointer from src, so null it to avoid double-free.
-    if (dst->MSK_data && dst->MSK_data == src->MSK_data) {
-        dst->MSK_data = NULL;
+    if ((dst->MSK_data != nullptr) && dst->MSK_data == src->MSK_data) {
+        dst->MSK_data = nullptr;
     }
     Clear_img_data(dst);
 
@@ -129,7 +129,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
             copy_it_all_ANM(src, dst);
             dst->FRM_texture = init_texture(dst->ANM_dir[dir].frame_data[src->display_frame_num],
                                             dst->width, dst->height, dst->type);
-            if (src->MSK_srfc) {
+            if (src->MSK_srfc != nullptr) {
                 dst->MSK_srfc = Copy8BitSurface(src->MSK_srfc);
                 dst->MSK_texture = init_texture(dst->MSK_srfc, dst->width, dst->height, MSK);
             }
@@ -148,7 +148,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
     }
     if (src->type == OTHER) {
         dst->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir) * 6);
-        if (!dst->ANM_dir) {
+        if (dst->ANM_dir == nullptr) {
             // TODO: log out to file
             set_popup_warning("[ERROR] prep_image_SURFACE()\n\n"
                               "Unable to allocate memory for ANM_dir.");
@@ -160,7 +160,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
         }
 
         dst->ANM_dir[dir].frame_data = (Surface**)malloc(sizeof(Surface*));
-        if (!dst->ANM_dir[dir].frame_data) {
+        if (dst->ANM_dir[dir].frame_data == nullptr) {
             // TODO: log out to file
             set_popup_warning("[ERROR] prep_image_SURFACE()\n\n"
                               "Unable to allocate memory for frame_data.");
@@ -171,7 +171,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
         dst->ANM_dir[dir].frame_data[0] =
             PAL_Color_Convert(src->ANM_dir[dir].frame_data[0], pal, color_match_algo);
 
-        if (!dst->ANM_dir[dir].frame_data[0]) {
+        if (dst->ANM_dir[dir].frame_data[0] == nullptr) {
             // TODO: log out to file
             // PAL_Color_Convert() has its own warning popup
             //  printf("Unable to allocate memory for ANM_dir: %d", __LINE__);
@@ -179,7 +179,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
         }
 
         dst->ANM_dir[dir].frame_box = (rectangle*)calloc(1, sizeof(rectangle));
-        if (!dst->ANM_dir[dir].frame_box) {
+        if (dst->ANM_dir[dir].frame_box == nullptr) {
             set_popup_warning("[ERROR] prep_image_SURFACE()\n\n"
                               "Unable to allocate memory for ANM_dir[dir].frame_box.");
             printf("Unable to allocate memory for ANM_dir[%d].frame_box: %d", dir, __LINE__);
@@ -193,7 +193,7 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
         dst->ANM_dir[dir].orientation = NE;
 
         dst->FRM_hdr = (FRM_Header*)calloc(1, sizeof(FRM_Header));
-        if (!dst->FRM_hdr) {
+        if (dst->FRM_hdr == nullptr) {
             // TODO: log out to file
             set_popup_warning("[ERROR] prep_image_SURFACE()\n\n"
                               "Unable to allocate memory for FRM_hdr.");
@@ -232,16 +232,17 @@ void prep_image_SURFACE(LF* F_Prop, Palette* pal, int color_match_algo, bool* wi
         return;
     }
     // open edit window
-    if (window)
+    if (window != nullptr) {
         *window = true;
+    }
 }
 
 GLuint init_texture(Surface* src, int w, int h, img_type type) {
-    if (!src) {
-        return false;
+    if (src == nullptr) {
+        return 0U;
     }
-    if (!src->pxls) {
-        return false;
+    if (src->pxls == nullptr) {
+        return 0U;
     }
 
     int alignment = 1;     // FRM & MSK
@@ -261,7 +262,7 @@ GLuint init_texture(Surface* src, int w, int h, img_type type) {
         set_popup_warning("[ERROR] init_texture()\n\n"
                           "Failed to allocate texture.");
         printf("[ERROR] Failed to allocate texture\n");
-        return false;
+        return 0U;
     }
     // texture settings
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -277,7 +278,7 @@ GLuint init_texture(Surface* src, int w, int h, img_type type) {
     if (src->w == w && src->h == h) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, pxl_type, GL_UNSIGNED_BYTE, src->pxls);
     } else {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, pxl_type, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, pxl_type, GL_UNSIGNED_BYTE, nullptr);
     }
 
     return texture;
@@ -285,8 +286,5 @@ GLuint init_texture(Surface* src, int w, int h, img_type type) {
 
 bool checkbox_handler(const char* text, bool* alpha) {
     ImGui::Checkbox(text, alpha);
-    if (*alpha) {
-        return false;
-    }
-    return true;
+    return !*alpha;
 }
