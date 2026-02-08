@@ -96,6 +96,7 @@ char* make_PRO_tiles_LST(tt_arr_handle* head, uint8_t* match_buff_src) {
 
     // if there are no nodes (or none with viable names)
     if (total_size < 1) {
+        if (match_buff_src == NULL) { free(match_buff); }
         ImGui::OpenPopup("TILES.LST Unmodified");
         return nullptr;
     }
@@ -124,6 +125,7 @@ char* make_PRO_tiles_LST(tt_arr_handle* head, uint8_t* match_buff_src) {
     }
     c[0] = '\0';
 
+    if (match_buff_src == NULL) { free(match_buff); }
     return cropped_list;
 }
 
@@ -1092,6 +1094,7 @@ char* append_PRO_tiles_LST(char* old_PRO_LST, tt_arr_handle* head, export_state*
     int final_size = old_LST_size + new_LST_size + 1;
     char* final_PRO_LST = (char*)malloc(old_LST_size + new_LST_size + 1); //+1 for null char
     snprintf(final_PRO_LST, final_size, "%s%s", old_PRO_LST, new_PRO_LST);
+    free(new_PRO_LST);
 
     return final_PRO_LST;
 }

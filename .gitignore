@@ -25,6 +25,7 @@ CMakeFiles
 CMakeCache.txt
 CMakeUserPresets.json
 *.cmake
+!cmake/*.cmake
 
 # IDE / editor
 .vscode/

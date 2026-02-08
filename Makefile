@@ -1,11 +1,11 @@
 BUILD_DIR := build
 
-.PHONY: all configure build test clean rebuild run
+.PHONY: all configure build test clean rebuild run release
 
 all: build
 
 configure:
-	cmake -S . -B $(BUILD_DIR)
+	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug
 
 build: configure
 	cmake --build $(BUILD_DIR) -j$$(nproc)

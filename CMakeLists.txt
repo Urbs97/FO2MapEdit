@@ -2,18 +2,15 @@ cmake_minimum_required(VERSION 3.25)
 
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 
-# # Enable ASAN (Address Sanitizer) globally
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
-# set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
-
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address)
+endif()
 
 #compile option (-mavx) for is_tile_blank() in tiles_patterns.cpp
 #applies to current directory & below?
 add_compile_options(
   -mavx                 #support for AVX instructions
-  # -fsanitize=address    # used for memory leak checking
 )
 
 
@@ -151,10 +148,21 @@ target_link_libraries(
 add_library(doctest INTERFACE)
 target_include_directories(doctest INTERFACE src/dependencies/doctest)
 
+# doctest CMake integration (per-test-case discovery for ctest)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(doctest)
+
 # Tests
 enable_testing()
 add_executable(tests
+    test/test_main.cpp
     test/test_crop_single_tile.cpp
+    test/test_endian.cpp
+    test/test_assign_tile_id.cpp
+    test/test_tiles_lst.cpp
+    test/test_proto_files.cpp
+    test/test_frm_write.cpp
+    test/test_palettize.cpp
 )
 target_link_libraries(tests PRIVATE
     FO2MapEditLib
@@ -166,7 +174,7 @@ target_link_libraries(tests PRIVATE
     ImFileDialog
 )
 target_include_directories(tests PRIVATE src/QFO2Tool)
-add_test(NAME tests COMMAND tests)
+doctest_discover_tests(tests)
 
 #this custom command copies the contents of src/resources
 #to the compilation directory

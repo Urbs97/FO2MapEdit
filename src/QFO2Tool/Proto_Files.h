@@ -27,3 +27,8 @@ bool export_single_tile_PRO(char* game_path, tt_arr* tile, proto_info* info);
 void export_tiles_POPUPS(export_state* state, char* FObuff);
 bool load_PRO_tiles_LST(user_info* usr_nfo, export_state* state);
 bool load_PRO_tiles_MSG(user_info* usr_nfo, export_state* state);
+char* make_PRO_tiles_LST(tt_arr_handle* head, uint8_t* match_buff_src);
+char* make_PRO_tile_MSG(proto_info* info, int tile_id);
+char* append_PRO_tile_MSG_inplace(char* old_PRO_MSG, char* new_PRO_MSG, export_state* state);
+char* check_PRO_LST_names(char* tiles_lst, tt_arr_handle* new_protos);
+char* append_PRO_tiles_LST(char* old_PRO_LST, tt_arr_handle* head, export_state* state);

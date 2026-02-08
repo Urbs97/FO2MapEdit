@@ -117,3 +117,4 @@ static int tile_mask[] = {
 tt_arr_handle* crop_export_TMAP_tiles(Rect* offset, Surface* src, char* save_fldr,
                                       export_state* state, char* save_path, bool overwrite);
 void crop_single_tile(uint8_t* tile_buff, uint8_t* frm_pxls, int img_w, int img_h, int x, int y);
+void save_TMAP_tile_FRM(char* save_path, uint8_t* pxls, char* name);

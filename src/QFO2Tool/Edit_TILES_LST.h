@@ -26,3 +26,5 @@ void set_false(export_state* cur_state);
 char* check_FRM_LST_names(char* tiles_lst, tt_arr_handle* handle, export_state* state);
 void append_FRM_tiles_POPUP(user_info* usr_nfo, tt_arr_handle* handle, export_state* state,
                             bool auto_export);
+void generate_new_tile_list_arr(char* name, tt_arr_handle* handle);
+char* make_FRM_tile_LST(tt_arr_handle* handle, uint8_t* match_buff_src);

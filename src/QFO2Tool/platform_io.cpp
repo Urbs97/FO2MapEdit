@@ -334,6 +334,7 @@ char* io_path_check(char* file_name) {
         char* dir = NULL;
         char* next = strchr(curr + 1, '/');
         if (!next) {
+            io_close_dir(stream);
             curr[0] = '/';
             break;
         }
@@ -343,6 +344,7 @@ char* io_path_check(char* file_name) {
             // no match found for this folder
             // pass full path back so new folders can be made
             if (dir == NULL) {
+                io_close_dir(stream);
                 curr[0] = '/';
                 next[0] = '/';
                 return full_path;

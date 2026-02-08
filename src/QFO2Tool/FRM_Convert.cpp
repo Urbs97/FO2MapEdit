@@ -10,16 +10,6 @@
 #include <limits.h>
 #include <math.h>
 
-union Pxl_Err {
-    struct {
-        int r;
-        int g;
-        int b;
-        int a;
-    };
-    int arr[4];
-};
-
 // Used to convert Fallout's palette colors to normal values
 uint8_t convert_colors(uint8_t bytes) {
     if (bytes < 64) {
@@ -176,7 +166,7 @@ void Euclidian_Distance_Color_Match(Surface* Surface_32, Surface* Surface_8) {
     }
 }
 
-void limit_dither(Surface* Surface_32, union Pxl_Err* err, int x, int y) {
+void limit_dither(Surface* Surface_32, Pxl_Err* err, int x, int y) {
     int pixel_index[4];
     pixel_index[0] =
         (y + 0 < Surface_32->h && x + 1 < Surface_32->w) ? (Surface_32->w * (y + 0)) + (x + 1) : -1;
@@ -200,7 +190,7 @@ void limit_dither(Surface* Surface_32, union Pxl_Err* err, int x, int y) {
     }
 }
 
-void clamp_dither(Surface* Surface_32, union Pxl_Err* err, int pixel_idx, int factor) {
+void clamp_dither(Surface* Surface_32, Pxl_Err* err, int pixel_idx, int factor) {
     // pointer arrays so I can run a loop through them dependably
     uint8_t* pxl_color[4];
     Color rgba;

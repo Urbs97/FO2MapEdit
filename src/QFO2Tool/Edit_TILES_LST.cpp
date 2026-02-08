@@ -275,6 +275,7 @@ char* check_FRM_LST_names(char* old_tiles_LST, tt_arr_handle* handle, export_sta
                 state->append_PRO_LST = false;
                 state->append_PRO_MSG = false;
 
+                free(matches);
                 return NULL;
             }
 
@@ -325,6 +326,7 @@ char* append_FRM_tiles_LST(char* old_FRM_LST, tt_arr_handle* handle, export_stat
     int final_size = old_LST_size + new_LST_size + 1; //+1 for null char
     char* final_FRM_LST = (char*)malloc(final_size);
     snprintf(final_FRM_LST, final_size, "%s%s", old_FRM_LST, new_FRM_LST);
+    free(new_FRM_LST);
 
     return final_FRM_LST;
 }
