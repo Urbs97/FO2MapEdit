@@ -1,6 +1,7 @@
 #include "Save_Files.h"
 
 #include "B_Endian.h"
+#include "City_Layer.h"
 #include "ImGui_Warning.h"
 #include "Layer.h"
 #include "Load_Settings.h"
@@ -658,6 +659,34 @@ bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path, const
                 return false;
             }
 
+            // Extract tile pixels into tile_buffer before opening file
+            int tile_pointer = (y * img_w * MAP_TILE_H) + (x * MAP_TILE_W);
+            int img_row_pntr = 0;
+            int tile_row_pntr = 0;
+            // Split buffer into 350x300 pixel tiles
+            for (int i = 0; i < MAP_TILE_H; i++) {
+                // copy out one row of pixels in each loop
+                memcpy(&tile_buffer[tile_row_pntr], &src->pxls[tile_pointer + img_row_pntr],
+                       MAP_TILE_W);
+                img_row_pntr += img_w;
+                tile_row_pntr += MAP_TILE_W;
+            }
+
+            // Skip blank MSK tiles (no blockage data)
+            if (type == img_type::MSK) {
+                bool tile_has_data = false;
+                for (unsigned char i : tile_buffer) {
+                    if (i != 0U) {
+                        tile_has_data = true;
+                        break;
+                    }
+                }
+                if (!tile_has_data) {
+                    tile_num++;
+                    continue;
+                }
+            }
+
             // check for existing file first unless "Auto" selected?
             ////////////////if (!usr_info->auto_export)
             ///{}///////////////////////////////////////////////////////////////
@@ -683,18 +712,6 @@ bool save_tiles_SURFACE(char* base_path, char* save_name, char* save_path, const
                 );
                 printf("Error: Unable to open file in Write Mode: %s : %d", save_path, __LINE__);
                 return false;
-            }
-
-            int tile_pointer = (y * img_w * MAP_TILE_H) + (x * MAP_TILE_W);
-            int img_row_pntr = 0;
-            int tile_row_pntr = 0;
-            // Split buffer into 350x300 pixel tiles and write to file
-            for (int i = 0; i < MAP_TILE_H; i++) {
-                // copy out one row of pixels in each loop
-                memcpy(&tile_buffer[tile_row_pntr], &src->pxls[tile_pointer + img_row_pntr],
-                       MAP_TILE_W);
-                img_row_pntr += img_w;
-                tile_row_pntr += MAP_TILE_W;
             }
             // FRM = 1, MSK = 0
             if (type == img_type::FRM) {
@@ -759,7 +776,8 @@ static bool surface_has_data(Surface* srfc) {
 
 // called 1st
 bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info,
-                                Surface* msk_srfc, const char* preset_name) {
+                                Surface* msk_srfc, const char* preset_name,
+                                city_layer_data* city_data) {
     // TODO: move this to initialize at program start?
     init_IFD();
 
@@ -784,12 +802,14 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     //   thing will overlap weirdly if moved
     static int e;
     static bool export_msk_tiles = false;
+    static bool export_city_txt = false;
     static int prev_frame = -1;
     int cur_frame = ImGui::GetFrameCount();
 
     // Re-scan mask on first frame the dialog is shown (gap in frame count)
     if (cur_frame != prev_frame + 1) {
         export_msk_tiles = (msk_srfc != nullptr) ? surface_has_data(msk_srfc) : false;
+        export_city_txt = (city_data != nullptr);
     }
     prev_frame = cur_frame;
 
@@ -802,6 +822,9 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
 
     if (msk_srfc != nullptr) {
         ImGui::Checkbox("Also export MSK tiles", &export_msk_tiles);
+    }
+    if (city_data != nullptr) {
+        ImGui::Checkbox("Also export CITY.TXT", &export_city_txt);
     }
 
     int num_tiles_x = src->w / MAP_TILE_W;
@@ -911,6 +934,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
                 overwrite = false;
                 success = false;
                 export_msk_tiles = false;
+                export_city_txt = false;
                 ImGui::EndPopup();
                 return false;
             }
@@ -958,9 +982,15 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
             io_make_dir(data_data);
             write_worldmap_txt(data_data, save_name, t_x, t_y,
                                export_msk_tiles ? msk_srfc : nullptr);
+            if (export_city_txt && city_data != nullptr) {
+                write_city_txt(data_data, city_data);
+            }
         } else {
             write_worldmap_txt(save_folder, save_name, t_x, t_y,
                                export_msk_tiles ? msk_srfc : nullptr);
+            if (export_city_txt && city_data != nullptr) {
+                write_city_txt(save_folder, city_data);
+            }
         }
 
         free(selected);
@@ -971,6 +1001,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
         overwrite = false;
         success = false;
         export_msk_tiles = false;
+        export_city_txt = false;
         return false;
     }
 

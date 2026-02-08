@@ -42,6 +42,9 @@ struct city_layer_data {
 // Parse Fallout 2 CITY.TXT file. Caller owns returned pointer (free with free()).
 city_layer_data* parse_city_txt(const char* path);
 
+// Write city data to a Fallout 2 CITY.TXT file. Returns true on success.
+bool write_city_txt(const char* path, city_layer_data* data);
+
 // Draw city markers onto an 8-bit surface.
 void render_city_markers(city_layer_data* data, Surface* srfc);
 

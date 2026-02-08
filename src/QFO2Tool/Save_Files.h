@@ -19,8 +19,10 @@ void init_IFD();
 bool save_FRM_SURFACE(char* save_name, image_data* img_data, user_info* usr_info,
                       Save_Info* sv_info, bool overwrite);
 bool ImDialog_save_FRM_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info);
+struct city_layer_data;
 bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info,
-                                Surface* msk_srfc = nullptr, const char* preset_name = nullptr);
+                                Surface* msk_srfc = nullptr, const char* preset_name = nullptr,
+                                city_layer_data* city_data = nullptr);
 bool save_PNG_popup_INTERNAL(image_data* img_data, user_info* usr_info);
 void save_as_GIF(image_data* img_data, struct user_info* usr_nfo);
 void save_MSK_tile(const uint8_t* tile_buffer, FILE* File_ptr, int width, int height);
