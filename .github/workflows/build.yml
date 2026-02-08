@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    container: fedora:43
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y --quiet cmake g++ \
+            mesa-libGL-devel libXinerama-devel libXcursor-devel libXi-devel libXrandr-devel \
+            wayland-devel libxkbcommon-devel
+
+      - name: Build (Release)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j$(nproc)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FO2MapEdit-linux-x86_64
+          path: |
+            build/FO2MapEdit
+            build/resources/
