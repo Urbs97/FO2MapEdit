@@ -68,15 +68,6 @@ The executable is `build/FO2MapEdit`. Resources are copied to `build/resources/`
 
 You may need to uninstall `libtbb-dev` if it conflicts with the CMake build.
 
-### Linux (Shell script — unity build)
-
-```bash
-./build_linux.sh                  # debug build
-./build_linux.sh release          # optimized build (-O3)
-./build_linux.sh release test     # build + run tests
-./build_linux.sh coverage test    # build with coverage + run tests
-```
-
 ### Windows
 
 Open `msk2bmpGUI.sln` in Visual Studio and build from the IDE.

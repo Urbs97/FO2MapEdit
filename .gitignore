@@ -1,50 +1,31 @@
-# ignoring log files
-*.log
-
-# ignore ALL files in ANY directory named temp
-temp/
-
-# ignore ALL debug folders
+# Build output
+build/
+out/
+Release/
+src/Release/
 **/debug/
 
-# ignore this specific release folder
-src/Release/
-
-# ignore that pesky .vs folder
-.vs/**
-
-# ignore the .git folder too?
-.git/
-
-# Compiled Object files
-*.slo
-*.lo
+# Compiled objects
 *.o
+*.lo
+*.slo
+*.obj
 *.ipdb
 *.iobj
-*.obj
 *.tlog
-*.log
-#TODO: deal with this imgui.ini file in a better way
-imgui.ini
 
-# ignore the imgui.ini file
-src/imgui.ini
-src/images
-
-Release/
-out/
-build/
-.vscode/
-CMakeFiles
-CMakeUserPresets.json
-src/config\\msk2bmpGUI.cfg
+# Visual Studio
+.vs/
+*.vcxproj.user
 /UpgradeLog*.htm
-*.zip
-CMakeCache.txt
-*.cmake
-build/**/Makefile
-/src/resources/BARREL.FRM
-/src/resources/HANPWRAB.FRM
 /x64
+
+# CMake
+CMakeFiles
+CMakeCache.txt
+CMakeUserPresets.json
+*.cmake
+
+# IDE / editor
+.vscode/
 .cache/clangd/index
