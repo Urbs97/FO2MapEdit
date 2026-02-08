@@ -1,6 +1,6 @@
 BUILD_DIR := build
 
-.PHONY: all configure build clean rebuild run
+.PHONY: all configure build test clean rebuild run
 
 all: build
 
@@ -9,6 +9,10 @@ configure:
 
 build: configure
 	cmake --build $(BUILD_DIR) -j$$(nproc)
+
+test: configure
+	cmake --build $(BUILD_DIR) --target tests -j$$(nproc)
+	cd $(BUILD_DIR) && ctest --output-on-failure
 
 clean:
 	cmake --build $(BUILD_DIR) --target clean

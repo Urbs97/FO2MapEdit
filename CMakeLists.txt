@@ -147,6 +147,27 @@ target_link_libraries(
   ImFileDialog
 )
 
+# doctest (header-only)
+add_library(doctest INTERFACE)
+target_include_directories(doctest INTERFACE src/dependencies/doctest)
+
+# Tests
+enable_testing()
+add_executable(tests
+    test/test_crop_single_tile.cpp
+)
+target_link_libraries(tests PRIVATE
+    FO2MapEditLib
+    doctest
+    glad
+    imgui_docking
+    STB
+    glfw
+    ImFileDialog
+)
+target_include_directories(tests PRIVATE src/QFO2Tool)
+add_test(NAME tests COMMAND tests)
+
 #this custom command copies the contents of src/resources
 #to the compilation directory
 #so the program will start without manually copying stuff
