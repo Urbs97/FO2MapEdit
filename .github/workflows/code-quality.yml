@@ -1,0 +1,43 @@
+name: Code Quality
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+jobs:
+  clang-format:
+    if: github.event_name == 'workflow_dispatch' || !github.event.pull_request.draft
+    name: clang-format
+    runs-on: ubuntu-latest
+    container: fedora:43
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: dnf install -y --quiet clang-tools-extra
+
+      - name: Check formatting
+        run: clang-format --dry-run --Werror src/QFO2Tool/*.cpp src/QFO2Tool/*.h
+
+  clang-tidy:
+    if: github.event_name == 'workflow_dispatch' || !github.event.pull_request.draft
+    name: clang-tidy
+    runs-on: ubuntu-latest
+    container: fedora:43
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y --quiet cmake g++ clang-tools-extra \
+            mesa-libGL-devel libXinerama-devel libXcursor-devel libXi-devel libXrandr-devel \
+            wayland-devel libxkbcommon-devel libasan libubsan
+
+      - name: Configure and build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake --build build -j$(nproc)
+
+      - name: Run clang-tidy
+        run: clang-tidy -p build --warnings-as-errors='*' src/QFO2Tool/*.cpp src/QFO2Tool/*.h
