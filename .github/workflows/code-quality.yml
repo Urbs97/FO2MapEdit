@@ -41,3 +41,23 @@ jobs:
 
       - name: Run clang-tidy
         run: clang-tidy -p build --warnings-as-errors='*' src/QFO2Tool/*.cpp src/QFO2Tool/*.h
+
+  tests:
+    if: github.event_name == 'workflow_dispatch' || !github.event.pull_request.draft
+    name: tests
+    runs-on: ubuntu-latest
+    container: fedora:43
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y --quiet cmake g++ \
+            mesa-libGL-devel libXinerama-devel libXcursor-devel libXi-devel libXrandr-devel \
+            wayland-devel libxkbcommon-devel libasan libubsan
+
+      - name: Build and run tests
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake --build build --target tests -j$(nproc)
+          cd build && ctest --output-on-failure
