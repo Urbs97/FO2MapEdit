@@ -110,15 +110,14 @@ void Preview_Tiles_Window(variables *My_Variables, LF *F_Prop, int counter);
 void Show_Image_Render(variables *My_Variables, LF *F_Prop,
                        struct user_info *usr_info, int counter);
 
-void Show_Palette_Window(struct variables *My_Variables);
+void Show_Palette_Window(struct variables *My_Variables, bool show_msk_palette);
+void Show_City_Info_Window(struct variables *My_Variables);
 
 static void ShowMainMenuBar(int *counter, struct variables *My_Variables);
 void Open_Files(struct user_info *usr_info, int *counter, Palette *pxlFMT,
                 struct variables *My_Variables);
 
 void main_window_bttns(variables *My_Variables, int *counter);
-
-void Show_MSK_Palette_Window(variables *My_Variables);
 bool save_FRM_popup(LF *F_Prop);
 bool save_MSK_popup(LF *F_Prop);
 bool save_TILE_popup(LF *F_Prop);
@@ -574,11 +573,8 @@ int main(int argc, char **argv) {
           show_msk_palette = true;
         }
       }
-      if (show_msk_palette) {
-        Show_MSK_Palette_Window(&My_Variables);
-      } else {
-        Show_Palette_Window(&My_Variables);
-      }
+      Show_Palette_Window(&My_Variables, show_msk_palette);
+      Show_City_Info_Window(&My_Variables);
     }
 
     // update palette at regular intervals
@@ -1166,12 +1162,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         if (F_Prop->wmap != nullptr) {
           // Layer panel replaces old mask switching buttons
           draw_layer_panel(F_Prop, shaders, &F_Prop->img_data);
-
-          // City info panel for selected city
-          if (F_Prop->active_layer >= 0 && F_Prop->active_layer < F_Prop->img_data.overlay_count &&
-              F_Prop->img_data.overlay[F_Prop->active_layer].type == LayerType::CITY) {
-            draw_city_info_panel(&F_Prop->img_data.overlay[F_Prop->active_layer]);
-          }
         }
 
         if (ImGui::Button("Reset Image")) {
@@ -1332,8 +1322,15 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         // show the original image for previewing
         // TODO: finish setting up usr.info.show_image_stats in settings config
         // in menu
+        ImVec2 pre_cursor = ImGui::GetCursorScreenPos();
         preview_FRM_SURFACE(My_Variables, img_data,
                             (F_Prop->show_stats || usr_info.show_image_stats));
+        // Allow clicking city markers in preview mode
+        int city_idx = find_overlay(img_data->overlay, img_data->overlay_count, LayerType::CITY);
+        if (city_idx >= 0 && img_data->overlay[city_idx].visible) {
+          ImVec2 img_pos = {pre_cursor.x + img_data->offset.x, pre_cursor.y + img_data->offset.y};
+          Edit_City_Layer(My_Variables, img_pos, img_data, img_data, city_idx);
+        }
 
         // gui video controls
         Gui_Video_Controls(img_data, img_data->type);
@@ -1341,8 +1338,15 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         Preview_MSK_Image(My_Variables, img_data,
                           (F_Prop->show_stats || usr_info.show_image_stats));
       } else if (img_data->type == img_type::OTHER) {
+        ImVec2 pre_cursor = ImGui::GetCursorScreenPos();
         Preview_Image(My_Variables, img_data,
                       (F_Prop->show_stats || usr_info.show_image_stats));
+        // Allow clicking city markers in preview mode
+        int city_idx = find_overlay(img_data->overlay, img_data->overlay_count, LayerType::CITY);
+        if (city_idx >= 0 && img_data->overlay[city_idx].visible) {
+          ImVec2 img_pos = {pre_cursor.x + img_data->offset.x, pre_cursor.y + img_data->offset.y};
+          Edit_City_Layer(My_Variables, img_pos, img_data, img_data, city_idx);
+        }
         // Draw red squares for possible overworld map tiling
         draw_red_squares(img_data, F_Prop->show_squares);
 
@@ -1444,81 +1448,134 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
   }
 }
 
-void Show_Palette_Window(variables *My_Variables) {
+static ImGuiID g_palette_dock_id = 0;
+
+void Show_Palette_Window(variables *My_Variables, bool show_msk_palette) {
 
   Palette *pal = My_Variables->shaders.FO_pal;
 
+  // Bring palette to foreground when the active layer changes
+  {
+    static int prev_focus = -1;
+    static int prev_layer = -1;
+    int cur_focus = My_Variables->window_number_focus;
+    int cur_layer = -1;
+    if (cur_focus > -1) {
+      cur_layer = My_Variables->F_Prop[cur_focus].active_layer;
+    }
+    if (cur_focus != prev_focus || cur_layer != prev_layer) {
+      ImGui::SetNextWindowFocus();
+    }
+    prev_focus = cur_focus;
+    prev_layer = cur_layer;
+  }
+
   bool palette_window = true;
-  std::string name = "Default Fallout palette ###palette";
-  ImGui::Begin(name.c_str(), &palette_window);
+  if (show_msk_palette) {
+    ImGui::Begin("MSK colors###palette", &palette_window);
 
-  brush_size_handler(My_Variables);
+    brush_size_handler(My_Variables);
 
-  for (int y = 0; y < 16; y++) {
-    for (int x = 0; x < 16; x++) {
+    ImGui::Text("Erase Mask                    Draw Mask");
+    if (ImGui::ColorButton("Erase Mask", ImVec4(0, 0, 0, 1.0F), 0,
+                           ImVec2(200.0F, 200.0F))) {
+      My_Variables->Color_Pick = (0);
+    }
+    ImGui::SameLine();
+    if (ImGui::ColorButton("Mark Mask", ImVec4(1.0F, 1.0F, 1.0F, 1.0F), 0,
+                           ImVec2(200.0F, 200.0F))) {
+      My_Variables->Color_Pick = (1);
+    }
+  } else {
+    ImGui::Begin("Default Fallout palette###palette", &palette_window);
 
-      int index = (y * 16) + x;
+    brush_size_handler(My_Variables);
 
-      float r = static_cast<float>(pal->colors[index].r) / 255.0F;
-      float g = static_cast<float>(pal->colors[index].g) / 255.0F;
-      float b = static_cast<float>(pal->colors[index].b) / 255.0F;
-      // float a = pal->colors[index].a/255.0f;
+    for (int y = 0; y < 16; y++) {
+      for (int x = 0; x < 16; x++) {
 
-      // give the first button an alpha channel checkerboard
-      // TODO: if load_palette_from_path() is changed to use
-      //       the first index as alpha = 0 always, then
-      //       comment int "float a =" above and delete
-      //       the below alpha switch
-      float alpha = NAN;
-      if (x == 0 && y == 0) {
-        alpha = 0.0;
-      } else {
-        alpha = 1.0;
+        int index = (y * 16) + x;
+
+        float r = static_cast<float>(pal->colors[index].r) / 255.0F;
+        float g = static_cast<float>(pal->colors[index].g) / 255.0F;
+        float b = static_cast<float>(pal->colors[index].b) / 255.0F;
+
+        // give the first button an alpha channel checkerboard
+        // TODO: if load_palette_from_path() is changed to use
+        //       the first index as alpha = 0 always, then
+        //       comment int "float a =" above and delete
+        //       the below alpha switch
+        float alpha = NAN;
+        if (x == 0 && y == 0) {
+          alpha = 0.0;
+        } else {
+          alpha = 1.0;
+        }
+
+        char color_info[12];
+        snprintf(color_info, 12, "%d##aa%d", index, index);
+        if (ImGui::ColorButton(color_info, ImVec4(r, g, b, alpha),
+                               ImGuiColorEditFlags_AlphaPreview)) {
+          My_Variables->Color_Pick = (uint8_t)(index);
+        }
+
+        if (index == My_Variables->Color_Pick) {
+          ImVec2 min = ImGui::GetItemRectMin();
+          ImVec2 max = ImGui::GetItemRectMax();
+          ImDrawList *draw_list = ImGui::GetWindowDrawList();
+          draw_list->AddRect(min, max, IM_COL32(0, 0, 0, 255), 0.0F, 0, 2.0F);
+          draw_list->AddRect(min, max, IM_COL32(255, 255, 255, 255), 0.0F, 0,
+                             1.0F);
+        }
+
+        if (x < 15) {
+          ImGui::SameLine();
+        }
       }
-
-      char color_info[12];
-      snprintf(color_info, 12, "%d##aa%d", index, index);
-      if (ImGui::ColorButton(color_info, ImVec4(r, g, b, alpha),
-                             ImGuiColorEditFlags_AlphaPreview)) {
-        My_Variables->Color_Pick = (uint8_t)(index);
-      }
-
-      if (index == My_Variables->Color_Pick) {
-        ImVec2 min = ImGui::GetItemRectMin();
-        ImVec2 max = ImGui::GetItemRectMax();
-        ImDrawList *draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRect(min, max, IM_COL32(0, 0, 0, 255), 0.0F, 0, 2.0F);
-        draw_list->AddRect(min, max, IM_COL32(255, 255, 255, 255), 0.0F, 0,
-                           1.0F);
-      }
-
-      if (x < 15) {
-        ImGui::SameLine();
-}
     }
   }
 
+  g_palette_dock_id = ImGui::GetWindowDockID();
   ImGui::End();
 }
 
-void Show_MSK_Palette_Window(variables *My_Variables) {
-  bool MSK_palette = true;
-  std::string name = "MSK colors ###palette";
-  ImGui::Begin(name.c_str(), &MSK_palette);
+void Show_City_Info_Window(variables *My_Variables) {
+  static int prev_selected = -1;
+  OverlayLayer* city_layer = nullptr;
+  city_layer_data* city_data = nullptr;
 
-  brush_size_handler(My_Variables);
-
-  ImGui::Text("Erase Mask                    Draw Mask");
-  if (ImGui::ColorButton("Erase Mask", ImVec4(0, 0, 0, 1.0F), 0,
-                         ImVec2(200.0F, 200.0F))) {
-    My_Variables->Color_Pick = (0);
-  }
-  ImGui::SameLine();
-  if (ImGui::ColorButton("Mark Mask", ImVec4(1.0F, 1.0F, 1.0F, 1.0F), 0,
-                         ImVec2(200.0F, 200.0F))) {
-    My_Variables->Color_Pick = (1);
+  if (My_Variables->window_number_focus > -1) {
+    LF* focused = &My_Variables->F_Prop[My_Variables->window_number_focus];
+    int city_idx = find_overlay(focused->img_data.overlay,
+                                focused->img_data.overlay_count, LayerType::CITY);
+    if (city_idx >= 0) {
+      city_layer = &focused->img_data.overlay[city_idx];
+      city_data = (city_layer_data*)city_layer->source_data;
+    }
   }
 
+  bool has_selected_city = (city_data != nullptr && city_data->selected_area >= 0 &&
+                            city_data->selected_area < city_data->area_count);
+
+  if (!has_selected_city) {
+    prev_selected = -1;
+    return;
+  }
+
+  // Dock into the same node as the palette when the window first appears
+  if (g_palette_dock_id != 0) {
+    ImGui::SetNextWindowDockID(g_palette_dock_id, ImGuiCond_Appearing);
+  }
+
+  // Auto-focus the window when a new city is selected
+  if (city_data->selected_area != prev_selected) {
+    ImGui::SetNextWindowFocus();
+  }
+  prev_selected = city_data->selected_area;
+
+  bool open = true;
+  ImGui::Begin("City Info", &open);
+  draw_city_info_panel(city_layer);
   ImGui::End();
 }
 

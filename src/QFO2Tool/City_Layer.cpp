@@ -588,7 +588,7 @@ void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, imag
     }
 
     // Left-click: select/deselect
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().WantCaptureMouse) {
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) {
         int prev_selected = data->selected_area;
         if (hover_idx >= 0 && hover_idx != data->selected_area) {
             data->selected_area = hover_idx;
