@@ -30,3 +30,4 @@ CMakeUserPresets.json
 # IDE / editor
 .vscode/
 .cache/clangd/index
+imgui.ini

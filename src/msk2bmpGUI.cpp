@@ -16,6 +16,24 @@
 
 bool show_demo_window = false;
 
+// Suppress known leaks in third-party libraries (fontconfig, GTK, libdecor,
+// Wayland, EGL) so ASAN runs clean without needing LSAN_OPTIONS env var.
+#ifdef __SANITIZE_ADDRESS__
+extern "C" const char *__lsan_default_suppressions() {
+    return "leak:libfontconfig.so\n"
+           "leak:libpango-1.0.so\n"
+           "leak:libpangoft2-1.0.so\n"
+           "leak:libpangocairo-1.0.so\n"
+           "leak:libgtk-3.so\n"
+           "leak:libdecor-0.so\n"
+           "leak:libdecor-gtk.so\n"
+           "leak:libwayland-client.so\n"
+           "leak:_glfwInitEGL\n"
+           "leak:g_thread_proxy\n"
+           "leak:libffi.so\n";
+}
+#endif
+
 #include <glad/glad.h>
 
 // ImGui header files
@@ -640,6 +658,11 @@ int main(int argc, char **argv) {
   if (g_reset_imgui_ini && ini_path) {
     std::remove(ini_path);
   }
+
+  delete My_Variables.shaders.render_PAL_shader;
+  delete My_Variables.shaders.render_FRM_shader;
+  delete My_Variables.shaders.render_OTHER_shader;
+  free(My_Variables.FO_Palette);
 
   glfwDestroyWindow(window);
   glfwTerminate();

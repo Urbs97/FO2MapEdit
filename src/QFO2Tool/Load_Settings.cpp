@@ -83,6 +83,7 @@ void Load_Config(struct user_info* usr_info, char* exe_path) {
         fclose(config_file_ptr);
 
         parse_data(file_data, file_size, usr_info);
+        free(file_data);
     }
 }
 
