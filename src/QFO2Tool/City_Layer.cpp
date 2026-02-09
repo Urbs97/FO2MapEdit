@@ -615,6 +615,38 @@ static bool remove_city(city_layer_data* data, int index) {
     return true;
 }
 
+static bool add_entrance(city_area* area) {
+    if (area->entrance_count >= MAX_ENTRANCES) {
+        return false;
+    }
+
+    city_entrance* ent = &area->entrances[area->entrance_count];
+    *ent = city_entrance{};
+    ent->enabled = true;
+    ent->x = 0;
+    ent->y = 0;
+    ent->map_name[0] = '\0';
+    ent->elevation = -1;
+    ent->tile_num = -1;
+    ent->orientation = 0;
+
+    area->entrance_count++;
+    return true;
+}
+
+static bool remove_entrance(city_area* area, int index) {
+    if (index < 0 || index >= area->entrance_count) {
+        return false;
+    }
+
+    for (int i = index; i < area->entrance_count - 1; i++) {
+        area->entrances[i] = area->entrances[i + 1];
+    }
+    area->entrance_count--;
+    area->entrances[area->entrance_count] = city_entrance{};
+    return true;
+}
+
 bool Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, image_data* edit_data,
                      int layer_idx) {
     if (vars == nullptr || img_data == nullptr) {
@@ -816,162 +848,218 @@ static bool draw_city_area_content(city_area* area, OverlayLayer* layer, bool ed
         tip("Start: visible at game start.\nLock: when On, not saved to map file.");
     }
 
-    if (area->entrance_count > 0) {
-        ImGui::Separator();
-        ImGui::Text("Entrances:");
-        for (int j = 0; j < area->entrance_count; j++) {
-            city_entrance* ent = &area->entrances[j];
-            ImGui::PushID(j);
+    ImGui::Separator();
+    ImGui::Text("Entrances:");
 
-            char ent_label[256];
-            snprintf(ent_label, sizeof(ent_label), "%d: %s %s (%d,%d)###ent", j,
-                     ent->enabled ? "[On]" : "[Off]", ent->map_name, ent->x, ent->y);
+    if (area->entrance_count == 0 && !editing) {
+        ImGui::TextDisabled("(none)");
+    }
 
-            bool ent_open = ImGui::TreeNodeEx(ent_label, ImGuiTreeNodeFlags_None);
-            ImGui::SetItemTooltip("Entrance %d: %s\nMap: %s\nTown map position: %d, %d", j,
-                                  ent->enabled ? "On" : "Off", ent->map_name, ent->x, ent->y);
-            if (ent_open) {
-                if (editing) {
-                    int elev_int = ent->elevation;
-                    int tile_int = ent->tile_num;
-                    int orient_int = ent->orientation;
-                    ImGui::SetNextItemWidth(120);
-                    if (ImGui::InputInt("Elevation##ent_elev", &elev_int)) {
-                        ent->elevation = (int16_t)elev_int;
-                        modified = true;
-                    }
-                    ImGui::SetItemTooltip("Map elevation the player spawns on (0-2).");
-                    ImGui::SetNextItemWidth(120);
-                    if (ImGui::InputInt("Tile##ent_tile", &tile_int)) {
-                        ent->tile_num = (int16_t)tile_int;
-                        modified = true;
-                    }
-                    ImGui::SetItemTooltip("Hex tile number where the player spawns.");
-                    ImGui::SetNextItemWidth(120);
-                    if (ImGui::InputInt("Orientation##ent_orient", &orient_int)) {
-                        ent->orientation = (int16_t)orient_int;
-                        modified = true;
-                    }
-                    ImGui::SetItemTooltip("Direction the player faces on spawn (0-5).");
-                } else {
-                    ImGui::Text("Elevation: %d", ent->elevation);
-                    tip("Map elevation the player spawns on (0-2).");
-                    ImGui::Text("Tile: %d", ent->tile_num);
-                    tip("Hex tile number where the player spawns.");
-                    ImGui::Text("Orientation: %d", ent->orientation);
-                    tip("Direction the player faces on spawn (0-5).");
+    for (int j = 0; j < area->entrance_count; j++) {
+        city_entrance* ent = &area->entrances[j];
+        ImGui::PushID(j);
+
+        char ent_label[256];
+        snprintf(ent_label, sizeof(ent_label), "%d: %s %s (%d,%d)###ent", j,
+                 ent->enabled ? "[On]" : "[Off]", ent->map_name, ent->x, ent->y);
+
+        bool ent_open = ImGui::TreeNodeEx(ent_label, ImGuiTreeNodeFlags_None);
+        ImGui::SetItemTooltip("Entrance %d: %s\nMap: %s\nTown map position: %d, %d", j,
+                              ent->enabled ? "On" : "Off", ent->map_name, ent->x, ent->y);
+
+        if (editing) {
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Remove")) {
+                if (ent_open) {
+                    ImGui::TreePop();
                 }
-
-                if (maps == nullptr) {
-                    ImGui::TextDisabled("MAPS.TXT not loaded");
-                } else {
-                    if (editing) {
-                        static char filter_buf[64] = {};
-                        const char* preview = ent->map_name[0] != '\0' ? ent->map_name : "(none)";
-                        ImGui::Text("Map:");
-                        tip("The lookup_name in MAPS.TXT that this\nentrance links to.");
-                        if (ImGui::BeginCombo("##map_combo", preview)) {
-                            ImGui::SetNextItemWidth(-1);
-                            ImGui::InputTextWithHint("##filter", "Filter...", filter_buf,
-                                                     sizeof(filter_buf));
-                            if (ImGui::IsWindowAppearing()) {
-                                ImGui::SetKeyboardFocusHere(-1);
-                            }
-
-                            ImGui::Separator();
-                            for (int m = 0; m < maps->map_count; m++) {
-                                const char* name = maps->maps[m].lookup_name;
-                                if (filter_buf[0] != '\0' &&
-                                    !str_contains_nocase(name, filter_buf)) {
-                                    continue;
-                                }
-                                bool is_selected = (strcasecmp(name, ent->map_name) == 0);
-                                char item_label[128];
-                                snprintf(item_label, sizeof(item_label), "[%03d] %s",
-                                         maps->maps[m].map_number, name);
-                                if (ImGui::Selectable(item_label, is_selected)) {
-                                    strncpy(ent->map_name, name, ENTRANCE_NAME_LEN - 1);
-                                    ent->map_name[ENTRANCE_NAME_LEN - 1] = '\0';
-                                    filter_buf[0] = '\0';
-                                    modified = true;
-                                }
-                                if (is_selected) {
-                                    ImGui::SetItemDefaultFocus();
-                                }
-                            }
-                            ImGui::EndCombo();
-                        } else {
-                            filter_buf[0] = '\0';
-                        }
-                    }
-
-                    map_entry* me = find_map_by_lookup_name(maps, ent->map_name);
-                    if (me == nullptr) {
-                        ImGui::TextColored(ImVec4(1.0F, 0.6F, 0.2F, 1.0F),
-                                           "No matching map found in MAPS.TXT");
-                    } else {
-                        ImGui::Separator();
-                        ImGui::Text("Map %03d: %s", me->map_number, me->map_name);
-                        tip("Map file in master.dat/maps/ (map_name).");
-
-                        if (me->music[0] != '\0') {
-                            ImGui::Text("Music: %s", me->music);
-                            tip("Background music track, without .ACM extension.");
-                        }
-
-                        ImGui::Text("Saved: %s", me->saved ? "Yes" : "No");
-                        tip("Yes for cities (state persists between visits),\n"
-                            "No for random encounters (map resets).");
-
-                        if (!me->dead_bodies_age) {
-                            ImGui::Text("Dead bodies age: No");
-                            tip("Whether corpses on this map are\nremoved over time.");
-                        }
-
-                        if (!me->can_rest_here[0] || !me->can_rest_here[1] ||
-                            !me->can_rest_here[2]) {
-                            ImGui::Text("Can rest: %s, %s, %s", me->can_rest_here[0] ? "Yes" : "No",
-                                        me->can_rest_here[1] ? "Yes" : "No",
-                                        me->can_rest_here[2] ? "Yes" : "No");
-                            tip("Whether the player can rest on this map,\n"
-                                "per elevation level (0, 1, 2).");
-                        }
-
-                        if (!me->pipboy_active) {
-                            ImGui::Text("Pipboy active: No");
-                            tip("Whether the Pip-Boy is accessible\non this map.");
-                        }
-
-                        if (me->state_on) {
-                            ImGui::Text("State: On");
-                            tip("When On, the map is accessible from the\n"
-                                "city without having visited it first.");
-                        }
-
-                        if (me->ambient_sfx_count > 0) {
-                            ImGui::Text("Ambient SFX:");
-                            tip("Background sound effects played on this map,\n"
-                                "with percentage weight for frequency.");
-                            for (int s = 0; s < me->ambient_sfx_count; s++) {
-                                ImGui::Text("  %s (%d%%)", me->ambient_sfx[s].name,
-                                            me->ambient_sfx[s].weight);
-                            }
-                        }
-
-                        if (me->random_start_count > 0) {
-                            ImGui::Text("Random starts:");
-                            tip("Possible spawn points for random encounters\n"
-                                "(elevation and hex tile).");
-                            for (int r = 0; r < me->random_start_count; r++) {
-                                ImGui::Text("  elev:%d tile:%d", me->random_starts[r].elevation,
-                                            me->random_starts[r].tile_num);
-                            }
-                        }
-                    }
-                }
-                ImGui::TreePop();
+                remove_entrance(area, j);
+                modified = true;
+                ImGui::PopID();
+                j--;
+                continue;
             }
-            ImGui::PopID();
+        }
+
+        if (ent_open) {
+            if (editing) {
+                if (ImGui::Checkbox("Enabled##ent_enabled", &ent->enabled)) {
+                    modified = true;
+                }
+                ImGui::SetItemTooltip("Whether this entrance is active (On/Off).");
+
+                int ex_int = ent->x;
+                int ey_int = ent->y;
+                ImGui::Text("Town Map Position:");
+                tip("Position on the town map screen (x, y).");
+                ImGui::SetNextItemWidth(100);
+                if (ImGui::InputInt("X##ent_x", &ex_int)) {
+                    ent->x = (int16_t)ex_int;
+                    modified = true;
+                }
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(100);
+                if (ImGui::InputInt("Y##ent_y", &ey_int)) {
+                    ent->y = (int16_t)ey_int;
+                    modified = true;
+                }
+
+                int elev_int = ent->elevation;
+                int tile_int = ent->tile_num;
+                int orient_int = ent->orientation;
+                ImGui::SetNextItemWidth(120);
+                if (ImGui::InputInt("Elevation##ent_elev", &elev_int)) {
+                    ent->elevation = (int16_t)elev_int;
+                    modified = true;
+                }
+                ImGui::SetItemTooltip("Map elevation the player spawns on (0-2).");
+                ImGui::SetNextItemWidth(120);
+                if (ImGui::InputInt("Tile##ent_tile", &tile_int)) {
+                    ent->tile_num = (int16_t)tile_int;
+                    modified = true;
+                }
+                ImGui::SetItemTooltip("Hex tile number where the player spawns.");
+                ImGui::SetNextItemWidth(120);
+                if (ImGui::InputInt("Orientation##ent_orient", &orient_int)) {
+                    ent->orientation = (int16_t)orient_int;
+                    modified = true;
+                }
+                ImGui::SetItemTooltip("Direction the player faces on spawn (0-5).");
+            } else {
+                ImGui::Text("Enabled: %s", ent->enabled ? "On" : "Off");
+                tip("Whether this entrance is active (On/Off).");
+                ImGui::Text("Town Map Position: %d, %d", ent->x, ent->y);
+                tip("Position on the town map screen (x, y).");
+                ImGui::Text("Elevation: %d", ent->elevation);
+                tip("Map elevation the player spawns on (0-2).");
+                ImGui::Text("Tile: %d", ent->tile_num);
+                tip("Hex tile number where the player spawns.");
+                ImGui::Text("Orientation: %d", ent->orientation);
+                tip("Direction the player faces on spawn (0-5).");
+            }
+
+            if (maps == nullptr) {
+                ImGui::TextDisabled("MAPS.TXT not loaded");
+            } else {
+                if (editing) {
+                    static char filter_buf[64] = {};
+                    const char* preview = ent->map_name[0] != '\0' ? ent->map_name : "(none)";
+                    ImGui::Text("Map:");
+                    tip("The lookup_name in MAPS.TXT that this\nentrance links to.");
+                    if (ImGui::BeginCombo("##map_combo", preview)) {
+                        ImGui::SetNextItemWidth(-1);
+                        ImGui::InputTextWithHint("##filter", "Filter...", filter_buf,
+                                                 sizeof(filter_buf));
+                        if (ImGui::IsWindowAppearing()) {
+                            ImGui::SetKeyboardFocusHere(-1);
+                        }
+
+                        ImGui::Separator();
+                        for (int m = 0; m < maps->map_count; m++) {
+                            const char* name = maps->maps[m].lookup_name;
+                            if (filter_buf[0] != '\0' && !str_contains_nocase(name, filter_buf)) {
+                                continue;
+                            }
+                            bool is_selected = (strcasecmp(name, ent->map_name) == 0);
+                            char item_label[128];
+                            snprintf(item_label, sizeof(item_label), "[%03d] %s",
+                                     maps->maps[m].map_number, name);
+                            if (ImGui::Selectable(item_label, is_selected)) {
+                                strncpy(ent->map_name, name, ENTRANCE_NAME_LEN - 1);
+                                ent->map_name[ENTRANCE_NAME_LEN - 1] = '\0';
+                                filter_buf[0] = '\0';
+                                modified = true;
+                            }
+                            if (is_selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    } else {
+                        filter_buf[0] = '\0';
+                    }
+                }
+
+                map_entry* me = find_map_by_lookup_name(maps, ent->map_name);
+                if (me == nullptr) {
+                    ImGui::TextColored(ImVec4(1.0F, 0.6F, 0.2F, 1.0F),
+                                       "No matching map found in MAPS.TXT");
+                } else {
+                    ImGui::Separator();
+                    ImGui::Text("Map %03d: %s", me->map_number, me->map_name);
+                    tip("Map file in master.dat/maps/ (map_name).");
+
+                    if (me->music[0] != '\0') {
+                        ImGui::Text("Music: %s", me->music);
+                        tip("Background music track, without .ACM extension.");
+                    }
+
+                    ImGui::Text("Saved: %s", me->saved ? "Yes" : "No");
+                    tip("Yes for cities (state persists between visits),\n"
+                        "No for random encounters (map resets).");
+
+                    if (!me->dead_bodies_age) {
+                        ImGui::Text("Dead bodies age: No");
+                        tip("Whether corpses on this map are\nremoved over time.");
+                    }
+
+                    if (!me->can_rest_here[0] || !me->can_rest_here[1] || !me->can_rest_here[2]) {
+                        ImGui::Text("Can rest: %s, %s, %s", me->can_rest_here[0] ? "Yes" : "No",
+                                    me->can_rest_here[1] ? "Yes" : "No",
+                                    me->can_rest_here[2] ? "Yes" : "No");
+                        tip("Whether the player can rest on this map,\n"
+                            "per elevation level (0, 1, 2).");
+                    }
+
+                    if (!me->pipboy_active) {
+                        ImGui::Text("Pipboy active: No");
+                        tip("Whether the Pip-Boy is accessible\non this map.");
+                    }
+
+                    if (me->state_on) {
+                        ImGui::Text("State: On");
+                        tip("When On, the map is accessible from the\n"
+                            "city without having visited it first.");
+                    }
+
+                    if (me->ambient_sfx_count > 0) {
+                        ImGui::Text("Ambient SFX:");
+                        tip("Background sound effects played on this map,\n"
+                            "with percentage weight for frequency.");
+                        for (int s = 0; s < me->ambient_sfx_count; s++) {
+                            ImGui::Text("  %s (%d%%)", me->ambient_sfx[s].name,
+                                        me->ambient_sfx[s].weight);
+                        }
+                    }
+
+                    if (me->random_start_count > 0) {
+                        ImGui::Text("Random starts:");
+                        tip("Possible spawn points for random encounters\n"
+                            "(elevation and hex tile).");
+                        for (int r = 0; r < me->random_start_count; r++) {
+                            ImGui::Text("  elev:%d tile:%d", me->random_starts[r].elevation,
+                                        me->random_starts[r].tile_num);
+                        }
+                    }
+                }
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+
+    if (editing) {
+        bool at_max = (area->entrance_count >= MAX_ENTRANCES);
+        if (at_max) {
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button("Add Entrance")) {
+            add_entrance(area);
+            modified = true;
+        }
+        if (at_max) {
+            ImGui::EndDisabled();
+            ImGui::SetItemTooltip("Maximum entrances reached (%d).", MAX_ENTRANCES);
         }
     }
 
