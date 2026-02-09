@@ -5,7 +5,7 @@
 #include <cstring>
 
 TEST_CASE("make_PRO_tile_MSG format") {
-    proto_info info;
+    proto_info info{};
     char name[] = "MyTile";
     char desc[] = "A cool tile";
     info.name = name;
@@ -22,7 +22,7 @@ TEST_CASE("make_PRO_tile_MSG format") {
 }
 
 TEST_CASE("make_PRO_tile_MSG tile_id 0") {
-    proto_info info;
+    proto_info info{};
     char name[] = "Zero";
     char desc[] = "Desc";
     info.name = name;
@@ -38,7 +38,7 @@ TEST_CASE("make_PRO_tile_MSG tile_id 0") {
 }
 
 TEST_CASE("make_PRO_tile_MSG empty strings") {
-    proto_info info;
+    proto_info info{};
     char name[] = "";
     char desc[] = "";
     info.name = name;
@@ -93,7 +93,7 @@ TEST_CASE("make_PRO_tiles_LST generates entries") {
     h->tile[1].tile_id = 10;
     h->tile[2].tile_id = 15;
 
-    char* result = make_PRO_tiles_LST(h, NULL);
+    char* result = make_PRO_tiles_LST(h, nullptr);
     REQUIRE(result != nullptr);
 
     // format: %08d.pro\r\n
@@ -111,7 +111,7 @@ TEST_CASE("make_PRO_tiles_LST skips tile_id -1") {
     h->tile[1].tile_id = (uint32_t)-1; // blank
     h->tile[2].tile_id = 15;
 
-    char* result = make_PRO_tiles_LST(h, NULL);
+    char* result = make_PRO_tiles_LST(h, nullptr);
     REQUIRE(result != nullptr);
 
     CHECK(strstr(result, "00000005.pro\r\n") != nullptr);

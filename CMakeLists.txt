@@ -144,37 +144,9 @@ target_link_libraries(
   ImFileDialog
 )
 
-# doctest (header-only)
-add_library(doctest INTERFACE)
-target_include_directories(doctest INTERFACE src/dependencies/doctest)
-
-# doctest CMake integration (per-test-case discovery for ctest)
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-include(doctest)
-
 # Tests
 enable_testing()
-add_executable(tests
-    test/test_main.cpp
-    test/test_crop_single_tile.cpp
-    test/test_endian.cpp
-    test/test_assign_tile_id.cpp
-    test/test_tiles_lst.cpp
-    test/test_proto_files.cpp
-    test/test_frm_write.cpp
-    test/test_palettize.cpp
-)
-target_link_libraries(tests PRIVATE
-    FO2MapEditLib
-    doctest
-    glad
-    imgui_docking
-    STB
-    glfw
-    ImFileDialog
-)
-target_include_directories(tests PRIVATE src/QFO2Tool)
-doctest_discover_tests(tests)
+add_subdirectory(test)
 
 #this custom command copies the contents of src/resources
 #to the compilation directory

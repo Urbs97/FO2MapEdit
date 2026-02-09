@@ -4,8 +4,8 @@
 
 #include <cstring>
 
-#define TILE_W 80
-#define TILE_H 36
+constexpr int TILE_W = 80;
+constexpr int TILE_H = 36;
 
 TEST_CASE("crop_single_tile stays in bounds") {
     int frm_w = 100;
@@ -23,8 +23,8 @@ TEST_CASE("crop_single_tile stays in bounds") {
     for (int y = -36; y < frm_h; y++) {
         for (int x = -80; x < frm_w; x++) {
             // reset middle tile region
-            memset(tile_buff + TILE_W * TILE_H, 216, TILE_W * TILE_H);
-            uint8_t* buff_ptr = tile_buff + TILE_W * TILE_H;
+            memset(tile_buff + (TILE_W * TILE_H), 216, TILE_W * TILE_H);
+            uint8_t* buff_ptr = tile_buff + (TILE_W * TILE_H);
 
             crop_single_tile(buff_ptr, frm_pxls, frm_w, frm_h, x, y);
 
@@ -40,7 +40,7 @@ TEST_CASE("crop_single_tile stays in bounds") {
 
             // check guard region after tile
             bool after_ok = true;
-            uint8_t* after_ptr = tile_buff + 2 * TILE_W * TILE_H;
+            uint8_t* after_ptr = tile_buff + (2 * TILE_W * TILE_H);
             for (int i = 0; i < TILE_W * TILE_H; i++) {
                 if (after_ptr[i] != 168) {
                     after_ok = false;

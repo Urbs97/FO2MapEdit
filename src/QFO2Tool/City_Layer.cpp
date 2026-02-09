@@ -4,6 +4,7 @@
 #include "display_FRM_OpenGL.h"
 #include "imgui.h"
 #include "platform_io.h"
+#include "txt_parse_helpers.h"
 
 #include <algorithm>
 #include <cctype>
@@ -12,24 +13,6 @@
 #include <cstring>
 
 // --- CITY.TXT Parser ---
-
-static void trim_trailing(char* s) {
-    int len = (int)strlen(s);
-    while (len > 0 && (s[len - 1] == ' ' || s[len - 1] == '\t' || s[len - 1] == '\r')) {
-        s[--len] = '\0';
-    }
-}
-
-static bool str_starts_with(const char* line, const char* prefix) {
-    return strncmp(line, prefix, strlen(prefix)) == 0;
-}
-
-static bool parse_on_off(const char* val) {
-    while (*val == ' ' || *val == '\t') {
-        val++;
-    }
-    return (strncasecmp(val, "On", 2) == 0);
-}
 
 static CitySize parse_city_size(const char* val) {
     while (*val == ' ' || *val == '\t') {

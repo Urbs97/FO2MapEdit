@@ -1,0 +1,35 @@
+; Test MAPS.TXT - fictional data for unit testing
+
+[Map 000]
+lookup_name=Wasteland Encounter 1
+map_name=waste1
+music=07theme
+ambient_sfx=wind1:30, wind2:30, coyote:20, dust:20
+saved=No
+dead_bodies_age=No
+can_rest_here=No,No,No
+random_start_point_0=elev:0, tile_num:10000
+random_start_point_1=elev:0, tile_num:10200
+
+[Map 001]
+lookup_name=Hometown Village
+map_name=hometown
+music=17village
+ambient_sfx=birds:25, breeze:25, dogs:20, creek:20, silence:10
+saved=Yes
+
+[Map 002]
+lookup_name=Old Mine Shaft
+map_name=oldmine
+music=13caves
+ambient_sfx=drip:30, echo:30, rocks:20, creak:20
+saved=Yes
+can_rest_here=No,No,No
+pipboy_active=No
+state=On
+
+[Map 003]
+lookup_name=Minimal Map
+map_name=minimal
+music=01basic
+saved=Yes

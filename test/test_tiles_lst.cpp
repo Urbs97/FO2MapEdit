@@ -79,7 +79,7 @@ TEST_CASE("make_FRM_tile_LST happy path NULL match_buff") {
     strncpy(h->tile[1].name_ptr, "tile_001.FRM", 13);
     h->tile[1].tile_id = 0;
 
-    char* result = make_FRM_tile_LST(h, NULL);
+    char* result = make_FRM_tile_LST(h, nullptr);
     REQUIRE(result != nullptr);
 
     // each name gets \r\n appended
@@ -103,7 +103,7 @@ TEST_CASE("make_FRM_tile_LST skips tile_id -1") {
     strncpy(h->tile[2].name_ptr, "tile_002.FRM", 13);
     h->tile[2].tile_id = 0;
 
-    char* result = make_FRM_tile_LST(h, NULL);
+    char* result = make_FRM_tile_LST(h, nullptr);
     REQUIRE(result != nullptr);
 
     CHECK(strstr(result, "tile_000.FRM\r\n") != nullptr);

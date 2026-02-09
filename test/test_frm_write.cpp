@@ -80,7 +80,7 @@ TEST_CASE("export_single_tile_PRO valid binary") {
     tile.tile_id = 5;
     strncpy(tile.name_ptr, "tile_005.FRM", 13);
 
-    proto_info info;
+    proto_info info{};
     char name[] = "TestTile";
     char desc[] = "A test";
     info.name = name;

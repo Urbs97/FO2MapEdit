@@ -1,0 +1,5 @@
+InheritParentConfig: true
+Checks: '
+  -bugprone-implicit-widening-of-multiplication-result,
+  -readability-math-missing-parentheses,
+'

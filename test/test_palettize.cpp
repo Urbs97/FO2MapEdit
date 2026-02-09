@@ -174,7 +174,7 @@ TEST_CASE("PaintSurface fills region") {
 
     for (int y = 0; y < 4; y++) {
         for (int x = 0; x < 4; x++) {
-            uint8_t val = s->pxls[y * s->pitch + x];
+            uint8_t val = s->pxls[(y * s->pitch) + x];
             if (x >= 1 && x < 3 && y >= 1 && y < 3) {
                 CHECK(val == 5);
             } else {
@@ -197,7 +197,7 @@ TEST_CASE("BlitSurface copies region") {
     memset(src->pxls, 0, 4 * 4);
     for (int y = 0; y < 2; y++) {
         for (int x = 0; x < 2; x++) {
-            src->pxls[y * src->pitch + x] = 7;
+            src->pxls[(y * src->pitch) + x] = 7;
         }
     }
 

@@ -60,6 +60,9 @@ add_library(FO2MapEditLib
   Layer.cpp
   City_Layer.h
   City_Layer.cpp
+  Maps_Txt.h
+  Maps_Txt.cpp
+  txt_parse_helpers.h
 )
 
 #these need to be located after add_library()
