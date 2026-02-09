@@ -322,6 +322,20 @@ maps_txt_data* parse_maps_txt(const char* path) {
     return data;
 }
 
+// --- Lookup ---
+
+map_entry* find_map_by_lookup_name(maps_txt_data* data, const char* lookup_name) {
+    if (data == nullptr || lookup_name == nullptr || lookup_name[0] == '\0') {
+        return nullptr;
+    }
+    for (int i = 0; i < data->map_count; i++) {
+        if (strcasecmp(data->maps[i].lookup_name, lookup_name) == 0) {
+            return &data->maps[i];
+        }
+    }
+    return nullptr;
+}
+
 // --- Serialization ---
 
 // Fixed-size binary format:

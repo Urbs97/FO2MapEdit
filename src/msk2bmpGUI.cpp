@@ -1580,6 +1580,16 @@ void Show_City_Info_Window(variables *My_Variables) {
     return;
   }
 
+  // Look up MAPS overlay for linked map data
+  maps_txt_data* maps_data = nullptr;
+  if (focused != nullptr) {
+    int maps_idx = find_overlay(focused->img_data.overlay,
+                                focused->img_data.overlay_count, LayerType::MAPS);
+    if (maps_idx >= 0) {
+      maps_data = (maps_txt_data*)focused->img_data.overlay[maps_idx].source_data;
+    }
+  }
+
   // Dock into the same node as the palette when the window first appears
   if (g_palette_dock_id != 0) {
     ImGui::SetNextWindowDockID(g_palette_dock_id, ImGuiCond_Appearing);
@@ -1598,7 +1608,7 @@ void Show_City_Info_Window(variables *My_Variables) {
 
   bool open = true;
   ImGui::Begin("City Info", &open);
-  if (draw_city_info_panel(city_layer, editing)) {
+  if (draw_city_info_panel(city_layer, editing, maps_data)) {
       focused->dirty = true;
   }
   ImGui::End();

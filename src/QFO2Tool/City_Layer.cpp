@@ -1,6 +1,7 @@
 #include "City_Layer.h"
 
 #include "Image2Texture.h"
+#include "Maps_Txt.h"
 #include "display_FRM_OpenGL.h"
 #include "imgui.h"
 #include "platform_io.h"
@@ -11,6 +12,26 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
+// Case-insensitive substring search (portable replacement for GNU strcasestr).
+static bool str_contains_nocase(const char* haystack, const char* needle) {
+    if (needle[0] == '\0') {
+        return true;
+    }
+    for (; *haystack != '\0'; haystack++) {
+        const char* h = haystack;
+        const char* n = needle;
+        while (*h != '\0' && *n != '\0' &&
+               tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
+            h++;
+            n++;
+        }
+        if (*n == '\0') {
+            return true;
+        }
+    }
+    return false;
+}
 
 // --- CITY.TXT Parser ---
 
@@ -646,7 +667,13 @@ void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, imag
 
 // --- Info Panel ---
 
-bool draw_city_info_panel(OverlayLayer* layer, bool editing) {
+static void tip(const char* desc) {
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+    ImGui::SetItemTooltip("%s", desc);
+}
+
+bool draw_city_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps) {
     if (layer == nullptr || layer->type != LayerType::CITY || layer->source_data == nullptr) {
         return false;
     }
@@ -662,6 +689,7 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing) {
 
     if (editing) {
         ImGui::Text("City Name:");
+        tip("Name of the location (area_name).");
         if (ImGui::InputText("##city_name", area->area_name, CITY_NAME_LEN)) {
             modified = true;
         }
@@ -669,6 +697,7 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing) {
         int x_int = area->world_x;
         int y_int = area->world_y;
         ImGui::Text("Position:");
+        tip("Pixel position on the world map (world_pos).");
         ImGui::SetNextItemWidth(100);
         if (ImGui::InputInt("##city_x", &x_int)) {
             area->world_x = (int16_t)x_int;
@@ -683,6 +712,7 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing) {
 
         int size_int = (int)area->size;
         ImGui::Text("Size:");
+        tip("Size of the circle drawn on the world map\n(Small, Medium, or Large).");
         ImGui::SetNextItemWidth(100);
         if (ImGui::Combo("##city_size", &size_int, "Small\0Medium\0Large\0")) {
             area->size = (CitySize)size_int;
@@ -692,17 +722,22 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing) {
         if (ImGui::Checkbox("Start", &area->start_state)) {
             modified = true;
         }
+        ImGui::SetItemTooltip(
+            "Whether this city is visible at\nthe start of the game (start_state).");
         ImGui::SameLine();
         if (ImGui::Checkbox("Lock", &area->lock_state)) {
             modified = true;
         }
+        ImGui::SetItemTooltip("When On, this location is not saved\nto the map file (lock_state).");
 
         if (modified) {
             refresh_city_overlay(layer);
         }
     } else {
         ImGui::Text("City: %s", area->area_name);
+        tip("Name of the location (area_name).");
         ImGui::Text("Position: %d, %d", area->world_x, area->world_y);
+        tip("Pixel position on the world map (world_pos).");
 
         const char* size_str = "Small";
         if (area->size == CitySize::MEDIUM) {
@@ -711,9 +746,11 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing) {
             size_str = "Large";
         }
         ImGui::Text("Size: %s", size_str);
+        tip("Size of the circle drawn on the world map\n(Small, Medium, or Large).");
 
         ImGui::Text("Start: %s  Lock: %s", area->start_state ? "On" : "Off",
                     area->lock_state ? "On" : "Off");
+        tip("Start: visible at game start.\nLock: when On, not saved to map file.");
     }
 
     if (area->entrance_count > 0) {
@@ -721,8 +758,161 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing) {
         ImGui::Text("Entrances:");
         for (int i = 0; i < area->entrance_count; i++) {
             city_entrance* ent = &area->entrances[i];
-            ImGui::Text("  %d: %s %s (%d,%d)", i, ent->enabled ? "[On]" : "[Off]", ent->map_name,
-                        ent->x, ent->y);
+            char label[256];
+            snprintf(label, sizeof(label), "%d: %s %s (%d,%d)###ent_%d_%d", i,
+                     ent->enabled ? "[On]" : "[Off]", ent->map_name, ent->x, ent->y,
+                     data->selected_area, i);
+
+            bool node_open = ImGui::TreeNodeEx(label, ImGuiTreeNodeFlags_DefaultOpen * 0);
+            ImGui::SetItemTooltip("Entrance %d: %s\nMap: %s\nTown map position: %d, %d", i,
+                                  ent->enabled ? "On" : "Off", ent->map_name, ent->x, ent->y);
+            if (node_open) {
+                if (editing) {
+                    int elev_int = ent->elevation;
+                    int tile_int = ent->tile_num;
+                    int orient_int = ent->orientation;
+                    ImGui::SetNextItemWidth(120);
+                    if (ImGui::InputInt("Elevation##ent_elev", &elev_int)) {
+                        ent->elevation = (int16_t)elev_int;
+                        modified = true;
+                    }
+                    ImGui::SetItemTooltip("Map elevation the player spawns on (0-2).");
+                    ImGui::SetNextItemWidth(120);
+                    if (ImGui::InputInt("Tile##ent_tile", &tile_int)) {
+                        ent->tile_num = (int16_t)tile_int;
+                        modified = true;
+                    }
+                    ImGui::SetItemTooltip("Hex tile number where the player spawns.");
+                    ImGui::SetNextItemWidth(120);
+                    if (ImGui::InputInt("Orientation##ent_orient", &orient_int)) {
+                        ent->orientation = (int16_t)orient_int;
+                        modified = true;
+                    }
+                    ImGui::SetItemTooltip("Direction the player faces on spawn (0-5).");
+                } else {
+                    ImGui::Text("Elevation: %d", ent->elevation);
+                    tip("Map elevation the player spawns on (0-2).");
+                    ImGui::Text("Tile: %d", ent->tile_num);
+                    tip("Hex tile number where the player spawns.");
+                    ImGui::Text("Orientation: %d", ent->orientation);
+                    tip("Direction the player faces on spawn (0-5).");
+                }
+
+                if (maps == nullptr) {
+                    ImGui::TextDisabled("MAPS.TXT not loaded");
+                } else {
+                    // Editable map selector (filtered combo)
+                    if (editing) {
+                        static char filter_buf[MAX_ENTRANCES][64] = {};
+                        char combo_id[32];
+                        snprintf(combo_id, sizeof(combo_id), "##map_combo_%d", i);
+
+                        const char* preview = ent->map_name[0] != '\0' ? ent->map_name : "(none)";
+                        ImGui::Text("Map:");
+                        tip("The lookup_name in MAPS.TXT that this\nentrance links to.");
+                        if (ImGui::BeginCombo(combo_id, preview)) {
+                            ImGui::SetNextItemWidth(-1);
+                            ImGui::InputTextWithHint("##filter", "Filter...", filter_buf[i],
+                                                     sizeof(filter_buf[i]));
+                            if (ImGui::IsWindowAppearing()) {
+                                ImGui::SetKeyboardFocusHere(-1);
+                            }
+
+                            ImGui::Separator();
+                            for (int m = 0; m < maps->map_count; m++) {
+                                const char* name = maps->maps[m].lookup_name;
+                                if (filter_buf[i][0] != '\0' &&
+                                    !str_contains_nocase(name, filter_buf[i])) {
+                                    continue;
+                                }
+                                bool is_selected = (strcasecmp(name, ent->map_name) == 0);
+                                char item_label[128];
+                                snprintf(item_label, sizeof(item_label), "[%03d] %s",
+                                         maps->maps[m].map_number, name);
+                                if (ImGui::Selectable(item_label, is_selected)) {
+                                    strncpy(ent->map_name, name, ENTRANCE_NAME_LEN - 1);
+                                    ent->map_name[ENTRANCE_NAME_LEN - 1] = '\0';
+                                    filter_buf[i][0] = '\0';
+                                    modified = true;
+                                }
+                                if (is_selected) {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndCombo();
+                        } else {
+                            // Clear filter when combo is closed
+                            filter_buf[i][0] = '\0';
+                        }
+                    }
+
+                    // Show linked map details (both view and edit mode)
+                    map_entry* me = find_map_by_lookup_name(maps, ent->map_name);
+                    if (me == nullptr) {
+                        ImGui::TextColored(ImVec4(1.0F, 0.6F, 0.2F, 1.0F),
+                                           "No matching map found in MAPS.TXT");
+                    } else {
+                        ImGui::Separator();
+                        ImGui::Text("Map %03d: %s", me->map_number, me->map_name);
+                        tip("Map file in master.dat/maps/ (map_name).");
+
+                        if (me->music[0] != '\0') {
+                            ImGui::Text("Music: %s", me->music);
+                            tip("Background music track, without .ACM extension.");
+                        }
+
+                        ImGui::Text("Saved: %s", me->saved ? "Yes" : "No");
+                        tip("Yes for cities (state persists between visits),\n"
+                            "No for random encounters (map resets).");
+
+                        if (!me->dead_bodies_age) {
+                            ImGui::Text("Dead bodies age: No");
+                            tip("Whether corpses on this map are\nremoved over time.");
+                        }
+
+                        if (!me->can_rest_here[0] || !me->can_rest_here[1] ||
+                            !me->can_rest_here[2]) {
+                            ImGui::Text("Can rest: %s, %s, %s", me->can_rest_here[0] ? "Yes" : "No",
+                                        me->can_rest_here[1] ? "Yes" : "No",
+                                        me->can_rest_here[2] ? "Yes" : "No");
+                            tip("Whether the player can rest on this map,\n"
+                                "per elevation level (0, 1, 2).");
+                        }
+
+                        if (!me->pipboy_active) {
+                            ImGui::Text("Pipboy active: No");
+                            tip("Whether the Pip-Boy is accessible\non this map.");
+                        }
+
+                        if (me->state_on) {
+                            ImGui::Text("State: On");
+                            tip("When On, the map is accessible from the\n"
+                                "city without having visited it first.");
+                        }
+
+                        if (me->ambient_sfx_count > 0) {
+                            ImGui::Text("Ambient SFX:");
+                            tip("Background sound effects played on this map,\n"
+                                "with percentage weight for frequency.");
+                            for (int s = 0; s < me->ambient_sfx_count; s++) {
+                                ImGui::Text("  %s (%d%%)", me->ambient_sfx[s].name,
+                                            me->ambient_sfx[s].weight);
+                            }
+                        }
+
+                        if (me->random_start_count > 0) {
+                            ImGui::Text("Random starts:");
+                            tip("Possible spawn points for random encounters\n"
+                                "(elevation and hex tile).");
+                            for (int r = 0; r < me->random_start_count; r++) {
+                                ImGui::Text("  elev:%d tile:%d", me->random_starts[r].elevation,
+                                            me->random_starts[r].tile_num);
+                            }
+                        }
+                    }
+                }
+                ImGui::TreePop();
+            }
         }
     }
 

@@ -56,3 +56,6 @@ uint8_t* serialize_maps_data(maps_txt_data* data, int* out_size);
 
 // Deserialize maps data from .wmap load. Caller must free() returned pointer.
 maps_txt_data* deserialize_maps_data(const uint8_t* buf, int size);
+
+// Find a map entry by lookup_name (case-insensitive). Returns nullptr if not found.
+map_entry* find_map_by_lookup_name(maps_txt_data* data, const char* lookup_name);
