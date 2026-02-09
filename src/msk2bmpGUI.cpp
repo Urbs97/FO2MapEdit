@@ -598,6 +598,13 @@ int main(int argc, char **argv) {
       }
     }
 
+    // Reset focus if the focused window is no longer open
+    if (My_Variables.window_number_focus >= 0 &&
+        !My_Variables.F_Prop[My_Variables.window_number_focus].file_open_window) {
+      My_Variables.window_number_focus = -1;
+      My_Variables.edit_image_focused = false;
+    }
+
     // Update global edit mode flag so Escape key doesn't close app during
     // editing
     g_edit_mode_active = My_Variables.edit_image_focused;
@@ -976,6 +983,12 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
   bool was_open = F_Prop->file_open_window;
 
   if (ImGui::Begin(name.c_str(), (&F_Prop->file_open_window), 0)) {
+    // Track focus at window level, not just Worldmap tab
+    if (ImGui::IsWindowFocused()) {
+      My_Variables->window_number_focus = counter;
+      My_Variables->edit_image_focused = F_Prop->editing_enabled;
+    }
+
     bool use_tabs = (F_Prop->wmap != nullptr);
     bool show_map_content = true;
 
@@ -1028,11 +1041,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
     }
 
     if (show_map_content) {
-    // set contextual menu for preview window
-    if (ImGui::IsWindowFocused()) {
-      My_Variables->window_number_focus = counter;
-      My_Variables->edit_image_focused = F_Prop->editing_enabled;
-    }
     ImGui::Checkbox("Show Frame Stats", &F_Prop->show_stats);
 
     ImGui::PushItemWidth(100);
