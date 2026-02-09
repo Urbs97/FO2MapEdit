@@ -12,6 +12,14 @@ constexpr int ENTRANCE_NAME_LEN = 48;
 
 enum class CitySize : uint8_t { SMALL = 0, MEDIUM = 1, LARGE = 2 };
 
+enum class CityBrush : uint8_t {
+    SELECT = 0,       // Click to select/deselect (existing behavior)
+    PLACE_SMALL = 1,  // Click to place a small city
+    PLACE_MEDIUM = 2, // Click to place a medium city
+    PLACE_LARGE = 3,  // Click to place a large city
+    ERASER = 4,       // Click on a city to remove it
+};
+
 struct city_entrance {
     bool enabled;
     int16_t x, y; // town map position
@@ -35,7 +43,8 @@ struct city_area {
 
 struct city_layer_data {
     int area_count;
-    int selected_area; // -1 = none
+    int selected_area;      // -1 = none
+    CityBrush active_brush; // UI-only state, not serialized
     city_area areas[MAX_CITY_AREAS];
 };
 
@@ -63,8 +72,9 @@ void refresh_city_overlay(OverlayLayer* layer);
 struct variables;
 struct maps_txt_data;
 
-// Interactive city editing handler (mouse hit-test, selection).
-void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, image_data* edit_data,
+// Interactive city editing handler (mouse hit-test, selection, placement, erasure).
+// Returns true if the city data was modified (placement or erasure).
+bool Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, image_data* edit_data,
                      int layer_idx);
 
 // ImGui panel showing selected city info. Returns true if any field was modified.

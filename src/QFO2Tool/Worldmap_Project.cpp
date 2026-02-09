@@ -585,6 +585,45 @@ bool new_wmap_project(LF* F_Prop, image_data* img_data, shader_info* shaders, Su
     F_Prop->wmap->tiles_y = tiles_y;
     F_Prop->wmap->save_path[0] = '\0';
 
+    // HACK: Create empty MSK overlay so layer order is Mask -> City -> Maps.
+    // The layer panel skips overlays with no surface, so we allocate a blank one.
+    // A cleaner fix would be to support explicit layer ordering in add_overlay().
+    {
+        int idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MSK,
+                              LayerBlend::WHITE_MIX, "Mask", 1.0F, 1.0F, 1.0F, 0.5F);
+        if (idx >= 0) {
+            Surface* srfc = Create_8Bit_Surface(img_data->width, img_data->height, nullptr);
+            if (srfc != nullptr) {
+                img_data->overlay[idx].srfc = srfc;
+                img_data->overlay[idx].texture =
+                    init_texture(srfc, srfc->w, srfc->h, img_type::MSK);
+            }
+        }
+    }
+
+    // Create empty city layer so the user can place cities on a new project
+    city_layer_data* cd = (city_layer_data*)calloc(1, sizeof(city_layer_data));
+    if (cd != nullptr) {
+        cd->selected_area = -1;
+        create_city_overlay(img_data, cd);
+    }
+
+    // Create empty maps layer
+    maps_txt_data* md = (maps_txt_data*)calloc(1, sizeof(maps_txt_data));
+    if (md != nullptr) {
+        int idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MAPS,
+                              LayerBlend::WHITE_MIX, "Maps", 0.0F, 0.0F, 0.0F, 0.0F);
+        if (idx >= 0) {
+            img_data->overlay[idx].visible = false;
+            img_data->overlay[idx].editable = false;
+            img_data->overlay[idx].interactive = false;
+            img_data->overlay[idx].source_data = md;
+            img_data->overlay[idx].source_data_size = (int)sizeof(maps_txt_data);
+        } else {
+            free(md);
+        }
+    }
+
     return true;
 }
 
@@ -1122,33 +1161,40 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
         }
     }
 
-    // Attempt CITY.TXT import
+    // Attempt CITY.TXT import, fall back to empty city layer
+    city_layer_data* cd = nullptr;
     char city_path[MAX_PATH];
     if (resolve_path_icase(data_path, "data/city.txt", city_path, MAX_PATH)) {
-        city_layer_data* cd = parse_city_txt(city_path);
-        if (cd != nullptr && cd->area_count > 0) {
-            create_city_overlay(img_data, cd);
-        } else {
-            free(cd);
-        }
+        cd = parse_city_txt(city_path);
+    }
+    if (cd == nullptr || cd->area_count == 0) {
+        free(cd);
+        cd = (city_layer_data*)calloc(1, sizeof(city_layer_data));
+    }
+    if (cd != nullptr) {
+        cd->selected_area = -1;
+        create_city_overlay(img_data, cd);
     }
 
-    // Attempt MAPS.TXT import
+    // Attempt MAPS.TXT import, fall back to empty maps layer
+    maps_txt_data* md = nullptr;
     char maps_path[MAX_PATH];
     if (resolve_path_icase(data_path, "data/maps.txt", maps_path, MAX_PATH)) {
-        maps_txt_data* md = parse_maps_txt(maps_path);
-        if (md != nullptr && md->map_count > 0) {
-            int idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MAPS,
-                                  LayerBlend::WHITE_MIX, "Maps", 0.0F, 0.0F, 0.0F, 0.0F);
-            if (idx >= 0) {
-                img_data->overlay[idx].visible = false;
-                img_data->overlay[idx].editable = false;
-                img_data->overlay[idx].interactive = false;
-                img_data->overlay[idx].source_data = md;
-                img_data->overlay[idx].source_data_size = (int)sizeof(maps_txt_data);
-            } else {
-                free(md);
-            }
+        md = parse_maps_txt(maps_path);
+    }
+    if (md == nullptr || md->map_count == 0) {
+        free(md);
+        md = (maps_txt_data*)calloc(1, sizeof(maps_txt_data));
+    }
+    if (md != nullptr) {
+        int idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MAPS,
+                              LayerBlend::WHITE_MIX, "Maps", 0.0F, 0.0F, 0.0F, 0.0F);
+        if (idx >= 0) {
+            img_data->overlay[idx].visible = false;
+            img_data->overlay[idx].editable = false;
+            img_data->overlay[idx].interactive = false;
+            img_data->overlay[idx].source_data = md;
+            img_data->overlay[idx].source_data_size = (int)sizeof(maps_txt_data);
         } else {
             free(md);
         }

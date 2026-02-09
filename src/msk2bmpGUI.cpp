@@ -108,7 +108,7 @@ void Preview_Tiles_Window(variables *My_Variables, LF *F_Prop, int counter);
 void Show_Image_Render(variables *My_Variables, LF *F_Prop,
                        struct user_info *usr_info, int counter);
 
-void Show_Palette_Window(struct variables *My_Variables, bool show_msk_palette);
+void Show_Palette_Window(struct variables *My_Variables, LayerType palette_layer);
 void Show_City_Info_Window(struct variables *My_Variables);
 
 static void ShowMainMenuBar(int *counter, struct variables *My_Variables);
@@ -574,19 +574,17 @@ int main(int argc, char **argv) {
 
     ImGui::End();
 
-    // contextual palette window for MSK vs FRM editing
-    // Show MSK palette only when editing a paint-based overlay (not interactive layers like City)
+    // contextual palette window — switches based on active layer type
     {
-      bool show_msk_palette = false;
+      LayerType palette_layer = LayerType::NONE;
       if (My_Variables.window_number_focus > -1) {
         LF* focused = &My_Variables.F_Prop[My_Variables.window_number_focus];
         int al = focused->active_layer;
-        if (al >= 0 && al < focused->img_data.overlay_count &&
-            !focused->img_data.overlay[al].interactive) {
-          show_msk_palette = true;
+        if (al >= 0 && al < focused->img_data.overlay_count) {
+          palette_layer = focused->img_data.overlay[al].type;
         }
       }
-      Show_Palette_Window(&My_Variables, show_msk_palette);
+      Show_Palette_Window(&My_Variables, palette_layer);
       Show_City_Info_Window(&My_Variables);
     }
 
@@ -1359,7 +1357,9 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
           zoom_pan(edit_data, My_Variables->new_mouse_pos, My_Variables->mouse_delta);
         }
         if (is_interactive && F_Prop->img_data.overlay[F_Prop->active_layer].type == LayerType::CITY) {
-          Edit_City_Layer(My_Variables, img_pos, &F_Prop->img_data, edit_data, F_Prop->active_layer);
+          if (Edit_City_Layer(My_Variables, img_pos, &F_Prop->img_data, edit_data, F_Prop->active_layer)) {
+            F_Prop->dirty = true;
+          }
           // Recomposite so overlay texture changes (position, size) show on the map
           shader_info *shaders = &My_Variables->shaders;
           draw_PAL_to_framebuffer(shaders->FO_pal, shaders->render_PAL_shader,
@@ -1602,7 +1602,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
 
 static ImGuiID g_palette_dock_id = 0;
 
-void Show_Palette_Window(variables *My_Variables, bool show_msk_palette) {
+void Show_Palette_Window(variables *My_Variables, LayerType palette_layer) {
 
   Palette *pal = My_Variables->shaders.FO_pal;
 
@@ -1623,7 +1623,7 @@ void Show_Palette_Window(variables *My_Variables, bool show_msk_palette) {
   }
 
   bool palette_window = true;
-  if (show_msk_palette) {
+  if (palette_layer == LayerType::MSK) {
     ImGui::Begin("MSK colors###palette", &palette_window);
 
     brush_size_handler(My_Variables);
@@ -1637,6 +1637,64 @@ void Show_Palette_Window(variables *My_Variables, bool show_msk_palette) {
     if (ImGui::ColorButton("Mark Mask", ImVec4(1.0F, 1.0F, 1.0F, 1.0F), 0,
                            ImVec2(200.0F, 200.0F))) {
       My_Variables->Color_Pick = (1);
+    }
+  } else if (palette_layer == LayerType::CITY) {
+    ImGui::Begin("City tools###palette", &palette_window);
+
+    // Find city_layer_data for the focused window
+    city_layer_data* city_data = nullptr;
+    int focus = My_Variables->window_number_focus;
+    if (focus > -1) {
+      LF* focused = &My_Variables->F_Prop[focus];
+      int al = focused->active_layer;
+      if (al >= 0 && al < focused->img_data.overlay_count &&
+          focused->img_data.overlay[al].type == LayerType::CITY) {
+        city_data = (city_layer_data*)focused->img_data.overlay[al].source_data;
+      }
+    }
+
+    if (city_data != nullptr) {
+      CityBrush brush = city_data->active_brush;
+
+      struct ToolEntry {
+        const char* label{};
+        CityBrush value{};
+        ImVec4 color;
+      };
+      ToolEntry tools[] = {
+        {"Select",       CityBrush::SELECT,       ImVec4(0.5F, 0.5F, 0.5F, 1.0F)},
+        {"Small City",   CityBrush::PLACE_SMALL,  ImVec4(0.0F, 0.7F, 0.0F, 1.0F)},
+        {"Medium City",  CityBrush::PLACE_MEDIUM,  ImVec4(0.0F, 0.85F, 0.0F, 1.0F)},
+        {"Large City",   CityBrush::PLACE_LARGE,   ImVec4(0.0F, 1.0F, 0.0F, 1.0F)},
+        {"Eraser",       CityBrush::ERASER,        ImVec4(0.9F, 0.2F, 0.2F, 1.0F)},
+      };
+
+      for (int i = 0; i < 5; i++) {
+        ImGui::PushID(i);
+        bool is_active = (brush == tools[i].value);
+
+        if (is_active) {
+          ImVec4 border_col = ImVec4(1.0F, 1.0F, 0.0F, 1.0F);
+          ImGui::PushStyleColor(ImGuiCol_Border, border_col);
+          ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0F);
+        }
+
+        if (ImGui::ColorButton(tools[i].label, tools[i].color, 0,
+                               ImVec2(80.0F, 40.0F))) {
+          city_data->active_brush = tools[i].value;
+        }
+
+        if (is_active) {
+          ImGui::PopStyleVar();
+          ImGui::PopStyleColor();
+        }
+
+        ImGui::SameLine();
+        ImGui::Text("%s", tools[i].label);
+        ImGui::PopID();
+      }
+    } else {
+      ImGui::TextDisabled("No city layer active");
     }
   } else {
     ImGui::Begin("Default Fallout palette###palette", &palette_window);

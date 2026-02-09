@@ -575,18 +575,58 @@ void refresh_city_overlay(OverlayLayer* layer) {
 
 // --- Interactive Editing ---
 
-void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, image_data* edit_data,
+static bool add_city(city_layer_data* data, int16_t x, int16_t y, CitySize size) {
+    if (data->area_count >= MAX_CITY_AREAS) {
+        return false;
+    }
+
+    city_area* area = &data->areas[data->area_count];
+    *area = city_area{};
+    snprintf(area->area_name, CITY_NAME_LEN, "New City %d", data->area_count);
+    area->world_x = x;
+    area->world_y = y;
+    area->size = size;
+    area->start_state = true;
+    area->lock_state = false;
+    area->townmap_art_idx = 0;
+    area->townmap_label_art_idx = 0;
+    area->entrance_count = 0;
+
+    data->area_count++;
+    return true;
+}
+
+static bool remove_city(city_layer_data* data, int index) {
+    if (index < 0 || index >= data->area_count) {
+        return false;
+    }
+
+    for (int i = index; i < data->area_count - 1; i++) {
+        data->areas[i] = data->areas[i + 1];
+    }
+    data->area_count--;
+    data->areas[data->area_count] = city_area{};
+
+    if (data->selected_area == index) {
+        data->selected_area = -1;
+    } else if (data->selected_area > index) {
+        data->selected_area--;
+    }
+    return true;
+}
+
+bool Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, image_data* edit_data,
                      int layer_idx) {
     if (vars == nullptr || img_data == nullptr) {
-        return;
+        return false;
     }
     if (layer_idx < 0 || layer_idx >= img_data->overlay_count) {
-        return;
+        return false;
     }
 
     OverlayLayer* layer = &img_data->overlay[layer_idx];
     if (layer->source_data == nullptr) {
-        return;
+        return false;
     }
 
     city_layer_data* data = (city_layer_data*)layer->source_data;
@@ -610,14 +650,35 @@ void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, imag
         }
     }
 
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    // Cursor visualization for placement tools
+    bool is_placement = (data->active_brush == CityBrush::PLACE_SMALL ||
+                         data->active_brush == CityBrush::PLACE_MEDIUM ||
+                         data->active_brush == CityBrush::PLACE_LARGE);
+    if (is_placement && ImGui::IsWindowHovered()) {
+        CitySize brush_size = CitySize::SMALL;
+        if (data->active_brush == CityBrush::PLACE_MEDIUM) {
+            brush_size = CitySize::MEDIUM;
+        } else if (data->active_brush == CityBrush::PLACE_LARGE) {
+            brush_size = CitySize::LARGE;
+        }
+        float r = (float)city_radius(brush_size) * scale;
+        float cx = img_pos.x + (map_x * scale);
+        float cy = img_pos.y + (map_y * scale);
+        draw_list->AddCircle(ImVec2(cx, cy), r, IM_COL32(0, 255, 0, 100), 24, 1.5F);
+    }
+
     // Draw hover highlight
     if (hover_idx >= 0) {
         city_area* area = &data->areas[hover_idx];
         float cx = img_pos.x + ((float)area->world_x * scale);
         float cy = img_pos.y + ((float)area->world_y * scale);
         float r = ((float)city_radius(area->size) + 3.0F) * scale;
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddCircle(ImVec2(cx, cy), r, IM_COL32(0, 255, 0, 180), 24, 2.0F);
+        // Red highlight for eraser, green otherwise
+        ImU32 hover_color = (data->active_brush == CityBrush::ERASER) ? IM_COL32(255, 60, 60, 200)
+                                                                      : IM_COL32(0, 255, 0, 180);
+        draw_list->AddCircle(ImVec2(cx, cy), r, hover_color, 24, 2.0F);
     }
 
     // Draw selection highlight
@@ -626,22 +687,53 @@ void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, imag
         float cx = img_pos.x + ((float)area->world_x * scale);
         float cy = img_pos.y + ((float)area->world_y * scale);
         float r = ((float)city_radius(area->size) + 4.0F) * scale;
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddCircle(ImVec2(cx, cy), r, IM_COL32(255, 255, 0, 220), 24, 2.5F);
     }
 
-    // Left-click: select/deselect
+    // Left-click handler
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) {
-        int prev_selected = data->selected_area;
-        if (hover_idx >= 0 && hover_idx != data->selected_area) {
-            data->selected_area = hover_idx;
-        } else {
-            data->selected_area = -1;
-        }
-        if (data->selected_area != prev_selected) {
-            refresh_city_overlay(layer);
+        switch (data->active_brush) {
+            case CityBrush::SELECT: {
+                int prev_selected = data->selected_area;
+                if (hover_idx >= 0 && hover_idx != data->selected_area) {
+                    data->selected_area = hover_idx;
+                } else {
+                    data->selected_area = -1;
+                }
+                if (data->selected_area != prev_selected) {
+                    refresh_city_overlay(layer);
+                }
+                break;
+            }
+            case CityBrush::PLACE_SMALL:
+            case CityBrush::PLACE_MEDIUM:
+            case CityBrush::PLACE_LARGE: {
+                CitySize size = CitySize::SMALL;
+                if (data->active_brush == CityBrush::PLACE_MEDIUM) {
+                    size = CitySize::MEDIUM;
+                } else if (data->active_brush == CityBrush::PLACE_LARGE) {
+                    size = CitySize::LARGE;
+                }
+                if (add_city(data, (int16_t)map_x, (int16_t)map_y, size)) {
+                    data->selected_area = data->area_count - 1;
+                    data->active_brush = CityBrush::SELECT;
+                    refresh_city_overlay(layer);
+                    return true;
+                }
+                break;
+            }
+            case CityBrush::ERASER: {
+                if (hover_idx >= 0) {
+                    remove_city(data, hover_idx);
+                    refresh_city_overlay(layer);
+                    return true;
+                }
+                break;
+            }
         }
     }
+
+    return false;
 }
 
 // --- Info Panel ---
