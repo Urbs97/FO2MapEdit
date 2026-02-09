@@ -356,8 +356,15 @@ bool draw_maps_info_panel(maps_txt_data* data, bool editing) {
     ImGui::Text("Maps: %d entries", data->map_count);
     ImGui::Separator();
 
+    static char map_filter[128] = "";
+    ImGui::InputTextWithHint("##map_filter", "Search maps...", map_filter, sizeof(map_filter));
+
     for (int i = 0; i < data->map_count; i++) {
         map_entry* m = &data->maps[i];
+        if (map_filter[0] != '\0' && !str_contains_nocase(m->lookup_name, map_filter) &&
+            !str_contains_nocase(m->map_name, map_filter)) {
+            continue;
+        }
 
         ImGui::PushID(i);
         bool open = ImGui::TreeNodeEx("##map", ImGuiTreeNodeFlags_None, "[%03d] %s", m->map_number,

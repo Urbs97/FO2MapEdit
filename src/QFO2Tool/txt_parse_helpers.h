@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cctype>
 #include <cstring>
 
 // Shared helpers for INI-style text file parsers (CITY.TXT, MAPS.TXT, etc.)
@@ -15,6 +16,26 @@ inline void trim_trailing(char* s) {
 // Return true if line starts with prefix.
 inline bool str_starts_with(const char* line, const char* prefix) {
     return strncmp(line, prefix, strlen(prefix)) == 0;
+}
+
+// Case-insensitive substring search (portable replacement for GNU strcasestr).
+inline bool str_contains_nocase(const char* haystack, const char* needle) {
+    if (needle[0] == '\0') {
+        return true;
+    }
+    for (; *haystack != '\0'; haystack++) {
+        const char* h = haystack;
+        const char* n = needle;
+        while (*h != '\0' && *n != '\0' &&
+               tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
+            h++;
+            n++;
+        }
+        if (*n == '\0') {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Parse "On"/"Off" value (case-insensitive, skips leading whitespace).

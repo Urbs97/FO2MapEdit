@@ -991,6 +991,16 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
       }
     }
 
+    // Lookup city layer for the Cities tab
+    OverlayLayer* city_layer_tab = nullptr;
+    if (use_tabs) {
+      int city_idx = find_overlay(F_Prop->img_data.overlay,
+                                  F_Prop->img_data.overlay_count, LayerType::CITY);
+      if (city_idx >= 0) {
+        city_layer_tab = &F_Prop->img_data.overlay[city_idx];
+      }
+    }
+
     if (use_tabs) {
       if (ImGui::BeginTabBar("##wmap_tabs")) {
         // Trailing Edit/Done button — styled as plain clickable text with icon
@@ -1485,6 +1495,12 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
     }
 
     if (use_tabs) {
+      if (ImGui::BeginTabItem("Cities")) {
+        if (draw_cities_info_panel(city_layer_tab, F_Prop->editing_enabled, maps_data)) {
+          F_Prop->dirty = true;
+        }
+        ImGui::EndTabItem();
+      }
       if (ImGui::BeginTabItem("Maps")) {
         if (draw_maps_info_panel(maps_data, F_Prop->editing_enabled)) {
           F_Prop->dirty = true;

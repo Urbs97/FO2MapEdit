@@ -8,30 +8,9 @@
 #include "txt_parse_helpers.h"
 
 #include <algorithm>
-#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-
-// Case-insensitive substring search (portable replacement for GNU strcasestr).
-static bool str_contains_nocase(const char* haystack, const char* needle) {
-    if (needle[0] == '\0') {
-        return true;
-    }
-    for (; *haystack != '\0'; haystack++) {
-        const char* h = haystack;
-        const char* n = needle;
-        while (*h != '\0' && *n != '\0' &&
-               tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
-            h++;
-            n++;
-        }
-        if (*n == '\0') {
-            return true;
-        }
-    }
-    return false;
-}
 
 // --- CITY.TXT Parser ---
 
@@ -673,18 +652,10 @@ static void tip(const char* desc) {
     ImGui::SetItemTooltip("%s", desc);
 }
 
-bool draw_city_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps) {
-    if (layer == nullptr || layer->type != LayerType::CITY || layer->source_data == nullptr) {
-        return false;
-    }
-
-    city_layer_data* data = (city_layer_data*)layer->source_data;
-    if (data->selected_area < 0 || data->selected_area >= data->area_count) {
-        ImGui::Text("Click a city marker to select");
-        return false;
-    }
-
-    city_area* area = &data->areas[data->selected_area];
+// Shared helper: draws all per-city fields and entrances.
+// Caller must wrap in PushID/PopID for widget ID uniqueness.
+static bool draw_city_area_content(city_area* area, OverlayLayer* layer, bool editing,
+                                   maps_txt_data* maps) {
     bool modified = false;
 
     if (editing) {
@@ -756,17 +727,18 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps
     if (area->entrance_count > 0) {
         ImGui::Separator();
         ImGui::Text("Entrances:");
-        for (int i = 0; i < area->entrance_count; i++) {
-            city_entrance* ent = &area->entrances[i];
-            char label[256];
-            snprintf(label, sizeof(label), "%d: %s %s (%d,%d)###ent_%d_%d", i,
-                     ent->enabled ? "[On]" : "[Off]", ent->map_name, ent->x, ent->y,
-                     data->selected_area, i);
+        for (int j = 0; j < area->entrance_count; j++) {
+            city_entrance* ent = &area->entrances[j];
+            ImGui::PushID(j);
 
-            bool node_open = ImGui::TreeNodeEx(label, ImGuiTreeNodeFlags_DefaultOpen * 0);
-            ImGui::SetItemTooltip("Entrance %d: %s\nMap: %s\nTown map position: %d, %d", i,
+            char ent_label[256];
+            snprintf(ent_label, sizeof(ent_label), "%d: %s %s (%d,%d)###ent", j,
+                     ent->enabled ? "[On]" : "[Off]", ent->map_name, ent->x, ent->y);
+
+            bool ent_open = ImGui::TreeNodeEx(ent_label, ImGuiTreeNodeFlags_None);
+            ImGui::SetItemTooltip("Entrance %d: %s\nMap: %s\nTown map position: %d, %d", j,
                                   ent->enabled ? "On" : "Off", ent->map_name, ent->x, ent->y);
-            if (node_open) {
+            if (ent_open) {
                 if (editing) {
                     int elev_int = ent->elevation;
                     int tile_int = ent->tile_num;
@@ -801,19 +773,15 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps
                 if (maps == nullptr) {
                     ImGui::TextDisabled("MAPS.TXT not loaded");
                 } else {
-                    // Editable map selector (filtered combo)
                     if (editing) {
-                        static char filter_buf[MAX_ENTRANCES][64] = {};
-                        char combo_id[32];
-                        snprintf(combo_id, sizeof(combo_id), "##map_combo_%d", i);
-
+                        static char filter_buf[64] = {};
                         const char* preview = ent->map_name[0] != '\0' ? ent->map_name : "(none)";
                         ImGui::Text("Map:");
                         tip("The lookup_name in MAPS.TXT that this\nentrance links to.");
-                        if (ImGui::BeginCombo(combo_id, preview)) {
+                        if (ImGui::BeginCombo("##map_combo", preview)) {
                             ImGui::SetNextItemWidth(-1);
-                            ImGui::InputTextWithHint("##filter", "Filter...", filter_buf[i],
-                                                     sizeof(filter_buf[i]));
+                            ImGui::InputTextWithHint("##filter", "Filter...", filter_buf,
+                                                     sizeof(filter_buf));
                             if (ImGui::IsWindowAppearing()) {
                                 ImGui::SetKeyboardFocusHere(-1);
                             }
@@ -821,8 +789,8 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps
                             ImGui::Separator();
                             for (int m = 0; m < maps->map_count; m++) {
                                 const char* name = maps->maps[m].lookup_name;
-                                if (filter_buf[i][0] != '\0' &&
-                                    !str_contains_nocase(name, filter_buf[i])) {
+                                if (filter_buf[0] != '\0' &&
+                                    !str_contains_nocase(name, filter_buf)) {
                                     continue;
                                 }
                                 bool is_selected = (strcasecmp(name, ent->map_name) == 0);
@@ -832,7 +800,7 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps
                                 if (ImGui::Selectable(item_label, is_selected)) {
                                     strncpy(ent->map_name, name, ENTRANCE_NAME_LEN - 1);
                                     ent->map_name[ENTRANCE_NAME_LEN - 1] = '\0';
-                                    filter_buf[i][0] = '\0';
+                                    filter_buf[0] = '\0';
                                     modified = true;
                                 }
                                 if (is_selected) {
@@ -841,12 +809,10 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps
                             }
                             ImGui::EndCombo();
                         } else {
-                            // Clear filter when combo is closed
-                            filter_buf[i][0] = '\0';
+                            filter_buf[0] = '\0';
                         }
                     }
 
-                    // Show linked map details (both view and edit mode)
                     map_entry* me = find_map_by_lookup_name(maps, ent->map_name);
                     if (me == nullptr) {
                         ImGui::TextColored(ImVec4(1.0F, 0.6F, 0.2F, 1.0F),
@@ -913,7 +879,76 @@ bool draw_city_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps
                 }
                 ImGui::TreePop();
             }
+            ImGui::PopID();
         }
+    }
+
+    return modified;
+}
+
+bool draw_city_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps) {
+    if (layer == nullptr || layer->type != LayerType::CITY || layer->source_data == nullptr) {
+        return false;
+    }
+
+    city_layer_data* data = (city_layer_data*)layer->source_data;
+    if (data->selected_area < 0 || data->selected_area >= data->area_count) {
+        ImGui::Text("Click a city marker to select");
+        return false;
+    }
+
+    city_area* area = &data->areas[data->selected_area];
+    ImGui::PushID(data->selected_area);
+    bool modified = draw_city_area_content(area, layer, editing, maps);
+    ImGui::PopID();
+    return modified;
+}
+
+bool draw_cities_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps) {
+    if (layer == nullptr || layer->type != LayerType::CITY || layer->source_data == nullptr) {
+        ImGui::TextDisabled("No city data loaded");
+        return false;
+    }
+
+    city_layer_data* data = (city_layer_data*)layer->source_data;
+    bool modified = false;
+
+    ImGui::Text("Cities: %d entries", data->area_count);
+    ImGui::Separator();
+
+    static char city_filter[128] = "";
+    ImGui::InputTextWithHint("##city_filter", "Search cities...", city_filter, sizeof(city_filter));
+
+    for (int i = 0; i < data->area_count; i++) {
+        city_area* area = &data->areas[i];
+        if (city_filter[0] != '\0' && !str_contains_nocase(area->area_name, city_filter)) {
+            continue;
+        }
+        ImGui::PushID(i);
+
+        char node_label[128];
+        snprintf(node_label, sizeof(node_label), "[%02d] %s", i, area->area_name);
+
+        bool node_open = ImGui::TreeNodeEx(node_label, ImGuiTreeNodeFlags_None);
+        if (!node_open) {
+            const char* size_str = "Small";
+            if (area->size == CitySize::LARGE) {
+                size_str = "Large";
+            } else if (area->size == CitySize::MEDIUM) {
+                size_str = "Medium";
+            }
+            ImGui::SetItemTooltip("Pos: %d, %d  Size: %s\nStart: %s  Lock: %s", area->world_x,
+                                  area->world_y, size_str, area->start_state ? "On" : "Off",
+                                  area->lock_state ? "On" : "Off");
+        }
+
+        if (node_open) {
+            if (draw_city_area_content(area, layer, editing, maps)) {
+                modified = true;
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
     }
 
     return modified;

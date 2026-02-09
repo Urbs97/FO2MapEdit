@@ -69,3 +69,6 @@ void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, imag
 
 // ImGui panel showing selected city info. Returns true if any field was modified.
 bool draw_city_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps = nullptr);
+
+// ImGui panel listing ALL cities as expandable tree nodes. Returns true if any field was modified.
+bool draw_cities_info_panel(OverlayLayer* layer, bool editing, maps_txt_data* maps = nullptr);
