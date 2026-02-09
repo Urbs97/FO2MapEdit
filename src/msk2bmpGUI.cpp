@@ -1277,6 +1277,42 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
     //       this would require attaching the name to each surface
     ImGui::Text("%s", F_Prop->c_name);
 
+    // Show overlay visibility toggles in preview mode (above the clipped map region)
+    if (!F_Prop->editing_enabled && img_data->overlay_count > 0 && (F_Prop->wmap != nullptr)) {
+      ImGui::Text("Layers");
+      for (int oi = 0; oi < img_data->overlay_count; oi++) {
+        OverlayLayer *layer = &img_data->overlay[oi];
+        if (layer->srfc == nullptr) { continue; }
+        ImGui::SameLine();
+        ImGui::PushID(100 + oi);
+        if (ImGui::SmallButton(layer->visible ? "V" : "-")) {
+          layer->visible = !layer->visible;
+          if (layer->visible) {
+            SURFACE_to_texture(layer->srfc, layer->texture,
+                               layer->srfc->w, layer->srfc->h, 1);
+          } else {
+            int w = layer->srfc->w;
+            int h = layer->srfc->h;
+            Surface blank_srfc = {};
+            blank_srfc.pxls = (uint8_t *)calloc(1, static_cast<size_t>(w) * h);
+            blank_srfc.w = static_cast<uint16_t>(w);
+            blank_srfc.h = static_cast<uint16_t>(h);
+            blank_srfc.pitch = w;
+            blank_srfc.channels = 1;
+            SURFACE_to_texture(&blank_srfc, layer->texture, w, h, 1);
+            free(blank_srfc.pxls);
+          }
+        }
+        ImGui::SameLine();
+        ImGui::Text("%s", (layer->name != nullptr) ? layer->name : "Overlay");
+        ImGui::PopID();
+      }
+    }
+
+    ImVec2 map_child_size = ImGui::GetContentRegionAvail();
+    ImGui::BeginChild("##map_viewport", map_child_size, ImGuiChildFlags_None,
+                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
     if (F_Prop->editing_enabled) {
       // --- Edit mode ---
       image_data *edit_data = &F_Prop->edit_data;
@@ -1339,39 +1375,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
       }
     } else {
       // --- Preview mode ---
-      // Show overlay visibility toggles in preview mode
-      if (img_data->overlay_count > 0 && (F_Prop->wmap != nullptr)) {
-        ImGui::Text("Layers");
-        for (int oi = 0; oi < img_data->overlay_count; oi++) {
-          OverlayLayer *layer = &img_data->overlay[oi];
-          if (layer->srfc == nullptr) { continue;
-}
-          ImGui::SameLine();
-          ImGui::PushID(100 + oi);
-          if (ImGui::SmallButton(layer->visible ? "V" : "-")) {
-            layer->visible = !layer->visible;
-            if (layer->visible) {
-              SURFACE_to_texture(layer->srfc, layer->texture,
-                                 layer->srfc->w, layer->srfc->h, 1);
-            } else {
-              int w = layer->srfc->w;
-              int h = layer->srfc->h;
-              Surface blank_srfc = {};
-              blank_srfc.pxls = (uint8_t *)calloc(1, static_cast<size_t>(w) * h);
-              blank_srfc.w = static_cast<uint16_t>(w);
-              blank_srfc.h = static_cast<uint16_t>(h);
-              blank_srfc.pitch = w;
-              blank_srfc.channels = 1;
-              SURFACE_to_texture(&blank_srfc, layer->texture, w, h, 1);
-              free(blank_srfc.pxls);
-            }
-          }
-          ImGui::SameLine();
-          ImGui::Text("%s", (layer->name != nullptr) ? layer->name : "Overlay");
-          ImGui::PopID();
-        }
-      }
-
       if (img_data->type == img_type::FRM) {
         // show the original image for previewing
         // TODO: finish setting up usr.info.show_image_stats in settings config
@@ -1409,6 +1412,8 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         Gui_Video_Controls(img_data, F_Prop->img_data.type);
       }
     }
+
+    ImGui::EndChild();
 
     if (use_tabs) {
         ImGui::EndTabItem();

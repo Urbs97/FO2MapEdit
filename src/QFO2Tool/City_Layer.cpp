@@ -637,7 +637,7 @@ void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, imag
         float cx = img_pos.x + ((float)area->world_x * scale);
         float cy = img_pos.y + ((float)area->world_y * scale);
         float r = ((float)city_radius(area->size) + 3.0F) * scale;
-        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddCircle(ImVec2(cx, cy), r, IM_COL32(0, 255, 0, 180), 24, 2.0F);
     }
 
@@ -647,7 +647,7 @@ void Edit_City_Layer(variables* vars, ImVec2 img_pos, image_data* img_data, imag
         float cx = img_pos.x + ((float)area->world_x * scale);
         float cy = img_pos.y + ((float)area->world_y * scale);
         float r = ((float)city_radius(area->size) + 4.0F) * scale;
-        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddCircle(ImVec2(cx, cy), r, IM_COL32(255, 255, 0, 220), 24, 2.5F);
     }
 

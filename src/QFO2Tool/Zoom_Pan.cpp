@@ -70,7 +70,7 @@ void zoom_pan(image_data* img_data, ImVec2 focus_point, ImVec2 mouse_delta) {
         zoom(0.95, focus_point, img_data);
     }
 
-    if (ImGui::GetIO().MouseDown[1] && ImGui::IsWindowHovered()) {
+    if (ImGui::GetIO().MouseDown[1] && (ImGui::IsWindowHovered() || ImGui::IsMouseDragging(1))) {
         panning(img_data, mouse_delta);
     }
 
