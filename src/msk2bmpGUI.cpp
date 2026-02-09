@@ -317,6 +317,21 @@ int main(int argc, char **argv) {
   snprintf(vbuffer, sizeof(vbuffer), "%s%s", My_Variables.exe_directory,
            "resources//fonts//OpenSans-Bold.ttf");
   io.Fonts->AddFontDefault();
+
+  // Merge Nerd Font Symbols (icons) into the default font
+  {
+    ImFontConfig cfg;
+    cfg.MergeMode = true;
+    cfg.PixelSnapH = true;
+    cfg.GlyphOffset.y = -2.0F; // nudge icons up to align with text baseline
+    static const ImWchar icon_ranges[] = { 0xe000, 0xf2ff, 0 };
+    char nf_path[MAX_PATH];
+    snprintf(nf_path, sizeof(nf_path), "%s%s", My_Variables.exe_directory,
+             "resources//fonts//SymbolsNerdFontMono-Regular.ttf");
+    io.Fonts->AddFontFromFileTTF(nf_path, static_cast<float>(My_Variables.global_font_size) * 0.6F,
+                                 &cfg, icon_ranges);
+  }
+
   My_Variables.Font =
       io.Fonts->AddFontFromFileTTF(vbuffer, static_cast<float>(My_Variables.global_font_size));
 
@@ -958,6 +973,48 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
   bool was_open = F_Prop->file_open_window;
 
   if (ImGui::Begin(name.c_str(), (&F_Prop->file_open_window), 0)) {
+    bool use_tabs = (F_Prop->wmap != nullptr);
+    bool show_map_content = true;
+
+    // Lookup maps data early so it's available for both the trailing button and the Maps tab
+    maps_txt_data* maps_data = nullptr;
+    if (use_tabs) {
+      int maps_idx = find_overlay(F_Prop->img_data.overlay,
+                                  F_Prop->img_data.overlay_count, LayerType::MAPS);
+      if (maps_idx >= 0) {
+        maps_data = (maps_txt_data*)F_Prop->img_data.overlay[maps_idx].source_data;
+      }
+    }
+
+    if (use_tabs) {
+      if (ImGui::BeginTabBar("##wmap_tabs")) {
+        // Trailing Edit/Done button — styled as plain clickable text with icon
+        {
+          bool is_editing = F_Prop->editing_enabled;
+          ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0, 0, 0, 0));
+          ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0, 0, 0, 0));
+          ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0, 0, 0, 0));
+          char label[32];
+          if (is_editing) {
+              snprintf(label, sizeof(label), "\xef\x80\x8c Done%s",
+                       F_Prop->dirty ? " *" : "");
+          } else {
+              snprintf(label, sizeof(label), "\xef\x81\x80 Edit%s",
+                       F_Prop->dirty ? " *" : "");
+          }
+          if (ImGui::TabItemButton(label,
+                  ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip)) {
+            F_Prop->wmap_edit_toggled = true;
+          }
+          ImGui::PopStyleColor(3);
+        }
+        show_map_content = ImGui::BeginTabItem("Worldmap");
+      } else {
+        show_map_content = false;
+      }
+    }
+
+    if (show_map_content) {
     // set contextual menu for preview window
     if (ImGui::IsWindowFocused()) {
       My_Variables->window_number_focus = counter;
@@ -1101,7 +1158,8 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
 }
       }
 
-      if (img_data->type != img_type::MSK) {
+      if (img_data->type != img_type::MSK && F_Prop->wmap == nullptr) {
+        // For non-wmap: show buttons as before
         if (!F_Prop->editing_enabled) {
           if (ImGui::Button("Enable Editing")) {
             if (img_data->type == img_type::FRM) {
@@ -1110,31 +1168,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
                                  &F_Prop->editing_enabled, alpha_off);
             }
             F_Prop->editing_enabled = true;
-
-            // Auto-create MSK overlay for worldmap projects
-            image_data *img = &F_Prop->img_data;
-            if ((F_Prop->wmap != nullptr) && find_overlay(img->overlay, img->overlay_count, LayerType::MSK) < 0) {
-              int idx = add_overlay(img->overlay, &img->overlay_count,
-                                    LayerType::MSK, LayerBlend::WHITE_MIX, "Mask",
-                                    1.0F, 1.0F, 1.0F, 0.5F);
-              if (idx >= 0) {
-                img->overlay[idx].srfc = Create_8Bit_Surface(img->width, img->height, nullptr);
-                img->overlay[idx].texture = init_texture(img->overlay[idx].srfc,
-                                                        img->overlay[idx].srfc->w,
-                                                        img->overlay[idx].srfc->h, img_type::MSK);
-              }
-            }
-
-            // Auto-switch to city layer if a city is selected
-            {
-              int ci = find_overlay(img->overlay, img->overlay_count, LayerType::CITY);
-              if (ci >= 0) {
-                city_layer_data* cd = (city_layer_data*)img->overlay[ci].source_data;
-                if (cd != nullptr && cd->selected_area >= 0) {
-                  F_Prop->active_layer = ci;
-                }
-              }
-            }
           }
         } else {
           if (ImGui::Button("Disable Editing")) {
@@ -1371,6 +1404,85 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
 
         Gui_Video_Controls(img_data, F_Prop->img_data.type);
       }
+    }
+
+    if (use_tabs) {
+        ImGui::EndTabItem();
+    }
+    } // end show_map_content
+
+    // Handle wmap Edit/Done toggle (runs every frame, regardless of active tab)
+    if (F_Prop->wmap != nullptr && F_Prop->wmap_edit_toggled) {
+      F_Prop->wmap_edit_toggled = false;
+      if (!F_Prop->editing_enabled) {
+        // Initialize edit surfaces if needed (same as Export Worldmap path)
+        if (F_Prop->edit_data.ANM_dir == nullptr) {
+          prep_image_SURFACE(F_Prop, My_Variables->FO_Palette,
+                             My_Variables->color_match_algo, nullptr, false);
+        }
+        F_Prop->editing_enabled = true;
+
+        // Auto-create MSK overlay for worldmap projects
+        image_data *img = &F_Prop->img_data;
+        if (find_overlay(img->overlay, img->overlay_count, LayerType::MSK) < 0) {
+          int idx = add_overlay(img->overlay, &img->overlay_count,
+                                LayerType::MSK, LayerBlend::WHITE_MIX, "Mask",
+                                1.0F, 1.0F, 1.0F, 0.5F);
+          if (idx >= 0) {
+            img->overlay[idx].srfc = Create_8Bit_Surface(img->width, img->height, nullptr);
+            img->overlay[idx].texture = init_texture(img->overlay[idx].srfc,
+                                                    img->overlay[idx].srfc->w,
+                                                    img->overlay[idx].srfc->h, img_type::MSK);
+          }
+        }
+
+        // Auto-switch to city layer if a city is selected
+        {
+          int ci = find_overlay(img->overlay, img->overlay_count, LayerType::CITY);
+          if (ci >= 0) {
+            city_layer_data* cd = (city_layer_data*)img->overlay[ci].source_data;
+            if (cd != nullptr && cd->selected_area >= 0) {
+              F_Prop->active_layer = ci;
+            }
+          }
+        }
+      } else {
+        commit_map_edits(edit_struct, &F_Prop->edit_data);
+        commit_all_overlay_edits(&F_Prop->img_data);
+
+        // Copy map edits to img_data for preview
+        if ((F_Prop->edit_data.ANM_dir != nullptr) && (F_Prop->img_data.ANM_dir != nullptr)) {
+          for (int d = 0; d < 6; d++) {
+            int nf = F_Prop->edit_data.ANM_dir[d].num_frames;
+            for (int f = 0; f < nf; f++) {
+              Surface *src = F_Prop->edit_data.ANM_dir[d].frame_data[f];
+              Surface *dst = F_Prop->img_data.ANM_dir[d].frame_data[f];
+              if ((src == nullptr) || (dst == nullptr)) {
+                continue;
+              }
+              memcpy(dst->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
+            }
+          }
+        }
+
+        // Sync zoom/pan from edit back to preview
+        F_Prop->img_data.scale = F_Prop->edit_data.scale;
+        F_Prop->img_data.offset = F_Prop->edit_data.offset;
+
+        F_Prop->editing_enabled = false;
+        F_Prop->active_layer = -1;
+        My_Variables->edit_image_focused = false;
+      }
+    }
+
+    if (use_tabs) {
+      if (ImGui::BeginTabItem("Maps")) {
+        if (draw_maps_info_panel(maps_data, F_Prop->editing_enabled)) {
+          F_Prop->dirty = true;
+        }
+        ImGui::EndTabItem();
+      }
+      ImGui::EndTabBar();
     }
   }
   show_popup_warnings();
@@ -1864,6 +1976,7 @@ static void NewWmapProject_Dialogs(int *counter,
       if (focus >= 0 && (My_Variables->F_Prop[focus].wmap != nullptr)) {
         if (save_wmap_project(save_path.c_str(),
                               &My_Variables->F_Prop[focus])) {
+          My_Variables->F_Prop[focus].dirty = false;
           add_recent_file(&usr_info, save_path.c_str());
           // Register the save path so find_open_file() can detect
           // this project is already open (prevents duplicate tabs
@@ -2083,6 +2196,7 @@ static void ShowMainMenuBar(int *counter, struct variables *My_Variables) {
           LF *fp = &My_Variables->F_Prop[focus];
           if (fp->wmap->save_path[0] != '\0') {
             save_wmap_project(fp->wmap->save_path, fp);
+            fp->dirty = false;
           } else {
             init_IFD();
             ifd::FileDialog::Instance().Save(
@@ -2151,6 +2265,7 @@ static void ShowMainMenuBar(int *counter, struct variables *My_Variables) {
       LF *fp = &My_Variables->F_Prop[focus];
       if (fp->wmap->save_path[0] != '\0') {
         save_wmap_project(fp->wmap->save_path, fp);
+        fp->dirty = false;
       } else {
         init_IFD();
         ifd::FileDialog::Instance().Save(

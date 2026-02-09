@@ -37,6 +37,7 @@ struct LF {
 
     wmap_info* wmap = nullptr;            // non-null = this slot is a worldmap project
     bool dirty = false;                   // true when unsaved edits exist
+    bool wmap_edit_toggled = false;       // set by trailing Edit/Done button, consumed once
     bool show_close_confirm = false;      // pending "unsaved changes" dialog for tab close
     bool pending_commit_and_save = false; // commit edit_struct → edit_data, then save
 };

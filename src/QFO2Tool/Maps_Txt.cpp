@@ -1,5 +1,6 @@
 #include "Maps_Txt.h"
 
+#include "imgui.h"
 #include "platform_io.h"
 #include "txt_parse_helpers.h"
 
@@ -334,6 +335,161 @@ map_entry* find_map_by_lookup_name(maps_txt_data* data, const char* lookup_name)
         }
     }
     return nullptr;
+}
+
+// --- ImGui panel ---
+
+static void tip(const char* desc) {
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+    ImGui::SetItemTooltip("%s", desc);
+}
+
+bool draw_maps_info_panel(maps_txt_data* data, bool editing) {
+    if (data == nullptr) {
+        ImGui::TextDisabled("MAPS.TXT not loaded");
+        return false;
+    }
+
+    bool modified = false;
+
+    ImGui::Text("Maps: %d entries", data->map_count);
+    ImGui::Separator();
+
+    for (int i = 0; i < data->map_count; i++) {
+        map_entry* m = &data->maps[i];
+
+        ImGui::PushID(i);
+        bool open = ImGui::TreeNodeEx("##map", ImGuiTreeNodeFlags_None, "[%03d] %s", m->map_number,
+                                      m->lookup_name);
+
+        if (!open) {
+            ImGui::SetItemTooltip("%s | saved: %s%s%s", m->map_name, m->saved ? "Yes" : "No",
+                                  m->music[0] != '\0' ? " | music: " : "",
+                                  m->music[0] != '\0' ? m->music : "");
+        }
+
+        if (open) {
+            if (editing) {
+                // --- Edit mode ---
+                ImGui::Text("lookup_name:");
+                ImGui::SameLine();
+                if (ImGui::InputText("##lookup", m->lookup_name, MAP_NAME_LEN)) {
+                    modified = true;
+                }
+                tip("Identifier used by WORLDMAP.TXT and CITY.TXT entrances.");
+
+                ImGui::Text("map_name:");
+                ImGui::SameLine();
+                if (ImGui::InputText("##mapname", m->map_name, MAP_NAME_LEN)) {
+                    modified = true;
+                }
+                tip("Map file in master.dat/maps/.");
+
+                ImGui::Text("music:");
+                ImGui::SameLine();
+                if (ImGui::InputText("##music", m->music, MAP_NAME_LEN)) {
+                    modified = true;
+                }
+                tip("Background music track, without .ACM extension.");
+
+                if (ImGui::Checkbox("saved", &m->saved)) {
+                    modified = true;
+                }
+                tip("Yes for cities (state persists), No for random encounters (resets).");
+
+                if (ImGui::Checkbox("dead_bodies_age", &m->dead_bodies_age)) {
+                    modified = true;
+                }
+                tip("Whether corpses are removed over time.");
+
+                ImGui::Text("can_rest_here:");
+                tip("Whether the player can rest, per elevation (0, 1, 2).");
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Elev 0", &m->can_rest_here[0])) {
+                    modified = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Elev 1", &m->can_rest_here[1])) {
+                    modified = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Elev 2", &m->can_rest_here[2])) {
+                    modified = true;
+                }
+
+                if (ImGui::Checkbox("pipboy_active", &m->pipboy_active)) {
+                    modified = true;
+                }
+                tip("Whether the Pip-Boy is accessible on this map.");
+
+                if (ImGui::Checkbox("state_on", &m->state_on)) {
+                    modified = true;
+                }
+                tip("When On, accessible from city without prior visit.");
+            } else {
+                // --- Read-only mode ---
+                ImGui::Text("lookup_name: %s", m->lookup_name);
+                tip("Identifier used by WORLDMAP.TXT and CITY.TXT entrances.");
+
+                ImGui::Text("map_name: %s", m->map_name);
+                tip("Map file in master.dat/maps/.");
+
+                if (m->music[0] != '\0') {
+                    ImGui::Text("music: %s", m->music);
+                    tip("Background music track, without .ACM extension.");
+                }
+
+                ImGui::Text("saved: %s", m->saved ? "Yes" : "No");
+                tip("Yes for cities (state persists), No for random encounters (resets).");
+
+                if (!m->dead_bodies_age) {
+                    ImGui::Text("dead_bodies_age: No");
+                    tip("Whether corpses are removed over time.");
+                }
+
+                if (!m->can_rest_here[0] || !m->can_rest_here[1] || !m->can_rest_here[2]) {
+                    ImGui::Text("can_rest_here: %s, %s, %s", m->can_rest_here[0] ? "Yes" : "No",
+                                m->can_rest_here[1] ? "Yes" : "No",
+                                m->can_rest_here[2] ? "Yes" : "No");
+                    tip("Whether the player can rest, per elevation (0, 1, 2).");
+                }
+
+                if (!m->pipboy_active) {
+                    ImGui::Text("pipboy_active: No");
+                    tip("Whether the Pip-Boy is accessible on this map.");
+                }
+
+                if (m->state_on) {
+                    ImGui::Text("state: On");
+                    tip("When On, accessible from city without prior visit.");
+                }
+            }
+
+            // Ambient SFX and random start points — read-only in both modes
+            if (m->ambient_sfx_count > 0) {
+                ImGui::Text("ambient_sfx:");
+                tip("Background sound effects with percentage weights.");
+                for (int j = 0; j < m->ambient_sfx_count; j++) {
+                    ImGui::Text("  %s : %d%%", m->ambient_sfx[j].name, m->ambient_sfx[j].weight);
+                }
+            }
+
+            if (m->random_start_count > 0) {
+                ImGui::Text("random_start_points:");
+                tip("Spawn points for random encounters (elevation + tile).");
+                for (int j = 0; j < m->random_start_count; j++) {
+                    ImGui::Text("  [%d] elev: %d, tile: %d", j, m->random_starts[j].elevation,
+                                m->random_starts[j].tile_num);
+                }
+            }
+
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+
+    return modified;
 }
 
 // --- Serialization ---

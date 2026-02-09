@@ -59,3 +59,7 @@ maps_txt_data* deserialize_maps_data(const uint8_t* buf, int size);
 
 // Find a map entry by lookup_name (case-insensitive). Returns nullptr if not found.
 map_entry* find_map_by_lookup_name(maps_txt_data* data, const char* lookup_name);
+
+// ImGui panel listing all map entries as expandable tree nodes.
+// Returns true when any field was modified (edit mode).
+bool draw_maps_info_panel(maps_txt_data* data, bool editing);
