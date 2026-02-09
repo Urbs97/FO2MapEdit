@@ -71,6 +71,7 @@ extern "C" const char *__lsan_default_suppressions() {
 #include "display_FRM_OpenGL.h"
 
 #include "City_Layer.h"
+#include "Maps_Txt.h"
 #include "ImGui_Warning.h"
 #include "Zoom_Pan.h"
 #include "Worldmap_Project.h"
@@ -2203,8 +2204,11 @@ bool save_TILE_popup(LF *F_Prop) {
     int city_i = find_overlay(F_Prop->img_data.overlay, F_Prop->img_data.overlay_count, LayerType::CITY);
     city_layer_data *city =
         (city_i >= 0) ? (city_layer_data *)F_Prop->img_data.overlay[city_i].source_data : nullptr;
+    int maps_i = find_overlay(F_Prop->img_data.overlay, F_Prop->img_data.overlay_count, LayerType::MAPS);
+    maps_txt_data *maps =
+        (maps_i >= 0) ? (maps_txt_data *)F_Prop->img_data.overlay[maps_i].source_data : nullptr;
     open_window =
-        ImDialog_save_TILE_SURFACE(img_data, &usr_info, sv_info, msk, preset, city);
+        ImDialog_save_TILE_SURFACE(img_data, &usr_info, sv_info, msk, preset, city, maps);
   }
   ImGui::End();
 

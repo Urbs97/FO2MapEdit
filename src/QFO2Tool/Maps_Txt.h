@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 
 constexpr int MAX_MAP_ENTRIES = 200;
 constexpr int MAP_NAME_LEN = 48;
@@ -42,9 +41,18 @@ struct maps_txt_data {
     map_entry maps[MAX_MAP_ENTRIES];
 };
 
-// Parse a MAPS.TXT file. Returns nullptr on file load failure.
-std::unique_ptr<maps_txt_data> parse_maps_txt(const char* path);
+// Parse a MAPS.TXT file. Returns nullptr on file load failure. Caller must free().
+maps_txt_data* parse_maps_txt(const char* path);
 
-// Parse MAPS.TXT from an in-memory string.
+// Parse MAPS.TXT from an in-memory string. Caller must free().
 // The input buffer is modified during parsing (nulls inserted).
-std::unique_ptr<maps_txt_data> parse_maps_txt_from_buffer(char* txt);
+maps_txt_data* parse_maps_txt_from_buffer(char* txt);
+
+// Write maps.txt to the given directory. Returns true on success.
+bool write_maps_txt(const char* path, maps_txt_data* data);
+
+// Serialize maps data for .wmap save. Caller must free() returned buffer.
+uint8_t* serialize_maps_data(maps_txt_data* data, int* out_size);
+
+// Deserialize maps data from .wmap load. Caller must free() returned pointer.
+maps_txt_data* deserialize_maps_data(const uint8_t* buf, int size);

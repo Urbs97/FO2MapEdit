@@ -4,6 +4,7 @@
 #include "City_Layer.h"
 #include "ImGui_Warning.h"
 #include "Image2Texture.h"
+#include "Maps_Txt.h"
 #include "display_FRM_OpenGL.h"
 
 #include <algorithm>
@@ -219,11 +220,12 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
         return false;
     }
 
-    // Count layers with valid surface data
+    // Count layers with valid surface data or source_data
     uint32_t num_layers = 0;
     for (int i = 0; i < overlay_src->overlay_count; i++) {
-        if (overlay_src->overlay[i].srfc != nullptr &&
-            overlay_src->overlay[i].srfc->pxls != nullptr) {
+        if ((overlay_src->overlay[i].srfc != nullptr &&
+             overlay_src->overlay[i].srfc->pxls != nullptr) ||
+            overlay_src->overlay[i].source_data != nullptr) {
             num_layers++;
         }
     }
@@ -245,7 +247,8 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
     uint32_t entry_idx = 0;
     for (int i = 0; i < overlay_src->overlay_count; i++) {
         OverlayLayer* layer = &overlay_src->overlay[i];
-        if (layer->srfc == nullptr || layer->srfc->pxls == nullptr) {
+        if ((layer->srfc == nullptr || layer->srfc->pxls == nullptr) &&
+            layer->source_data == nullptr) {
             continue;
         }
 
@@ -259,6 +262,12 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
             if (layer->source_data != nullptr) {
                 int ser_size = 0;
                 blob = serialize_city_data((city_layer_data*)layer->source_data, &ser_size);
+                layer_data_size = (uint32_t)ser_size;
+            }
+        } else if (layer->type == LayerType::MAPS) {
+            if (layer->source_data != nullptr) {
+                int ser_size = 0;
+                blob = serialize_maps_data((maps_txt_data*)layer->source_data, &ser_size);
                 layer_data_size = (uint32_t)ser_size;
             }
         }
@@ -292,9 +301,10 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
         set_popup_warning("[ERROR] save_wmap_project()\n\n"
                           "Unable to open file for writing.");
         printf("Error: save_wmap_project(), unable to open %s for writing: L%d\n", path, __LINE__);
-        // Free any serialized city blobs
+        // Free any serialized blobs (CITY and MAPS are heap-allocated)
         for (uint32_t j = 0; j < num_layers; j++) {
-            if (layer_blobs[j] != nullptr && entries[j].layer_type == (int8_t)LayerType::CITY) {
+            if (layer_blobs[j] != nullptr && (entries[j].layer_type == (int8_t)LayerType::CITY ||
+                                              entries[j].layer_type == (int8_t)LayerType::MAPS)) {
                 free(layer_blobs[j]);
             }
         }
@@ -315,8 +325,9 @@ bool save_wmap_project(const char* path, LF* F_Prop) {
         if (blob_sizes[j] > 0 && layer_blobs[j] != nullptr) {
             fwrite(layer_blobs[j], blob_sizes[j], 1, fp);
         }
-        // Free serialized city blobs (MSK blobs point to srfc->pxls, don't free)
-        if (entries[j].layer_type == (int8_t)LayerType::CITY && layer_blobs[j] != nullptr) {
+        // Free serialized blobs (MSK blobs point to srfc->pxls, don't free)
+        if (layer_blobs[j] != nullptr && (entries[j].layer_type == (int8_t)LayerType::CITY ||
+                                          entries[j].layer_type == (int8_t)LayerType::MAPS)) {
             free(layer_blobs[j]);
         }
     }
@@ -480,6 +491,33 @@ bool load_wmap_project(const char* wmap_path, LF* F_Prop, image_data* img_data,
             free(buf);
             if (cd != nullptr) {
                 create_city_overlay(img_data, cd);
+            }
+        } else if (ltype == LayerType::MAPS) {
+            uint8_t* buf = (uint8_t*)malloc(entries[i].data_size);
+            if (buf == nullptr) {
+                printf("Warning: load_wmap_project(), MAPS buffer alloc failed\n");
+                continue;
+            }
+            fseek(fp, (long)entries[i].data_offset, SEEK_SET);
+            if (fread(buf, entries[i].data_size, 1, fp) != 1) {
+                printf("Warning: load_wmap_project(), failed to read MAPS data\n");
+                free(buf);
+                continue;
+            }
+            maps_txt_data* md = deserialize_maps_data(buf, (int)entries[i].data_size);
+            free(buf);
+            if (md != nullptr) {
+                int idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MAPS,
+                                      LayerBlend::WHITE_MIX, "Maps", 0.0F, 0.0F, 0.0F, 0.0F);
+                if (idx >= 0) {
+                    img_data->overlay[idx].visible = false;
+                    img_data->overlay[idx].editable = false;
+                    img_data->overlay[idx].interactive = false;
+                    img_data->overlay[idx].source_data = md;
+                    img_data->overlay[idx].source_data_size = (int)sizeof(maps_txt_data);
+                } else {
+                    free(md);
+                }
             }
         }
     }
@@ -1092,6 +1130,27 @@ bool import_wmap_from_fo2(const char* data_path, const char* base_name, LF* F_Pr
             create_city_overlay(img_data, cd);
         } else {
             free(cd);
+        }
+    }
+
+    // Attempt MAPS.TXT import
+    char maps_path[MAX_PATH];
+    if (resolve_path_icase(data_path, "data/maps.txt", maps_path, MAX_PATH)) {
+        maps_txt_data* md = parse_maps_txt(maps_path);
+        if (md != nullptr && md->map_count > 0) {
+            int idx = add_overlay(img_data->overlay, &img_data->overlay_count, LayerType::MAPS,
+                                  LayerBlend::WHITE_MIX, "Maps", 0.0F, 0.0F, 0.0F, 0.0F);
+            if (idx >= 0) {
+                img_data->overlay[idx].visible = false;
+                img_data->overlay[idx].editable = false;
+                img_data->overlay[idx].interactive = false;
+                img_data->overlay[idx].source_data = md;
+                img_data->overlay[idx].source_data_size = (int)sizeof(maps_txt_data);
+            } else {
+                free(md);
+            }
+        } else {
+            free(md);
         }
     }
 

@@ -5,6 +5,7 @@
 #include "ImGui_Warning.h"
 #include "Layer.h"
 #include "Load_Settings.h"
+#include "Maps_Txt.h"
 #include "Worldmap_Project.h"
 #include "imgui.h"
 #include "platform_io.h"
@@ -777,7 +778,7 @@ static bool surface_has_data(Surface* srfc) {
 // called 1st
 bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_Info* sv_info,
                                 Surface* msk_srfc, const char* preset_name,
-                                city_layer_data* city_data) {
+                                city_layer_data* city_data, maps_txt_data* maps_data) {
     // TODO: move this to initialize at program start?
     init_IFD();
 
@@ -803,6 +804,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     static int e;
     static bool export_msk_tiles = false;
     static bool export_city_txt = false;
+    static bool export_maps_txt = false;
     static int prev_frame = -1;
     int cur_frame = ImGui::GetFrameCount();
 
@@ -810,6 +812,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     if (cur_frame != prev_frame + 1) {
         export_msk_tiles = (msk_srfc != nullptr) ? surface_has_data(msk_srfc) : false;
         export_city_txt = (city_data != nullptr);
+        export_maps_txt = (maps_data != nullptr);
     }
     prev_frame = cur_frame;
 
@@ -825,6 +828,9 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
     }
     if (city_data != nullptr) {
         ImGui::Checkbox("Also export CITY.TXT", &export_city_txt);
+    }
+    if (maps_data != nullptr) {
+        ImGui::Checkbox("Also export MAPS.TXT", &export_maps_txt);
     }
 
     int num_tiles_x = src->w / MAP_TILE_W;
@@ -934,6 +940,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
                 success = false;
                 export_msk_tiles = false;
                 export_city_txt = false;
+                export_maps_txt = false;
                 ImGui::EndPopup();
                 return false;
             }
@@ -984,11 +991,17 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
             if (export_city_txt && city_data != nullptr) {
                 write_city_txt(data_data, city_data);
             }
+            if (export_maps_txt && maps_data != nullptr) {
+                write_maps_txt(data_data, maps_data);
+            }
         } else {
             write_worldmap_txt(save_folder, save_name, t_x, t_y,
                                export_msk_tiles ? msk_srfc : nullptr);
             if (export_city_txt && city_data != nullptr) {
                 write_city_txt(save_folder, city_data);
+            }
+            if (export_maps_txt && maps_data != nullptr) {
+                write_maps_txt(save_folder, maps_data);
             }
         }
 
@@ -1001,6 +1014,7 @@ bool ImDialog_save_TILE_SURFACE(image_data* img_data, user_info* usr_info, Save_
         success = false;
         export_msk_tiles = false;
         export_city_txt = false;
+        export_maps_txt = false;
         return false;
     }
 

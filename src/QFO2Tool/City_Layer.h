@@ -18,7 +18,7 @@ struct city_entrance {
     char map_name[ENTRANCE_NAME_LEN];
     int16_t elevation;
     int16_t tile_num;
-    uint8_t orientation;
+    int16_t orientation;
 };
 
 struct city_area {

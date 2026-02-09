@@ -136,6 +136,8 @@ city_layer_data* parse_city_txt(const char* path) {
             int ent_num = atoi(key + 9);
             if (ent_num >= 0 && ent_num < MAX_ENTRANCES) {
                 city_entrance* ent = &current->entrances[ent_num];
+                ent->elevation = -1;
+                ent->tile_num = -1;
                 if (ent_num >= current->entrance_count) {
                     current->entrance_count = ent_num + 1;
                 }
@@ -237,7 +239,7 @@ city_layer_data* parse_city_txt(const char* path) {
                 // Read orientation
                 if (p != nullptr) {
                     sscanf(p, "%d", &orient);
-                    ent->orientation = (uint8_t)orient;
+                    ent->orientation = (int16_t)orient;
                 }
             }
         }
@@ -287,9 +289,7 @@ bool write_city_txt(const char* path, city_layer_data* data) {
         fprintf(file, "area_name=%s\n", area->area_name);
         fprintf(file, "world_pos=%d,%d\n", area->world_x, area->world_y);
         fprintf(file, "start_state=%s\n", area->start_state ? "On" : "Off");
-        if (area->lock_state) {
-            fprintf(file, "lock_state=On\n");
-        }
+        fprintf(file, "lock_state=%s\n", area->lock_state ? "On" : "Off");
         fprintf(file, "size=%s\n", city_size_str(area->size));
         fprintf(file, "townmap_art_idx=%d\n", area->townmap_art_idx);
         fprintf(file, "townmap_label_art_idx=%d\n", area->townmap_label_art_idx);
@@ -394,9 +394,9 @@ void render_city_markers(city_layer_data* data, Surface* srfc) {
 // Per area (×MAX_CITY_AREAS):
 //   [48B name][2B x][2B y][1B start][1B lock][1B size][2B art][2B label_art][4B ent_count]
 //   Per entrance (×MAX_ENTRANCES):
-//     [1B enabled][2B x][2B y][48B name][2B elev][2B tile][1B orient]
+//     [1B enabled][2B x][2B y][48B name][2B elev][2B tile][2B orient]
 
-static constexpr int ENTRANCE_SERIAL_SIZE = 1 + 2 + 2 + ENTRANCE_NAME_LEN + 2 + 2 + 1;
+static constexpr int ENTRANCE_SERIAL_SIZE = 1 + 2 + 2 + ENTRANCE_NAME_LEN + 2 + 2 + 2;
 static constexpr int AREA_SERIAL_SIZE =
     CITY_NAME_LEN + 2 + 2 + 1 + 1 + 1 + 2 + 2 + 4 + (MAX_ENTRANCES * ENTRANCE_SERIAL_SIZE);
 static constexpr int CITY_DATA_SERIAL_SIZE = 4 + 4 + (MAX_CITY_AREAS * AREA_SERIAL_SIZE);
@@ -451,7 +451,8 @@ uint8_t* serialize_city_data(city_layer_data* data, int* out_size) {
             p += 2;
             memcpy(p, &ent->tile_num, 2);
             p += 2;
-            *p++ = ent->orientation;
+            memcpy(p, &ent->orientation, 2);
+            p += 2;
         }
     }
 
@@ -514,7 +515,8 @@ city_layer_data* deserialize_city_data(const uint8_t* buf, int size) {
             p += 2;
             memcpy(&ent->tile_num, p, 2);
             p += 2;
-            ent->orientation = *p++;
+            memcpy(&ent->orientation, p, 2);
+            p += 2;
         }
     }
 

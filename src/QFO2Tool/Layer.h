@@ -13,6 +13,7 @@ enum class LayerType : int8_t {
     CITY = 1,      // city placement (structured, interactive, COLOR_MIX green)
     TERRAIN = 2,   // biome types (multi-valued, paint-based, COLOR_MIX per-value)
     ENCOUNTER = 3, // encounter zones (multi-valued, paint-based, COLOR_MIX per-value)
+    MAPS = 4,      // MAPS.TXT data (source_data only, no visual surface)
 };
 
 enum class LayerBlend : int8_t {
