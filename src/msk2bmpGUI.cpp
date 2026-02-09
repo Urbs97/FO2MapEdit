@@ -100,10 +100,7 @@ static char g_import_error[2048] = "";
 static bool g_import_wmap_done = false;
 static bool g_import_error_pending = false;
 
-// Edit state for Show_Preview_Window (file-scope so shutdown can clean up)
-static ANM_Dir g_edit_struct[6];
-static StrokeState g_stroke_state;
-static LF *g_edit_state_owner = nullptr;
+// (edit_struct and stroke_state are now per-window fields on LF)
 
 // Function declarations
 void Show_Preview_Window(variables *My_Variables, LF *F_Prop, int counter);
@@ -691,9 +688,22 @@ int main(int argc, char **argv) {
     std::remove(ini_path);
   }
 
-  stroke_state_cleanup(&g_stroke_state);
-
   for (auto & i : My_Variables.F_Prop) {
+    stroke_state_cleanup(&i.stroke_state);
+    // Free per-window edit_struct surfaces
+    for (int d = 0; d < 6; d++) {
+      if (i.edit_struct[d].frame_data != nullptr) {
+        int nf = (i.edit_data.ANM_dir != nullptr && i.edit_data.ANM_dir[d].num_frames > 0)
+                     ? i.edit_data.ANM_dir[d].num_frames : 0;
+        for (int f = 0; f < nf; f++) {
+          if (i.edit_struct[d].frame_data[f] != nullptr) {
+            FreeSurface(i.edit_struct[d].frame_data[f]);
+          }
+        }
+        free(static_cast<void*>(i.edit_struct[d].frame_data));
+        i.edit_struct[d].frame_data = nullptr;
+      }
+    }
     Clear_img_data(&i.img_data);
     Clear_img_data(&i.edit_data);
     free(i.wmap);
@@ -921,24 +931,20 @@ void draw_layer_panel(LF *F_Prop, shader_info *shaders, image_data *img_data) {
 }
 
 // Commit edit surfaces to edit_data and copy to img_data, then save the
-// project. edit_struct is only valid for the file that owns the static edit
-// state.
-static void commit_and_save_edits(LF *F_Prop, LF *edit_state_owner,
-                                  ANM_Dir edit_struct[6]) {
-  if (F_Prop == edit_state_owner) {
-    commit_map_edits(edit_struct, &F_Prop->edit_data);
-    commit_all_overlay_edits(&F_Prop->img_data);
-    if ((F_Prop->edit_data.ANM_dir != nullptr) && (F_Prop->img_data.ANM_dir != nullptr)) {
-      for (int d = 0; d < 6; d++) {
-        int nf = F_Prop->edit_data.ANM_dir[d].num_frames;
-        for (int f = 0; f < nf; f++) {
-          Surface *src = F_Prop->edit_data.ANM_dir[d].frame_data[f];
-          Surface *dst = F_Prop->img_data.ANM_dir[d].frame_data[f];
-          if ((src == nullptr) || (dst == nullptr)) {
-            continue;
-}
-          memcpy(dst->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
+// project. Each window now owns its own edit_struct.
+static void commit_and_save_edits(LF *F_Prop) {
+  commit_map_edits(F_Prop->edit_struct, &F_Prop->edit_data);
+  commit_all_overlay_edits(&F_Prop->img_data);
+  if ((F_Prop->edit_data.ANM_dir != nullptr) && (F_Prop->img_data.ANM_dir != nullptr)) {
+    for (int d = 0; d < 6; d++) {
+      int nf = F_Prop->edit_data.ANM_dir[d].num_frames;
+      for (int f = 0; f < nf; f++) {
+        Surface *src = F_Prop->edit_data.ANM_dir[d].frame_data[f];
+        Surface *dst = F_Prop->img_data.ANM_dir[d].frame_data[f];
+        if ((src == nullptr) || (dst == nullptr)) {
+          continue;
         }
+        memcpy(dst->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
       }
     }
   }
@@ -960,10 +966,9 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
   shader_info *shaders = &My_Variables->shaders;
   image_data *img_data = &F_Prop->img_data;
 
-  // Edit state aliases (file-scope globals, so shutdown can clean up)
-  ANM_Dir (&edit_struct)[6] = g_edit_struct;
-  StrokeState &stroke_state = g_stroke_state;
-  LF *(&edit_state_owner) = g_edit_state_owner;
+  // Per-window edit state
+  ANM_Dir (&edit_struct)[6] = F_Prop->edit_struct;
+  StrokeState &stroke_state = F_Prop->stroke_state;
 
   std::string a = F_Prop->c_name;
   char b[3];
@@ -1286,7 +1291,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         if (edit_struct[0].frame_data == nullptr) {
           init_edit_struct_ANM(edit_struct, edit_data,
                                My_Variables->FO_Palette);
-          edit_state_owner = F_Prop;
         }
         // Initialize overlay edit surfaces on demand
         for (int oi = 0; oi < F_Prop->img_data.overlay_count; oi++) {
@@ -1507,7 +1511,7 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
     ImGui::Text("You have unsaved edits.");
     ImGui::Separator();
     if (ImGui::Button("Save & Close")) {
-      commit_and_save_edits(F_Prop, edit_state_owner, edit_struct);
+      commit_and_save_edits(F_Prop);
       F_Prop->editing_enabled = false;
       F_Prop->active_layer = -1;
       F_Prop->file_open_window = false;
@@ -1531,13 +1535,12 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
 
   // Commit edits and save before cleanup frees the statics
   if (F_Prop->pending_commit_and_save && !F_Prop->editing_enabled) {
-    commit_and_save_edits(F_Prop, edit_state_owner, edit_struct);
+    commit_and_save_edits(F_Prop);
     F_Prop->pending_commit_and_save = false;
   }
 
-  // Cleanup when editing is disabled — only for the window that owns the
-  // statics
-  if (!F_Prop->editing_enabled && F_Prop == edit_state_owner) {
+  // Cleanup when editing is disabled for this window
+  if (!F_Prop->editing_enabled && edit_struct[0].frame_data != nullptr) {
     stroke_state_cleanup(&stroke_state);
     // Cleanup overlay edit surfaces
     for (int oi = 0; oi < F_Prop->img_data.overlay_count; oi++) {
@@ -1560,7 +1563,6 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
       free(static_cast<void*>(edit_struct[i].frame_data));
       edit_struct[i].frame_data = nullptr;
     }
-    edit_state_owner = nullptr;
   }
 
   // Preview tiles from red boxes
@@ -1827,9 +1829,8 @@ static void ShowShortcutsWindow(bool *p_open) {
         {"Animation", "Down Arrow", "Previous orientation"},
         {"View", "Ctrl+Mouse Wheel", "Zoom in/out"},
         {"View", "Right Mouse Drag", "Pan image"},
-        {"Editing", "Escape", "Cancel stroke"},
+        {"Editing", "Escape", "Exit edit mode / Cancel stroke"},
         {"Editing", "Right Click (in stroke)", "Cancel stroke"},
-        {"General", "Escape", "Close application"},
     };
 
     for (auto &e : entries) {
@@ -2256,6 +2257,14 @@ static void ShowMainMenuBar(int *counter, struct variables *My_Variables) {
   game_path_set_POPUP(&usr_info);
   game_path_NOT_set_POPUP();
   NewWmapProject_Dialogs(counter, My_Variables);
+
+  // Escape shortcut to exit edit mode
+  if (ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteGlobal)) {
+    int focus = My_Variables->window_number_focus;
+    if (focus >= 0 && My_Variables->F_Prop[focus].editing_enabled) {
+      My_Variables->F_Prop[focus].wmap_edit_toggled = true;
+    }
+  }
 
   // Ctrl+S shortcut for saving worldmap projects
   if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S,

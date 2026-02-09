@@ -1,5 +1,7 @@
 #pragma once
+#include "Load_Animation.h"
 #include "Load_Settings.h"
+#include "Stroke_State.h"
 #include "load_FRM_OpenGL.h"
 #include "shader_class.h"
 
@@ -40,6 +42,9 @@ struct LF {
     bool wmap_edit_toggled = false;       // set by trailing Edit/Done button, consumed once
     bool show_close_confirm = false;      // pending "unsaved changes" dialog for tab close
     bool pending_commit_and_save = false; // commit edit_struct → edit_data, then save
+
+    ANM_Dir edit_struct[6]{};   // per-window edit pixel buffers
+    StrokeState stroke_state{}; // per-window undo/redo stroke state
 };
 
 struct shader_info {
