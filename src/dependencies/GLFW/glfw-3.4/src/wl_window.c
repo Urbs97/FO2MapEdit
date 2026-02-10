@@ -2203,6 +2203,12 @@ void _glfwDestroyWindowWayland(_GLFWwindow* window)
 
     destroyShellObjects(window);
 
+    if (window->wl.fractionalScale)
+        wp_fractional_scale_v1_destroy(window->wl.fractionalScale);
+
+    if (window->wl.scalingViewport)
+        wp_viewport_destroy(window->wl.scalingViewport);
+
     if (window->wl.fallback.buffer)
         wl_buffer_destroy(window->wl.fallback.buffer);
 

@@ -353,7 +353,7 @@ namespace ifd {
 
 	FileDialog::FileDialog() {
 		m_isOpen = false;
-		m_type = 0;
+		m_type = DialogType::File;
 		m_calledOpenPopup = false;
 		m_sortColumn = 0;
 		m_sortDirection = ImGuiSortDirection_Ascending;
@@ -463,7 +463,7 @@ namespace ifd {
 		m_selections.clear();
 		m_selectedFileItem = -1;
 		m_isMultiselect = false;
-		m_type = IFD_DIALOG_SAVE;
+		m_type = DialogType::Save;
 
 		m_parseFilter(filter);
 		if (!startingDir.empty())
@@ -487,7 +487,7 @@ namespace ifd {
 		m_selections.clear();
 		m_selectedFileItem = -1;
 		m_isMultiselect = isMultiselect;
-		m_type = filter.empty() ? IFD_DIALOG_DIRECTORY : IFD_DIALOG_FILE;
+		m_type = filter.empty() ? DialogType::Directory : DialogType::File;
 
 		m_parseFilter(filter);
 		if (!startingDir.empty())
@@ -611,14 +611,14 @@ namespace ifd {
 
 	bool FileDialog::m_finalize(const std::string& filename)
 	{
-		bool hasResult = (!filename.empty() && m_type != IFD_DIALOG_DIRECTORY) || m_type == IFD_DIALOG_DIRECTORY;
+		bool hasResult = (!filename.empty() && m_type != DialogType::Directory) || m_type == DialogType::Directory;
 		
 		if (hasResult) {
 			if (!m_isMultiselect || m_selections.size() <= 1) {
 				std::filesystem::path path = std::filesystem::u8path(filename);
 				if (path.is_absolute()) m_result.push_back(path);
 				else m_result.push_back(m_currentDirectory / path);
-				if (m_type == IFD_DIALOG_DIRECTORY || m_type == IFD_DIALOG_FILE) {
+				if (m_type == DialogType::Directory || m_type == DialogType::File) {
 					if (!std::filesystem::exists(m_result.back())) {
 						m_result.clear();
 						return false;
@@ -629,7 +629,7 @@ namespace ifd {
 				for (const auto& sel : m_selections) {
 					if (sel.is_absolute()) m_result.push_back(sel);
 					else m_result.push_back(m_currentDirectory / sel);
-					if (m_type == IFD_DIALOG_DIRECTORY || m_type == IFD_DIALOG_FILE) {
+					if (m_type == DialogType::Directory || m_type == DialogType::File) {
 						if (!std::filesystem::exists(m_result.back())) {
 							m_result.clear();
 							return false;
@@ -638,7 +638,7 @@ namespace ifd {
 				}
 			}
 			
-			if (m_type == IFD_DIALOG_SAVE) {
+			if (m_type == DialogType::Save) {
 				// add the extension
 				if (m_filterSelection < m_filterExtensions.size() && m_filterExtensions[m_filterSelection].size() > 0) {
 					if (!m_result.back().has_extension()) {
@@ -937,7 +937,7 @@ namespace ifd {
 		m_content.clear();
 		m_selectedFileItem = -1;
 
-		if (m_type == IFD_DIALOG_DIRECTORY || m_type == IFD_DIALOG_FILE)
+		if (m_type == DialogType::Directory || m_type == DialogType::File)
 			m_inputTextbox[0] = 0;
 		m_selections.clear();
 
@@ -966,8 +966,8 @@ namespace ifd {
 				for (const auto& entry : std::filesystem::directory_iterator(m_currentDirectory, ec)) {
 					FileData info(entry.path());
 
-					// skip files when IFD_DIALOG_DIRECTORY
-					if (!info.IsDirectory && m_type == IFD_DIALOG_DIRECTORY)
+					// skip files when DialogType::Directory
+					if (!info.IsDirectory && m_type == DialogType::Directory)
 						continue;
 
 					// check if filename matches search query
@@ -984,7 +984,7 @@ namespace ifd {
 					}
 
 					// check if extension matches
-					if (!info.IsDirectory && m_type != IFD_DIALOG_DIRECTORY) {
+					if (!info.IsDirectory && m_type != DialogType::Directory) {
 						if (m_filterSelection < m_filterExtensions.size()) {
 							const auto& exts = m_filterExtensions[m_filterSelection];
 							if (exts.size() > 0) {
@@ -1143,7 +1143,7 @@ namespace ifd {
 							} else
 								m_finalize(filename);
 						} else {
-							if ((isDir && m_type == IFD_DIALOG_DIRECTORY) || !isDir)
+							if ((isDir && m_type == DialogType::Directory) || !isDir)
 								m_select(entry.Path, ImGui::GetIO().KeyCtrl);
 						}
 					}
@@ -1196,7 +1196,7 @@ namespace ifd {
 							m_finalize(filename);
 					}
 					else {
-						if ((isDir && m_type == IFD_DIALOG_DIRECTORY) || !isDir)
+						if ((isDir && m_type == DialogType::Directory) || !isDir)
 							m_select(entry.Path, ImGui::GetIO().KeyCtrl);
 					}
 				}
@@ -1371,7 +1371,7 @@ namespace ifd {
 		/***** BOTTOM BAR *****/
 		ImGui::Text("File name:");
 		ImGui::SameLine();
-		if (ImGui::InputTextEx("##file_input", "Filename", m_inputTextbox, 1024, ImVec2((m_type != IFD_DIALOG_DIRECTORY) ? -250.0f : -FLT_MIN, 0), ImGuiInputTextFlags_EnterReturnsTrue)) {
+		if (ImGui::InputTextEx("##file_input", "Filename", m_inputTextbox, 1024, ImVec2((m_type != DialogType::Directory) ? -250.0f : -FLT_MIN, 0), ImGuiInputTextFlags_EnterReturnsTrue)) {
 			bool success = m_finalize(std::string(m_inputTextbox));
 #ifdef _WIN32
 			if (!success)
@@ -1380,7 +1380,7 @@ namespace ifd {
 			(void)success;
 #endif
 		}
-		if (m_type != IFD_DIALOG_DIRECTORY) {
+		if (m_type != DialogType::Directory) {
 			ImGui::SameLine();
 			ImGui::SetNextItemWidth(-FLT_MIN);
 			int sel = static_cast<int>(m_filterSelection);
@@ -1393,10 +1393,10 @@ namespace ifd {
 		// buttons
 		float ok_cancel_width = GUI_ELEMENT_SIZE * 7;
 		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - ok_cancel_width);
-		if (ImGui::Button(m_type == IFD_DIALOG_SAVE ? "Save" : "Open", ImVec2(ok_cancel_width / 2 - ImGui::GetStyle().ItemSpacing.x, 0.0f))) {
+		if (ImGui::Button(m_type == DialogType::Save ? "Save" : "Open", ImVec2(ok_cancel_width / 2 - ImGui::GetStyle().ItemSpacing.x, 0.0f))) {
 			std::string filename(m_inputTextbox);
 			bool success = false;
-			if (!filename.empty() || m_type == IFD_DIALOG_DIRECTORY)
+			if (!filename.empty() || m_type == DialogType::Directory)
 				success = m_finalize(filename);
 #ifdef _WIN32
 			if (!success)
@@ -1407,7 +1407,7 @@ namespace ifd {
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Cancel", ImVec2(-FLT_MIN, 0.0f))) {
-			if (m_type == IFD_DIALOG_DIRECTORY)
+			if (m_type == DialogType::Directory)
 				m_isOpen = false;
 			else
 				m_finalize();

@@ -63,6 +63,12 @@ add_library(FO2MapEditLib
   Maps_Txt.h
   Maps_Txt.cpp
   txt_parse_helpers.h
+  dat2/dat2_io.h
+  dat2/dat2_io.cpp
+  dat2/dat2_archive.h
+  dat2/dat2_archive.cpp
+  dat2/dat2_tree_view.h
+  dat2/dat2_tree_view.cpp
 )
 
 #these need to be located after add_library()
@@ -82,6 +88,8 @@ target_compile_definitions(
   PUBLIC QFO2_LINUX
 )
 endif()
+
+target_link_libraries(FO2MapEditLib PUBLIC ZLIB::ZLIB)
 
 target_include_directories(
   FO2MapEditLib SYSTEM PUBLIC

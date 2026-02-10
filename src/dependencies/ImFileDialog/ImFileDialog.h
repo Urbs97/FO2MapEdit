@@ -1,4 +1,5 @@
 #pragma once
+#include <cstring>
 #include <ctime>
 #include <stack>
 #include <string>
@@ -9,14 +10,16 @@
 #include <unordered_map>
 #include <algorithm> // std::min, std::max
 
-#define IFD_DIALOG_FILE			0
-#define IFD_DIALOG_DIRECTORY	1
-#define IFD_DIALOG_SAVE			2
-
 namespace ifd {
+	enum class DialogType : uint8_t {
+		File      = 0,
+		Directory = 1,
+		Save      = 2,
+	};
+
 	class FileDialog {
 	public:
-		static inline FileDialog& Instance()
+		static FileDialog& Instance()
 		{
 			static FileDialog ret;
 			return ret;
@@ -24,6 +27,10 @@ namespace ifd {
 
 		FileDialog();
 		~FileDialog();
+		FileDialog(const FileDialog&) = delete;
+		FileDialog& operator=(const FileDialog&) = delete;
+		FileDialog(FileDialog&&) = delete;
+		FileDialog& operator=(FileDialog&&) = delete;
 
 		bool Save(const std::string& key, const std::string& title, const std::string& filter, const std::string& startingDir = "");
 
@@ -31,24 +38,29 @@ namespace ifd {
 
 		bool IsDone(const std::string& key);
 
-		inline bool HasResult() { return m_result.size(); }
-		inline const std::filesystem::path& GetResult() { return m_result[0]; }
-		inline const std::vector<std::filesystem::path>& GetResults() { return m_result; }
+		bool HasResult() { return static_cast<unsigned int>(!m_result.empty()) != 0U; }
+		const std::filesystem::path& GetResult() { return m_result[0]; }
+		const std::vector<std::filesystem::path>& GetResults() { return m_result; }
 
 		void Close();
 
 		void RemoveFavorite(const std::string& path);
 		void AddFavorite(const std::string& path);
-		inline const std::vector<std::string>& GetFavorites() { return m_favorites; }
+		const std::vector<std::string>& GetFavorites() { return m_favorites; }
 
-		inline void SetZoom(float z) { 
-			m_zoom = std::min<float>(25.0f, std::max<float>(1.0f, z)); 
+		void SetFilename(const char* name) {
+			strncpy(m_inputTextbox, name, sizeof(m_inputTextbox) - 1);
+			m_inputTextbox[sizeof(m_inputTextbox) - 1] = '\0';
+		}
+
+		void SetZoom(float z) {
+			m_zoom = std::min<float>(25.0F, std::max<float>(1.0F, z)); 
 			m_refreshIconPreview();
 		}
-		inline float GetZoom() { return m_zoom; }
+		float GetZoom() const { return m_zoom; }
 
-		std::function<void*(uint8_t*, int, int, char)> CreateTexture; // char -> fmt -> { 0 = BGRA, 1 = RGBA }
-		std::function<void(void*)> DeleteTexture;
+		std::function<void*(uint8_t*, int, int, char)> CreateTexture; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes) — public callback by design
+		std::function<void(void*)> DeleteTexture;                   // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 
 		class FileTreeNode {
 		public:
@@ -59,13 +71,13 @@ namespace ifd {
 			}
 #endif
 
-			FileTreeNode(const std::string& path) {
+			FileTreeNode(const std::string& path)  {
 				Path = std::filesystem::u8path(path);
-				Read = false;
+				
 			}
 
 			std::filesystem::path Path;
-			bool Read;
+			bool Read{false};
 			std::vector<FileTreeNode*> Children;
 		};
 		class FileData {
@@ -89,7 +101,7 @@ namespace ifd {
 		std::filesystem::path m_currentDirectory;
 		bool m_isMultiselect;
 		bool m_isOpen;
-		uint8_t m_type;
+		DialogType m_type;
 		char m_inputTextbox[1024];
 		char m_pathBuffer[1024];
 		char m_newEntryBuffer[1024];

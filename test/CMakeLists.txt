@@ -16,6 +16,9 @@ add_executable(tests
     test_frm_write.cpp
     test_palettize.cpp
     test_maps_txt.cpp
+    dat2/test_dat2_io.cpp
+    dat2/test_dat2_parse.cpp
+    dat2/test_dat2_extract.cpp
 )
 target_link_libraries(tests PRIVATE
     FO2MapEditLib

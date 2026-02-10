@@ -16,6 +16,7 @@
 #include "Load_Settings.h"
 #include "MSK_Convert.h"
 #include "Worldmap_Project.h"
+#include "dat2/dat2_tree_view.h"
 #include "display_FRM_OpenGL.h"
 #include "platform_io.h"
 
@@ -621,15 +622,16 @@ bool ImDialog_load_files(LF* F_Prop, image_data* img_data, user_info* usr_info,
     static char load_name[MAX_PATH];
     if (ImGui::Button("Load File")) {
         const char* ext_filter = nullptr;
-        ext_filter = "FRM/MSK/WMAP and image files"
+        ext_filter = "FRM/MSK/WMAP/DAT and image files"
                      "(*.png;"
                      // "*.apng;"
-                     "*.jpg;*.jpeg;*.frm;*.fr0-5;*.msk;*.wmap;)"
+                     "*.jpg;*.jpeg;*.frm;*.fr0-5;*.msk;*.wmap;*.dat;)"
                      "{.fr0,.FR0,.fr1,.FR1,.fr2,.FR2,.fr3,.FR3,.fr4,.FR4,.fr5,.FR5,"
                      ".png,.jpg,.jpeg,"
                      ".frm,.FRM,"
                      ".msk,.MSK,"
                      ".wmap,.WMAP,"
+                     ".dat,.DAT,"
                      "}";
 
         char* folder = usr_info->default_load_path;
@@ -730,6 +732,9 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
         if (!F_Prop->file_open_window) {
             return false;
         }
+    } else if (io_strncmp(F_Prop->extension, "DAT", 4) == 0) {
+        F_Prop->file_open_window = load_dat_archive(F_Prop);
+        return F_Prop->file_open_window; // DAT has no image data — skip ANM_dir checks below
     }
     // TODO: add another type for known generic image types?
     else { // all other more common (generic) image types

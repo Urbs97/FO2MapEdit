@@ -52,38 +52,41 @@ static const char* TEST_DATA = "; Test MAPS.TXT - fictional data for unit testin
 
 TEST_CASE("parse_maps_txt_from_buffer parses map count") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     CHECK(data->map_count == 4);
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer parses map numbers") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     REQUIRE(data->map_count == 4);
     CHECK(data->maps[0].map_number == 0);
     CHECK(data->maps[1].map_number == 1);
     CHECK(data->maps[2].map_number == 2);
     CHECK(data->maps[3].map_number == 3);
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer parses lookup_name") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     CHECK(strcmp(data->maps[0].lookup_name, "Wasteland Encounter 1") == 0);
     CHECK(strcmp(data->maps[1].lookup_name, "Hometown Village") == 0);
     CHECK(strcmp(data->maps[2].lookup_name, "Old Mine Shaft") == 0);
     CHECK(strcmp(data->maps[3].lookup_name, "Minimal Map") == 0);
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer parses map_name and music") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     CHECK(strcmp(data->maps[0].map_name, "waste1") == 0);
     CHECK(strcmp(data->maps[0].music, "07theme") == 0);
@@ -93,12 +96,13 @@ TEST_CASE("parse_maps_txt_from_buffer parses map_name and music") {
     CHECK(strcmp(data->maps[2].music, "13caves") == 0);
     CHECK(strcmp(data->maps[3].map_name, "minimal") == 0);
     CHECK(strcmp(data->maps[3].music, "01basic") == 0);
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer parses ambient_sfx") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
 
     // Map 0: 4 entries
@@ -122,33 +126,36 @@ TEST_CASE("parse_maps_txt_from_buffer parses ambient_sfx") {
     // Map 3: no ambient_sfx
     CHECK(data->maps[3].ambient_sfx_count == 0);
 
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer parses saved flag") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     CHECK(data->maps[0].saved == false);
     CHECK(data->maps[1].saved == true);
     CHECK(data->maps[2].saved == true);
     CHECK(data->maps[3].saved == true);
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer parses dead_bodies_age") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     CHECK(data->maps[0].dead_bodies_age == false); // explicit No
     CHECK(data->maps[1].dead_bodies_age == true);  // default
     CHECK(data->maps[2].dead_bodies_age == true);  // default
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer parses can_rest_here") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
 
     // Map 0: explicit No,No,No
@@ -166,12 +173,13 @@ TEST_CASE("parse_maps_txt_from_buffer parses can_rest_here") {
     CHECK(data->maps[2].can_rest_here[1] == false);
     CHECK(data->maps[2].can_rest_here[2] == false);
 
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer parses random_start_points") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
 
     // Map 0: 2 random start points
@@ -184,41 +192,46 @@ TEST_CASE("parse_maps_txt_from_buffer parses random_start_points") {
     // Map 1: no random starts
     CHECK(data->maps[1].random_start_count == 0);
 
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer parses pipboy_active") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     CHECK(data->maps[2].pipboy_active == false); // explicit No
     CHECK(data->maps[1].pipboy_active == true);  // default
     CHECK(data->maps[0].pipboy_active == true);  // default
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer parses state") {
     char* buf = make_buffer(TEST_DATA);
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     CHECK(data->maps[2].state_on == true);  // explicit On
     CHECK(data->maps[0].state_on == false); // default
     CHECK(data->maps[1].state_on == false); // default
+    free(data);
     free(buf);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer handles empty input") {
     char buf[] = "";
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     CHECK(data->map_count == 0);
+    free(data);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer skips comment-only lines") {
     char buf[] = "; this is a comment\n; another comment\n";
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     CHECK(data->map_count == 0);
+    free(data);
 }
 
 TEST_CASE("parse_maps_txt_from_buffer inline comments stripped") {
@@ -227,10 +240,11 @@ TEST_CASE("parse_maps_txt_from_buffer inline comments stripped") {
                  "map_name=testmap\n"
                  "music=01test\n"
                  "saved=Yes\t; Verified 8/18\n";
-    auto data = parse_maps_txt_from_buffer(buf);
+    auto* data = parse_maps_txt_from_buffer(buf);
     REQUIRE(data != nullptr);
     REQUIRE(data->map_count == 1);
     CHECK(data->maps[0].saved == true);
     CHECK(data->maps[0].map_number == 50);
     CHECK(strcmp(data->maps[0].lookup_name, "Test Place") == 0);
+    free(data);
 }

@@ -26,6 +26,8 @@ project(
   # ${PROJECT_NAME} VERSION 0.1.0
   # DESCRIPTION "${PROJECT_NAME}"
 )
+
+find_package(ZLIB REQUIRED)
 set(EXECUTABLE_NAME "FO2MapEdit")
 add_executable(${EXECUTABLE_NAME})
 
