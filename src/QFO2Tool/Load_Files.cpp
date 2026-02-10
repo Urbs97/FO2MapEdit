@@ -660,6 +660,8 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
         return false;
     }
 
+    F_Prop->file_type = entry;
+
     if (!entry->open(F_Prop, shaders, img_data)) {
         return false;
     }

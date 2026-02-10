@@ -3,6 +3,7 @@
 
 #include "Edit_Image.h"
 
+#include "ImGui_Warning.h"
 #include "Load_Files.h"
 #include "Zoom_Pan.h"
 #include "display_FRM_OpenGL.h"
@@ -511,4 +512,170 @@ void draw_pixel_grid(image_data* edit_data, ImVec2 img_pos, int active_layer) {
     }
 
     draw_list->PopClipRect();
+}
+
+// TODO: need to add direct MSK file editing
+//       probably in a different function?
+void init_edit_struct_ANM(ANM_Dir* edit_struct, image_data* edit_data, Palette* palette) {
+    // this is for editing MSK files when loading them solo
+    if (edit_data->ANM_dir == nullptr) {
+        // edit_data->display_orient_num = 0;
+        // edit_data->FRM_hdr
+        edit_struct[0].frame_data = (Surface**)malloc(sizeof(Surface*));
+        if (edit_struct[0].frame_data == nullptr) {
+            // TODO: log out to txt file
+            set_popup_warning("[ERROR] init_edit_struct_ANM()\n\n"
+                              "Unable to allocate memory for edit_frame.\n");
+            printf("Unable to allocate memory for edit_frame: %d\n", __LINE__);
+            return;
+        }
+        edit_struct[0].frame_data[0] =
+            Create_8Bit_Surface(edit_data->width, edit_data->height, palette);
+        if (edit_struct[0].frame_data[0] == nullptr) {
+            free(static_cast<void*>(edit_struct[0].frame_data));
+            // TODO: log out to txt file
+            set_popup_warning("[ERROR] init_edit_struct_ANM()\n\n"
+                              "Unable to create 8bit surface.\n");
+            printf("Unable to create 8bit surface: %d\n", __LINE__);
+            return;
+        }
+        edit_data->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir));
+        if (edit_data->ANM_dir == nullptr) {
+            free(static_cast<void*>(edit_struct[0].frame_data));
+            FreeSurface(edit_struct[0].frame_data[0]);
+            // TODO: log out to txt file
+            set_popup_warning("[ERROR] init_edit_struct_ANM()\n\n"
+                              "Unable to create 8bit surface.\n");
+            printf("Unable to create 8bit surface: %d\n", __LINE__);
+            return;
+        }
+        edit_data->ANM_dir[0].orientation = Direction::NE;
+        edit_data->save_ptr = edit_struct;
+        return;
+    }
+
+    for (int dir = 0; dir < 6; dir++) {
+        int num_frames = edit_data->ANM_dir[dir].num_frames;
+        edit_struct[dir].frame_data = (Surface**)malloc(num_frames * sizeof(Surface*));
+
+        for (int frame = 0; frame < num_frames; frame++) {
+            if (edit_data->ANM_dir[dir].frame_data == nullptr) {
+                break;
+            }
+
+            // TODO: maybe this needs to be "edit_data->FRM_dir[0].bounding_box.x1"
+            // etc?
+            //       doing this might make it easier to edit a frame (maybe fewer
+            //       crashes?) but doing this and painting outside the official
+            //       Frame_Width/_Height would have to be dealt with by expanding the
+            //       _Width/_Height whenever this happens AND give the user some
+            //       feedback that this is happening
+            Surface* src = edit_data->ANM_dir[dir].frame_data[frame];
+            Surface* dst = Create_8Bit_Surface(src->w, src->h, palette);
+
+            memcpy(dst->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
+
+            edit_struct[dir].frame_data[frame] = dst;
+        }
+    }
+    edit_data->save_ptr = edit_struct;
+}
+
+void commit_all_overlay_edits(image_data* edit_data) {
+    for (int i = 0; i < edit_data->overlay_count; i++) {
+        commit_layer_edits(&edit_data->overlay[i]);
+    }
+}
+
+void commit_map_edits(ANM_Dir* edit_struct, image_data* edit_data) {
+    if ((edit_struct == nullptr) || (edit_data->ANM_dir == nullptr)) {
+        return;
+    }
+    for (int dir = 0; dir < 6; dir++) {
+        int num_frames = edit_data->ANM_dir[dir].num_frames;
+        if (edit_struct[dir].frame_data == nullptr) {
+            continue;
+        }
+        for (int frame = 0; frame < num_frames; frame++) {
+            Surface* src = edit_struct[dir].frame_data[frame];
+            Surface* dst = edit_data->ANM_dir[dir].frame_data[frame];
+            if ((src == nullptr) || (dst == nullptr)) {
+                continue;
+            }
+            if (src->w != dst->w || src->h != dst->h) {
+                continue;
+            }
+            memcpy(dst->pxls, src->pxls, static_cast<size_t>(src->w) * src->h);
+        }
+    }
+}
+
+// Layer panel — allows switching between Map and overlay layers
+void draw_layer_panel(LF* F_Prop, shader_info* shaders, image_data* img_data) {
+    ImGui::Separator();
+    ImGui::Text("Layers");
+
+    // Map layer (always shown)
+    {
+        bool selected = (F_Prop->active_layer == -1);
+        if (ImGui::Selectable("  Map", selected)) {
+            // Commit overlay working buffer before switching away
+            if (F_Prop->active_layer >= 0 && F_Prop->active_layer < img_data->overlay_count) {
+                commit_layer_edits(&img_data->overlay[F_Prop->active_layer]);
+            }
+            F_Prop->active_layer = -1;
+        }
+    }
+
+    // Overlay layers
+    for (int i = 0; i < img_data->overlay_count; i++) {
+        OverlayLayer* layer = &img_data->overlay[i];
+        if (layer->type == LayerType::NONE || layer->srfc == nullptr) {
+            continue;
+        }
+
+        ImGui::PushID(i);
+        // Visibility toggle
+        if (ImGui::SmallButton(layer->visible ? "V" : "-")) {
+            layer->visible = !layer->visible;
+            if (!layer->visible && F_Prop->active_layer == i) {
+                // Can't edit invisible layer — switch to map
+                F_Prop->active_layer = -1;
+            }
+            // Upload real or blank data to the texture
+            if (layer->visible) {
+                Surface* src =
+                    ((layer->edit_srfc != nullptr) && (layer->edit_srfc->pxls != nullptr))
+                        ? layer->edit_srfc
+                        : layer->srfc;
+                SURFACE_to_texture(src, layer->texture, src->w, src->h, 1);
+            } else {
+                int w = layer->srfc->w;
+                int h = layer->srfc->h;
+                Surface blank_srfc = {};
+                blank_srfc.pxls = (uint8_t*)calloc(1, static_cast<size_t>(w) * h);
+                blank_srfc.w = static_cast<uint16_t>(w);
+                blank_srfc.h = static_cast<uint16_t>(h);
+                blank_srfc.pitch = w;
+                blank_srfc.channels = 1;
+                SURFACE_to_texture(&blank_srfc, layer->texture, w, h, 1);
+                free(blank_srfc.pxls);
+            }
+        }
+
+        ImGui::SameLine();
+        bool selected = (F_Prop->active_layer == i);
+        if (ImGui::Selectable((layer->name != nullptr) ? layer->name : "Layer", selected)) {
+            if (layer->visible) {
+                // Commit previous overlay's edits before switching
+                if (F_Prop->active_layer >= 0 && F_Prop->active_layer < img_data->overlay_count) {
+                    commit_layer_edits(&img_data->overlay[F_Prop->active_layer]);
+                }
+                F_Prop->active_layer = i;
+            }
+        }
+        ImGui::PopID();
+    }
+
+    ImGui::Separator();
 }

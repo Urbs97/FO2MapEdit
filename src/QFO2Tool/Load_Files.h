@@ -11,6 +11,7 @@
 
 struct wmap_info;
 struct dat_info;
+struct FileTypeEntry;
 
 // File info
 struct LF {
@@ -47,6 +48,11 @@ struct LF {
 
     ANM_Dir edit_struct[6]{};   // per-window edit pixel buffers
     StrokeState stroke_state{}; // per-window undo/redo stroke state
+
+    const FileTypeEntry* file_type = nullptr; // cached registry entry from open time
+
+    bool open_export_popup = false; // per-window popup state (was static bool)
+    bool open_save_popup = false;   // per-window popup state (was static bool)
 };
 
 struct shader_info {

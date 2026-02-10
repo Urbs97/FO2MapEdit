@@ -1,6 +1,10 @@
 #include "File_Type_Registry.h"
 
 #include "../platform_io.h"
+#include "draw_FRM.h"
+#include "draw_Image.h"
+#include "draw_MSK.h"
+#include "draw_WMAP.h"
 #include "open_DAT.h"
 #include "open_FRM.h"
 #include "open_Image.h"
@@ -19,28 +23,36 @@ static const FileTypeEntry s_file_types[] = {
      "Fallout FRM Sprite",
      img_type::FRM,
      FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE |
-         FileTypeFlags::HAS_EXPORT | FileTypeFlags::HAS_QUICKSAVE,
+         FileTypeFlags::HAS_EXPORT | FileTypeFlags::HAS_QUICKSAVE | FileTypeFlags::HAS_TOOLBAR |
+         FileTypeFlags::HAS_PREVIEW,
      open_FRM,
      save_FRM_popup,
-     quicksave_FRM},
+     quicksave_FRM,
+     toolbar_FRM,
+     preview_FRM},
 
     {{"MSK", nullptr},
      "Fallout MSK Mask",
      img_type::MSK,
      FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE |
-         FileTypeFlags::HAS_EXPORT,
+         FileTypeFlags::HAS_EXPORT | FileTypeFlags::HAS_TOOLBAR | FileTypeFlags::HAS_PREVIEW,
      open_MSK,
      save_MSK_popup,
-     nullptr},
+     nullptr,
+     toolbar_MSK,
+     preview_MSK},
 
     {{"WMAP", nullptr},
      "Worldmap Project",
      img_type::UNK,
      FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE |
-         FileTypeFlags::HAS_EXPORT | FileTypeFlags::HAS_QUICKSAVE,
+         FileTypeFlags::HAS_EXPORT | FileTypeFlags::HAS_QUICKSAVE | FileTypeFlags::HAS_TOOLBAR |
+         FileTypeFlags::HAS_PREVIEW,
      open_WMAP,
      save_TILE_popup,
-     quicksave_WMAP},
+     quicksave_WMAP,
+     toolbar_WMAP,
+     preview_WMAP},
 
     {{"DAT", nullptr},
      "Fallout DAT Archive",
@@ -48,15 +60,20 @@ static const FileTypeEntry s_file_types[] = {
      FileTypeFlags::DIALOG, // dialog only -- NOT drag-drop (preserves current behavior)
      open_DAT,
      nullptr,
+     nullptr,
+     nullptr,
      nullptr},
 
     {{"PNG", "JPG", "JPEG", "BMP", "GIF", nullptr},
      "Image File",
      img_type::OTHER,
-     FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE,
+     FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE |
+         FileTypeFlags::HAS_TOOLBAR | FileTypeFlags::HAS_PREVIEW,
      open_Image,
      nullptr,
-     nullptr},
+     nullptr,
+     toolbar_Image,
+     preview_Image},
 };
 
 static constexpr int s_file_type_count = sizeof(s_file_types) / sizeof(s_file_types[0]);
