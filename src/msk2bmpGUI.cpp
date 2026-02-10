@@ -77,6 +77,7 @@ extern "C" const char *__lsan_default_suppressions() {
 #include "Worldmap_Project.h"
 #include "dat2/dat2_tree_view.h"
 #include "dat2/dat2_writer.h"
+#include "file_types/File_Type_Registry.h"
 #include "timer_functions.h"
 
 #include <ImFileDialog.h>
@@ -124,9 +125,6 @@ void Open_Files(struct user_info *usr_info, int *counter, Palette *pxlFMT,
                 struct variables *My_Variables);
 
 void main_window_bttns(variables *My_Variables, int *counter);
-bool save_FRM_popup(LF *F_Prop);
-bool save_MSK_popup(LF *F_Prop);
-bool save_TILE_popup(LF *F_Prop);
 
 
 
@@ -967,15 +965,13 @@ static void commit_and_save_edits(LF *F_Prop) {
       }
     }
   }
-  if ((F_Prop->wmap != nullptr) && F_Prop->wmap->save_path[0] != '\0') {
-    save_wmap_project(F_Prop->wmap->save_path, F_Prop);
-    F_Prop->dirty = false;
-  } else if (F_Prop->img_data.type == img_type::FRM && F_Prop->Opened_File[0] != '\0') {
-    Save_Info sv_info;
-    sv_info.s_type = Save_Type::all_dirs;
-    save_FRM_SURFACE(F_Prop->Opened_File, &F_Prop->img_data, &usr_info,
-                     &sv_info, true);
-    F_Prop->dirty = false;
+  const FileTypeEntry *entry = (F_Prop->wmap != nullptr)
+      ? find_file_type("WMAP")
+      : find_file_type(F_Prop->extension);
+  if (entry != nullptr && (entry->flags & FileTypeFlags::HAS_QUICKSAVE)) {
+    if (entry->quick_save(F_Prop, &usr_info)) {
+      F_Prop->dirty = false;
+    }
   }
 }
 
@@ -1275,7 +1271,10 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
           open_wmap_export = true;
         }
         if (open_wmap_export) {
-          open_wmap_export = save_TILE_popup(F_Prop);
+          const FileTypeEntry *wmap_entry = find_file_type("WMAP");
+          if (wmap_entry != nullptr && (wmap_entry->flags & FileTypeFlags::HAS_EXPORT)) {
+            open_wmap_export = wmap_entry->save_popup(F_Prop, &usr_info);
+          }
         }
         ImGui::SameLine();
         if (ImGui::Button("Export Town-Map Tiles")) {
@@ -1460,11 +1459,15 @@ void Show_Preview_Window(struct variables *My_Variables, LF *F_Prop,
         if (open_save) {
           int msk_export_idx = find_overlay(F_Prop->img_data.overlay, F_Prop->img_data.overlay_count, LayerType::MSK);
           if (F_Prop->active_layer >= 0 && F_Prop->active_layer == msk_export_idx) {
-            open_save = save_MSK_popup(F_Prop);
-          } else if (ed->type == img_type::FRM) {
-            open_save = save_FRM_popup(F_Prop);
-          } else if (ed->type == img_type::TILE) {
-            open_save = save_TILE_popup(F_Prop);
+            const FileTypeEntry *msk_entry = find_file_type("MSK");
+            if ((msk_entry != nullptr) && (msk_entry->flags & FileTypeFlags::HAS_EXPORT)) {
+              open_save = msk_entry->save_popup(F_Prop, &usr_info);
+            }
+          } else {
+            const FileTypeEntry *entry = find_file_type_by_img_type(ed->type);
+            if ((entry != nullptr) && (entry->flags & FileTypeFlags::HAS_EXPORT)) {
+              open_save = entry->save_popup(F_Prop, &usr_info);
+            }
           }
         }
       }
@@ -2612,68 +2615,6 @@ static void ShowMainMenuBar(int *counter, struct variables *My_Variables) {
   }
 }
 
-bool save_FRM_popup(LF *F_Prop) {
-  image_data *img_data = &F_Prop->edit_data;
-
-  Save_Info sv_info;
-  bool open_window = true;
-  // TODO: replace ImGui::Begin() with BeginPopupModal()?
-  ImGui::Begin("Export FRM", &open_window);
-  static int e;
-  ImGui::RadioButton("Selected Frame", &e, 0);
-  ImGui::RadioButton("Selected Direction", &e, 1);
-  ImGui::RadioButton("All Directions", &e, 2);
-  sv_info.s_type = (Save_Type)e;
-
-  char dup_name[MAX_PATH] = {};
-
-  if (open_window) {
-    open_window = ImDialog_save_FRM_SURFACE(img_data, &usr_info, &sv_info);
-  }
-  ImGui::End();
-
-  return open_window;
-}
-
-bool save_MSK_popup(LF *F_Prop) {
-  image_data *img_data = &F_Prop->img_data;
-  Save_Info *sv_info = nullptr;
-
-  bool open_window = true;
-  // TODO: replace ImGui::Begin() with BeginPopupModal()?
-  ImGui::Begin("Export MSK", &open_window);
-  if (open_window) {
-    open_window = ImDialog_save_TILE_SURFACE(img_data, &usr_info, sv_info);
-  }
-  ImGui::End();
-
-  return open_window;
-}
-
-bool save_TILE_popup(LF *F_Prop) {
-  image_data *img_data = &F_Prop->edit_data;
-  Save_Info *sv_info = {};
-
-  bool open_window = true;
-  // TODO: replace ImGui::Begin() with BeginPopupModal()?
-  ImGui::Begin("Export Worldmap", &open_window);
-  if (open_window) {
-    int msk_i = find_overlay(F_Prop->img_data.overlay, F_Prop->img_data.overlay_count, LayerType::MSK);
-    Surface *msk = (msk_i >= 0) ? F_Prop->img_data.overlay[msk_i].srfc : nullptr;
-    const char *preset = (F_Prop->wmap != nullptr) ? "WRLDMP" : nullptr;
-    int city_i = find_overlay(F_Prop->img_data.overlay, F_Prop->img_data.overlay_count, LayerType::CITY);
-    city_layer_data *city =
-        (city_i >= 0) ? (city_layer_data *)F_Prop->img_data.overlay[city_i].source_data : nullptr;
-    int maps_i = find_overlay(F_Prop->img_data.overlay, F_Prop->img_data.overlay_count, LayerType::MAPS);
-    maps_txt_data *maps =
-        (maps_i >= 0) ? (maps_txt_data *)F_Prop->img_data.overlay[maps_i].source_data : nullptr;
-    open_window =
-        ImDialog_save_TILE_SURFACE(img_data, &usr_info, sv_info, msk, preset, city, maps);
-  }
-  ImGui::End();
-
-  return open_window;
-}
 
 void main_window_bttns(variables *My_Variables, int *counter) {
   LF *F_Prop = &My_Variables->F_Prop[*counter];

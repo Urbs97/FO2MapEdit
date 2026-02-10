@@ -6,6 +6,10 @@
 #include "open_Image.h"
 #include "open_MSK.h"
 #include "open_WMAP.h"
+#include "save_FRM.h"
+#include "save_MSK.h"
+#include "save_TILE.h"
+#include "save_WMAP.h"
 
 #include <cstdio>
 #include <cstring>
@@ -14,32 +18,45 @@ static const FileTypeEntry s_file_types[] = {
     {{"FRM", "FR0", "FR1", "FR2", "FR3", "FR4", "FR5", nullptr},
      "Fallout FRM Sprite",
      img_type::FRM,
-     FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE,
-     open_FRM},
+     FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE |
+         FileTypeFlags::HAS_EXPORT | FileTypeFlags::HAS_QUICKSAVE,
+     open_FRM,
+     save_FRM_popup,
+     quicksave_FRM},
 
     {{"MSK", nullptr},
      "Fallout MSK Mask",
      img_type::MSK,
-     FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE,
-     open_MSK},
+     FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE |
+         FileTypeFlags::HAS_EXPORT,
+     open_MSK,
+     save_MSK_popup,
+     nullptr},
 
     {{"WMAP", nullptr},
      "Worldmap Project",
      img_type::UNK,
-     FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE,
-     open_WMAP},
+     FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE |
+         FileTypeFlags::HAS_EXPORT | FileTypeFlags::HAS_QUICKSAVE,
+     open_WMAP,
+     save_TILE_popup,
+     quicksave_WMAP},
 
     {{"DAT", nullptr},
      "Fallout DAT Archive",
      img_type::UNK,
      FileTypeFlags::DIALOG, // dialog only -- NOT drag-drop (preserves current behavior)
-     open_DAT},
+     open_DAT,
+     nullptr,
+     nullptr},
 
     {{"PNG", "JPG", "JPEG", "BMP", "GIF", nullptr},
      "Image File",
      img_type::OTHER,
      FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_IMAGE,
-     open_Image},
+     open_Image,
+     nullptr,
+     nullptr},
 };
 
 static constexpr int s_file_type_count = sizeof(s_file_types) / sizeof(s_file_types[0]);
@@ -51,6 +68,15 @@ const FileTypeEntry* find_file_type(const char* extension) {
                            static_cast<int>(strlen(entry.extensions[j]) + 1)) == 0) {
                 return &entry;
             }
+        }
+    }
+    return nullptr;
+}
+
+const FileTypeEntry* find_file_type_by_img_type(img_type type) {
+    for (const auto& entry : s_file_types) {
+        if (entry.type == type) {
+            return &entry;
         }
     }
     return nullptr;
