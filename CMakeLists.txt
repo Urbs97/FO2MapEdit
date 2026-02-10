@@ -58,6 +58,7 @@ target_sources(
 #just have to figure out how to hook them in
 add_subdirectory(src/dependencies/GLAD            SYSTEM)
 add_subdirectory(src/dependencies/GLFW/glfw-3.4   SYSTEM)
+add_subdirectory(src/dependencies/int2ssl          SYSTEM)
 add_subdirectory(src/QFO2Tool                     SYSTEM)
 
 #is this what allows <> around local #includes?

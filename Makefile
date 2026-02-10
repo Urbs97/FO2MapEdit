@@ -33,7 +33,7 @@ lint-all: configure
 	find src/QFO2Tool test -name '*.cpp' -o -name '*.h' | xargs clang-tidy -p $(BUILD_DIR)
 
 fix: configure
-	git diff --cached --name-only --diff-filter=d -- '*.cpp' '*.h' | xargs -r clang-tidy -p $(BUILD_DIR) --fix
+	git diff --cached --name-only --diff-filter=d -- 'src/QFO2Tool/*.cpp' 'src/QFO2Tool/*.h' | xargs -r clang-tidy -p $(BUILD_DIR) --fix
 
 fix-all: configure
 	find src/QFO2Tool test -name '*.cpp' -o -name '*.h' | xargs clang-tidy -p $(BUILD_DIR) --fix

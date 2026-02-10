@@ -2,6 +2,7 @@
 
 #include "../platform/platform_io.h"
 #include "../ui/draw_FRM.h"
+#include "../ui/draw_INT.h"
 #include "../ui/draw_Image.h"
 #include "../ui/draw_MSK.h"
 #include "../ui/draw_WMAP.h"
@@ -11,6 +12,7 @@
 #include "../ui/save_WMAP.h"
 #include "open_DAT.h"
 #include "open_FRM.h"
+#include "open_INT.h"
 #include "open_Image.h"
 #include "open_MSK.h"
 #include "open_WMAP.h"
@@ -63,6 +65,16 @@ static const FileTypeEntry s_file_types[] = {
      nullptr,
      nullptr,
      nullptr},
+
+    {{"INT", nullptr},
+     "Fallout INT Script",
+     img_type::UNK,
+     FileTypeFlags::DRAG_DROP | FileTypeFlags::DIALOG | FileTypeFlags::HAS_PREVIEW,
+     open_INT,
+     nullptr,
+     nullptr,
+     nullptr,
+     preview_INT},
 
     {{"PNG", "JPG", "JPEG", "BMP", "GIF", nullptr},
      "Image File",
@@ -120,7 +132,7 @@ int build_dialog_filter(char* buf, int buf_size) {
     int pos = 0;
 
     // Title part: "FRM/MSK/WMAP/DAT and image files"
-    pos += snprintf(buf + pos, buf_size - pos, "FRM/MSK/WMAP/DAT and image files(");
+    pos += snprintf(buf + pos, buf_size - pos, "FRM/MSK/WMAP/DAT/INT and image files(");
 
     // Preview part: "*.ext;*.ext;..." (human-readable, lowercase)
     bool first_preview = true;

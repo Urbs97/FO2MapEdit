@@ -39,8 +39,10 @@ struct LF {
 
     int active_layer = -1; // -1 = map, 0..N-1 = overlay index
 
-    wmap_info* wmap = nullptr;            // non-null = this slot is a worldmap project
-    dat_info* dat = nullptr;              // non-null = this slot is a DAT archive
+    wmap_info* wmap = nullptr; // non-null = this slot is a worldmap project
+    dat_info* dat = nullptr;   // non-null = this slot is a DAT archive
+    char* ssl_text = nullptr;  // non-null = this slot has decompiled INT script text
+    size_t ssl_text_len = 0;
     bool dirty = false;                   // true when unsaved edits exist
     bool wmap_edit_toggled = false;       // set by trailing Edit/Done button, consumed once
     bool show_close_confirm = false;      // pending "unsaved changes" dialog for tab close

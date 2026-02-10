@@ -11,4 +11,8 @@ target_sources(FO2MapEditLib PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/open_DAT.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/open_Image.h
   ${CMAKE_CURRENT_SOURCE_DIR}/open_Image.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/open_INT.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/open_INT.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/int2ssl_wrapper.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/int2ssl_wrapper.cpp
 )

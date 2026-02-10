@@ -47,6 +47,7 @@ target_compile_definitions(
 endif()
 
 target_link_libraries(FO2MapEditLib PUBLIC ZLIB::ZLIB)
+target_link_libraries(FO2MapEditLib PRIVATE int2ssl_lib)
 
 target_include_directories(
   FO2MapEditLib SYSTEM PUBLIC
@@ -56,4 +57,5 @@ target_include_directories(
   ../dependencies/GLFW/glfw-3.4/include/
   ../dependencies/stb
   ../dependencies/ImFileDialog
+  ../dependencies/int2ssl
 )

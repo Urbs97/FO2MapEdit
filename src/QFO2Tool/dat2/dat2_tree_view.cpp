@@ -1,6 +1,7 @@
 #include "dat2_tree_view.h"
 
 #include "../Load_Files.h"
+#include "../file_types/File_Type_Registry.h"
 #include "../ui/ImGui_Warning.h"
 
 #include <algorithm>
@@ -120,13 +121,6 @@ bool dat2_entry_is_previewable(const char* filename) {
         ext[i] = static_cast<char>(toupper(static_cast<unsigned char>(dot[i])));
     }
 
-    static const char* previewable[] = {
-        "FRM", "FR0", "FR1", "FR2", "FR3", "FR4", "FR5", "MSK", "PNG", "JPG", "JPEG", "BMP", "GIF",
-    };
-    for (const char* p : previewable) {
-        if (strcmp(ext, p) == 0) {
-            return true;
-        }
-    }
-    return false;
+    const FileTypeEntry* entry = find_file_type(ext);
+    return (entry != nullptr) && (entry->flags & FileTypeFlags::HAS_PREVIEW);
 }

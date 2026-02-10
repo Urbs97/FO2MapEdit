@@ -119,13 +119,17 @@ void Show_Preview_Window(struct variables* My_Variables, LF* F_Prop, int counter
         }
 
         if (show_map_content) {
-            ImGui::Checkbox("Show Frame Stats", &F_Prop->show_stats);
+            const FileTypeEntry* ft_entry = F_Prop->file_type;
+            bool has_image = (ft_entry != nullptr && (ft_entry->flags & FileTypeFlags::HAS_IMAGE));
+            if (has_image) {
+                ImGui::Checkbox("Show Frame Stats", &F_Prop->show_stats);
 
-            ImGui::PushItemWidth(100);
-            float* zoom_scale =
-                F_Prop->editing_enabled ? &F_Prop->edit_data.scale : &img_data->scale;
-            ImGui::DragFloat("##Zoom", zoom_scale, 0.1F, 0.0F, 10.0F, "Zoom: %%%.2fx", 0);
-            ImGui::PopItemWidth();
+                ImGui::PushItemWidth(100);
+                float* zoom_scale =
+                    F_Prop->editing_enabled ? &F_Prop->edit_data.scale : &img_data->scale;
+                ImGui::DragFloat("##Zoom", zoom_scale, 0.1F, 0.0F, 10.0F, "Zoom: %%%.2fx", 0);
+                ImGui::PopItemWidth();
+            }
 
             // --- Contextual toolbar for this preview window ---
             {
@@ -425,6 +429,11 @@ void Show_Preview_Window(struct variables* My_Variables, LF* F_Prop, int counter
     }
 
     if (!F_Prop->file_open_window) {
+        if (F_Prop->ssl_text != nullptr) {
+            free(F_Prop->ssl_text);
+            F_Prop->ssl_text = nullptr;
+            F_Prop->ssl_text_len = 0;
+        }
         // TODO: free img_data?
     }
 }
