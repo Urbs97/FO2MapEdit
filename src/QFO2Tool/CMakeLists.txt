@@ -1,4 +1,14 @@
 add_library(FO2MapEditLib
+  App_State.h
+  App_State.cpp
+  Show_Palette_Window.h
+  Show_Palette_Window.cpp
+  Show_DAT_Window.h
+  Show_DAT_Window.cpp
+  Show_Preview_Window.h
+  Show_Preview_Window.cpp
+  Show_Main_Menu.h
+  Show_Main_Menu.cpp
   town_map_tiles.h
   town_map_tiles.cpp
   B_Endian.h
