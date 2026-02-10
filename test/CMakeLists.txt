@@ -19,6 +19,7 @@ add_executable(tests
     dat2/test_dat2_io.cpp
     dat2/test_dat2_parse.cpp
     dat2/test_dat2_extract.cpp
+    dat2/test_dat2_writer.cpp
 )
 target_link_libraries(tests PRIVATE
     FO2MapEditLib

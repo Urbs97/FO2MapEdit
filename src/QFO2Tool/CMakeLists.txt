@@ -69,6 +69,8 @@ add_library(FO2MapEditLib
   dat2/dat2_archive.cpp
   dat2/dat2_tree_view.h
   dat2/dat2_tree_view.cpp
+  dat2/dat2_writer.h
+  dat2/dat2_writer.cpp
 )
 
 #these need to be located after add_library()

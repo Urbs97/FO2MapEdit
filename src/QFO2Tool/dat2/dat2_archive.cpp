@@ -21,6 +21,9 @@ const char* dat2_error_str(Dat2Error err)
         case Dat2Error::TREE_PARSE_ERROR:    return "failed to parse tree entry";
         case Dat2Error::ENTRY_OUT_OF_BOUNDS: return "entry data is out of bounds";
         case Dat2Error::DECOMPRESSION_FAILED:return "zlib decompression failed";
+        case Dat2Error::FILE_WRITE_FAILED:   return "failed to write file";
+        case Dat2Error::COMPRESSION_FAILED:  return "zlib compression failed";
+        case Dat2Error::DIRECTORY_READ_FAILED:return "failed to read directory";
     }
     return "unknown error";
 }

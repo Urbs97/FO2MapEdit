@@ -21,4 +21,17 @@ bool read_le_u8(const uint8_t* buf, size_t buf_size, size_t offset, uint8_t& out
     return true;
 }
 
+void write_le_u32(std::vector<uint8_t>& buf, uint32_t val)
+{
+    buf.push_back(static_cast<uint8_t>(val));
+    buf.push_back(static_cast<uint8_t>(val >> 8));
+    buf.push_back(static_cast<uint8_t>(val >> 16));
+    buf.push_back(static_cast<uint8_t>(val >> 24));
+}
+
+void write_le_u8(std::vector<uint8_t>& buf, uint8_t val)
+{
+    buf.push_back(val);
+}
+
 } // namespace dat2

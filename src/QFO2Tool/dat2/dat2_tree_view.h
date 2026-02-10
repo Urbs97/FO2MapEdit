@@ -19,6 +19,8 @@ struct dat_info {
     Dat2TreeNode tree_root;      // pre-built tree for ImGui rendering
     const dat2::Dat2Entry* pending_export  = nullptr; // entry waiting for save dialog
     const dat2::Dat2Entry* pending_preview = nullptr; // entry waiting to be previewed
+    bool pending_repack  = false; // repack button was clicked, waiting for save dialog
+    bool repack_compress = true;  // compress entries when repacking
 };
 
 Dat2TreeNode build_dat2_tree(const std::vector<dat2::Dat2Entry>& entries);

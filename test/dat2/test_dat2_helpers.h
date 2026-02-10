@@ -8,14 +8,7 @@
 #include <vector>
 #include <zlib.h>
 
-// Helper: write a little-endian u32 into a byte vector
-inline void push_le_u32(std::vector<uint8_t>& out, uint32_t val)
-{
-    out.push_back(static_cast<uint8_t>(val));
-    out.push_back(static_cast<uint8_t>(val >> 8));
-    out.push_back(static_cast<uint8_t>(val >> 16));
-    out.push_back(static_cast<uint8_t>(val >> 24));
-}
+#include "dat2/dat2_io.h"
 
 struct TestFileEntry {
     std::string filename;       // backslash-separated path
@@ -78,24 +71,24 @@ build_test_dat2(const std::vector<TestFileEntry>& files)
 
     // Phase 2: build num_files field
     std::vector<uint8_t> num_files_bytes;
-    push_le_u32(num_files_bytes, static_cast<uint32_t>(files.size()));
+    dat2::write_le_u32(num_files_bytes, static_cast<uint32_t>(files.size()));
 
     // Phase 3: build tree entries
     std::vector<uint8_t> tree_entries;
     for (const auto& meta : metas) {
         // filename_len (u32)
-        push_le_u32(tree_entries, static_cast<uint32_t>(meta.filename.size()));
+        dat2::write_le_u32(tree_entries, static_cast<uint32_t>(meta.filename.size()));
         // filename bytes
         tree_entries.insert(tree_entries.end(),
                             meta.filename.begin(), meta.filename.end());
         // is_compressed (u8)
         tree_entries.push_back(meta.is_compressed ? 1 : 0);
         // decompressed_size (u32)
-        push_le_u32(tree_entries, meta.decompressed_size);
+        dat2::write_le_u32(tree_entries, meta.decompressed_size);
         // packed_size (u32)
-        push_le_u32(tree_entries, meta.packed_size);
+        dat2::write_le_u32(tree_entries, meta.packed_size);
         // offset (u32)
-        push_le_u32(tree_entries, meta.offset);
+        dat2::write_le_u32(tree_entries, meta.offset);
     }
 
     // Phase 4: tree_size = tree_entries.size() + 4 (includes itself)
@@ -118,9 +111,9 @@ build_test_dat2(const std::vector<TestFileEntry>& files)
     // tree entries
     result.insert(result.end(), tree_entries.begin(), tree_entries.end());
     // tree_size
-    push_le_u32(result, tree_size);
+    dat2::write_le_u32(result, tree_size);
     // file_size
-    push_le_u32(result, total_size);
+    dat2::write_le_u32(result, total_size);
 
     auto buf = std::make_unique<uint8_t[]>(result.size());
     std::memcpy(buf.get(), result.data(), result.size());

@@ -76,6 +76,7 @@ extern "C" const char *__lsan_default_suppressions() {
 #include "Zoom_Pan.h"
 #include "Worldmap_Project.h"
 #include "dat2/dat2_tree_view.h"
+#include "dat2/dat2_writer.h"
 #include "timer_functions.h"
 
 #include <ImFileDialog.h>
@@ -100,6 +101,11 @@ static char g_import_wmap_base_name[64] = "WRLDMP";
 static char g_import_error[2048] = "";
 static bool g_import_wmap_done = false;
 static bool g_import_error_pending = false;
+
+// File->Create DAT2 Archive state
+static bool g_create_dat2_folder_selected = false;
+static char g_create_dat2_folder_path[MAX_PATH] = "";
+static bool g_create_dat2_compress = true;
 
 // (edit_struct and stroke_state are now per-window fields on LF)
 
@@ -1022,6 +1028,16 @@ void Show_DAT_Window(variables *My_Variables, LF *F_Prop, int slot_index, int *o
   if (ImGui::Begin(name, &F_Prop->file_open_window)) {
     ImGui::Text("Archive: %s", F_Prop->c_name);
     ImGui::Text("Files: %u", info->archive.file_count());
+
+    ImGui::Checkbox("Compress", &info->repack_compress);
+    ImGui::SameLine();
+    if (ImGui::Button("Repack Archive...")) {
+      info->pending_repack = true;
+      init_IFD();
+      ifd::FileDialog::Instance().Save("DATRepackDialog", "Save Repacked Archive",
+                                       "DAT2 Archive (*.dat){.dat,.DAT}",
+                                       usr_info.default_save_path);
+    }
     ImGui::Separator();
 
     draw_dat2_tree_node(info->tree_root, info);
@@ -1093,6 +1109,36 @@ void Show_DAT_Window(variables *My_Variables, LF *F_Prop, int slot_index, int *o
       }
     }
     info->pending_export = nullptr;
+    ifd::FileDialog::Instance().Close();
+  }
+
+  // handle repack save dialog
+  if (ifd::FileDialog::Instance().IsDone("DATRepackDialog")) {
+    if (ifd::FileDialog::Instance().HasResult() && info->pending_repack) {
+      std::string save_path = ifd::FileDialog::Instance().GetResult().u8string();
+      auto collected = dat2::collect_from_archive(info->archive);
+      if (collected.ok()) {
+        dat2::Dat2WriteOptions opts;
+        opts.compress = info->repack_compress;
+        auto ws = dat2::write_archive(save_path.c_str(), collected.value, opts);
+        if (!ws.ok()) {
+          char msg[512];
+          snprintf(msg, sizeof(msg),
+                   "[ERROR] Repack DAT2 Archive\n\n"
+                   "Failed to write archive:\n%s",
+                   dat2::dat2_error_str(ws.error));
+          set_popup_warning(msg);
+        }
+      } else {
+        char msg[512];
+        snprintf(msg, sizeof(msg),
+                 "[ERROR] Repack DAT2 Archive\n\n"
+                 "Failed to extract entries:\n%s",
+                 dat2::dat2_error_str(collected.error));
+        set_popup_warning(msg);
+      }
+    }
+    info->pending_repack = false;
     ifd::FileDialog::Instance().Close();
   }
 
@@ -2299,6 +2345,53 @@ static void NewWmapProject_Dialogs(int *counter,
     ifd::FileDialog::Instance().Close();
   }
 
+  // Create DAT2 Archive: step 1 — folder selected, open save dialog
+  if (ifd::FileDialog::Instance().IsDone("CreateDAT2FolderDialog")) {
+    if (ifd::FileDialog::Instance().HasResult()) {
+      std::string path = ifd::FileDialog::Instance().GetResult().u8string();
+      strncpy(g_create_dat2_folder_path, path.c_str(), MAX_PATH - 1);
+      g_create_dat2_folder_path[MAX_PATH - 1] = '\0';
+      g_create_dat2_folder_selected = true;
+    }
+    ifd::FileDialog::Instance().Close();
+  }
+  if (g_create_dat2_folder_selected) {
+    g_create_dat2_folder_selected = false;
+    init_IFD();
+    ifd::FileDialog::Instance().Save("CreateDAT2SaveDialog", "Save DAT2 Archive",
+                                     "DAT2 Archive (*.dat){.dat,.DAT}",
+                                     usr_info.default_save_path);
+  }
+
+  // Create DAT2 Archive: step 2 — save path chosen, write archive
+  if (ifd::FileDialog::Instance().IsDone("CreateDAT2SaveDialog")) {
+    if (ifd::FileDialog::Instance().HasResult()) {
+      std::string save_path = ifd::FileDialog::Instance().GetResult().u8string();
+      auto collected = dat2::collect_from_directory(g_create_dat2_folder_path);
+      if (collected.ok()) {
+        dat2::Dat2WriteOptions opts;
+        opts.compress = g_create_dat2_compress;
+        auto ws = dat2::write_archive(save_path.c_str(), collected.value, opts);
+        if (!ws.ok()) {
+          char msg[512];
+          snprintf(msg, sizeof(msg),
+                   "[ERROR] Create DAT2 Archive\n\n"
+                   "Failed to write archive:\n%s",
+                   dat2::dat2_error_str(ws.error));
+          set_popup_warning(msg);
+        }
+      } else {
+        char msg[512];
+        snprintf(msg, sizeof(msg),
+                 "[ERROR] Create DAT2 Archive\n\n"
+                 "Failed to read directory:\n%s",
+                 dat2::dat2_error_str(collected.error));
+        set_popup_warning(msg);
+      }
+    }
+    ifd::FileDialog::Instance().Close();
+  }
+
   // Import Worldmap from FO2 confirmation popup
   if (g_import_wmap_pending) {
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -2431,6 +2524,15 @@ static void ShowMainMenuBar(int *counter, struct variables *My_Variables) {
           }
         }
       }
+      ImGui::Separator();
+      ImGui::MenuItem("Compress", nullptr, &g_create_dat2_compress);
+      if (ImGui::MenuItem("Create DAT2 Archive...")) {
+        init_IFD();
+        ifd::FileDialog::Instance().Open(
+            "CreateDAT2FolderDialog", "Select Folder to Pack", "",
+            false, usr_info.default_load_path);
+      }
+      ImGui::Separator();
       if (ImGui::MenuItem("Set Fallout2.exe Path")) {
         Set_Default_Game_Path(&usr_info, My_Variables->exe_directory);
       }

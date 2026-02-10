@@ -18,6 +18,9 @@ enum class Dat2Error : uint8_t {
     TREE_PARSE_ERROR,
     ENTRY_OUT_OF_BOUNDS,
     DECOMPRESSION_FAILED,
+    FILE_WRITE_FAILED,
+    COMPRESSION_FAILED,
+    DIRECTORY_READ_FAILED,
 };
 
 const char* dat2_error_str(Dat2Error err);
