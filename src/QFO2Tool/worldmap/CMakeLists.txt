@@ -1,0 +1,19 @@
+target_sources(FO2MapEditLib PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/Worldmap_Project.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/Worldmap_Project.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/City_Layer.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/City_Layer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Maps_Txt.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/Maps_Txt.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Layer.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/Layer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/town_map_tiles.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/town_map_tiles.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tiles_pattern.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/tiles_pattern.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Proto_Files.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/Proto_Files.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Edit_TILES_LST.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/Edit_TILES_LST.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/txt_parse_helpers.h
+)

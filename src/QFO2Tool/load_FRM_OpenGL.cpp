@@ -1,10 +1,10 @@
 #include "load_FRM_OpenGL.h"
 
-#include "B_Endian.h"
 #include "Image2Texture.h"
 #include "Load_Files.h"
-#include "display_FRM_OpenGL.h"
-#include "platform_io.h"
+#include "formats/B_Endian.h"
+#include "platform/platform_io.h"
+#include "rendering/display_FRM_OpenGL.h"
 #include "ui/ImGui_Warning.h"
 
 #include <algorithm>

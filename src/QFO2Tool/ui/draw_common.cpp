@@ -3,7 +3,7 @@
 #include "../Image2Texture.h"
 #include "../Load_Files.h"
 #include "../Save_Files.h"
-#include "../display_FRM_OpenGL.h"
+#include "../rendering/display_FRM_OpenGL.h"
 #include "Edit_Image.h"
 #include "imgui.h"
 

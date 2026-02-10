@@ -2,8 +2,8 @@
 #ifndef B_ENDIAN_HPP
 #define B_ENDIAN_HPP
 
-#include "Proto_Files.h"
-#include "load_FRM_OpenGL.h"
+#include "../load_FRM_OpenGL.h"
+#include "../worldmap/Proto_Files.h"
 
 #include <cstdint>
 

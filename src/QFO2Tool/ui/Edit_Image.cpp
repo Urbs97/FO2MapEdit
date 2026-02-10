@@ -4,7 +4,7 @@
 #include "Edit_Image.h"
 
 #include "../Load_Files.h"
-#include "../display_FRM_OpenGL.h"
+#include "../rendering/display_FRM_OpenGL.h"
 #include "ImGui_Warning.h"
 #include "Zoom_Pan.h"
 #include "imgui_internal.h"

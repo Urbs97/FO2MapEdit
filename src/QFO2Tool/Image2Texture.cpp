@@ -1,8 +1,8 @@
 // #include <SDL.h>
 #include "Image2Texture.h"
 
-#include "FRM_Convert.h"
 #include "Load_Animation.h"
+#include "formats/FRM_Convert.h"
 #include "ui/ImGui_Warning.h"
 
 #include <cstdio>

@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../load_FRM_OpenGL.h"
 #include "MiniSDL.h"
-#include "load_FRM_OpenGL.h"
 
 #define MAX_LINES 300
 #define writelines(arg1, arg2) fwrite(arg2, MAX_LINES * 44, 1, arg1)

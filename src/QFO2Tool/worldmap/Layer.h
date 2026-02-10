@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MiniSDL.h"
+#include "../formats/MiniSDL.h"
 
 #include <cstdint>
 #include <glad/glad.h>

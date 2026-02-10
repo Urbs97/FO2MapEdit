@@ -1,6 +1,6 @@
 #include "doctest.h"
 #include "test_helpers.h"
-#include "tiles_pattern.h"
+#include "worldmap/tiles_pattern.h"
 
 #include <cstring>
 

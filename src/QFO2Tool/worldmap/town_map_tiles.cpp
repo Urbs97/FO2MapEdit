@@ -1,8 +1,8 @@
 #include "town_map_tiles.h"
 
-#include "B_Endian.h"
-#include "platform_io.h"
-#include "ui/ImGui_Warning.h"
+#include "../formats/B_Endian.h"
+#include "../platform/platform_io.h"
+#include "../ui/ImGui_Warning.h"
 
 #include <cmath>
 #include <cstring>

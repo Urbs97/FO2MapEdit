@@ -1,7 +1,7 @@
-#include "FRM_Convert.h"
-#include "MiniSDL.h"
-#include "Palette_Cycle.h"
 #include "doctest.h"
+#include "formats/FRM_Convert.h"
+#include "formats/MiniSDL.h"
+#include "formats/Palette_Cycle.h"
 
 #include <cstring>
 

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Load_Settings.h"
-#include "MiniSDL.h"
+#include "formats/MiniSDL.h"
 #include "load_FRM_OpenGL.h"
-#include "town_map_tiles.h"
+#include "worldmap/town_map_tiles.h"
 
 enum class Save_Type : uint8_t {
     single_frm,

@@ -3,7 +3,7 @@
 #include "Load_Settings.h"
 #include "Stroke_State.h"
 #include "load_FRM_OpenGL.h"
-#include "shader_class.h"
+#include "rendering/shader_class.h"
 
 #include <GLFW/glfw3.h>
 #include <filesystem>

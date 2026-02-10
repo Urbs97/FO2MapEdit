@@ -5,9 +5,9 @@
 
 #include "tiles_pattern.h"
 
+#include "../platform/platform_io.h"
+#include "../ui/ImGui_Warning.h"
 #include "Edit_TILES_LST.h"
-#include "platform_io.h"
-#include "ui/ImGui_Warning.h"
 
 #include <cctype>
 #include <cstdio>

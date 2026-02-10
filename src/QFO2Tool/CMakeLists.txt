@@ -1,16 +1,8 @@
 add_library(FO2MapEditLib
   App_State.h
   App_State.cpp
-  town_map_tiles.h
-  town_map_tiles.cpp
-  B_Endian.h
-  B_Endian.cpp
-  display_FRM_OpenGL.h
-  display_FRM_OpenGL.cpp
   Edit_Animation.cpp
   Edit_Animation.h
-  FRM_Convert.cpp
-  FRM_Convert.h
   Image2Texture.cpp
   Image2Texture.h
   Load_Animation.cpp
@@ -21,40 +13,17 @@ add_library(FO2MapEditLib
   load_FRM_OpenGL.h
   Load_Settings.cpp
   Load_Settings.h
-  MiniSDL.h
-  MiniSDL.cpp
-  MSK_Convert.cpp
-  MSK_Convert.h
-  Palette_Cycle.cpp
-  Palette_Cycle.h
   Save_Files.cpp
   Save_Files.h
   stb_impl.c
-  shader_class.cpp
-  shader_class.h
   Stroke_State.h
   Stroke_State.cpp
-  platform_io.h
-  platform_io.cpp
-  timer_functions.h
-  timer_functions.cpp
-  Edit_TILES_LST.h
-  Edit_TILES_LST.cpp
-  tiles_pattern.h
-  tiles_pattern.cpp
-  Proto_Files.h
-  Proto_Files.cpp
-  Worldmap_Project.h
-  Worldmap_Project.cpp
-  Layer.h
-  Layer.cpp
-  City_Layer.h
-  City_Layer.cpp
-  Maps_Txt.h
-  Maps_Txt.cpp
-  txt_parse_helpers.h
 )
 
+add_subdirectory(rendering)
+add_subdirectory(formats)
+add_subdirectory(worldmap)
+add_subdirectory(platform)
 add_subdirectory(file_types)
 add_subdirectory(dat2)
 add_subdirectory(ui)

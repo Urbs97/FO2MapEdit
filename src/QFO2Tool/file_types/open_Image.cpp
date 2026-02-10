@@ -2,7 +2,7 @@
 
 #include "../Image2Texture.h"
 #include "../Load_Files.h"
-#include "../MiniSDL.h"
+#include "../formats/MiniSDL.h"
 #include "../load_FRM_OpenGL.h"
 #include "../ui/ImGui_Warning.h"
 

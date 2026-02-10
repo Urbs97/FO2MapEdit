@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Load_Files.h"
-#include "MiniSDL.h"
-#include "platform_io.h"
+#include "../Load_Files.h"
+#include "../formats/MiniSDL.h"
+#include "../platform/platform_io.h"
 
 // Fallout map tile size hardcoded in engine to 350x300 pixels WxH
 constexpr uint16_t WMAP_TILE_W = 350;

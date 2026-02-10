@@ -1,6 +1,6 @@
 #pragma once
 
-#include "load_FRM_OpenGL.h"
+#include "../load_FRM_OpenGL.h"
 #include "shader_class.h"
 
 mesh load_giant_triangle();

@@ -14,7 +14,7 @@
 #include "Load_Files.h"
 #include "Load_Settings.h"
 #include "file_types/File_Type_Registry.h"
-#include "platform_io.h"
+#include "platform/platform_io.h"
 #include "ui/ImGui_Warning.h"
 
 #include <algorithm>

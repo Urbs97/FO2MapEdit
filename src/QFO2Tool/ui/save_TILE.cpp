@@ -1,10 +1,10 @@
 #include "save_TILE.h"
 
-#include "../City_Layer.h"
-#include "../Layer.h"
 #include "../Load_Files.h"
-#include "../Maps_Txt.h"
 #include "../Save_Files.h"
+#include "../worldmap/City_Layer.h"
+#include "../worldmap/Layer.h"
+#include "../worldmap/Maps_Txt.h"
 #include "imgui.h"
 
 bool save_TILE_popup(LF* F_Prop, user_info* usr_info) {

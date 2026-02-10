@@ -35,12 +35,12 @@ of file flags: 0                    //unkown? flags_ext: 0                //unko
 
 #include "Proto_Files.h"
 
-#include "B_Endian.h"
+#include "../Load_Settings.h"
+#include "../formats/B_Endian.h"
+#include "../platform/platform_io.h"
+#include "../ui/ImGui_Warning.h"
 #include "Edit_TILES_LST.h"
-#include "Load_Settings.h"
-#include "platform_io.h"
 #include "tiles_pattern.h"
-#include "ui/ImGui_Warning.h"
 
 #include <cstdint>
 #include <cstdio>

@@ -1,6 +1,6 @@
-#include "Edit_TILES_LST.h"
 #include "doctest.h"
 #include "test_helpers.h"
+#include "worldmap/Edit_TILES_LST.h"
 
 #include <cstring>
 

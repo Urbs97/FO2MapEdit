@@ -1,6 +1,6 @@
 #pragma once
 #include "Load_Settings.h"
-#include "MiniSDL.h"
+#include "formats/MiniSDL.h"
 
 #include <filesystem>
 #include <vector>

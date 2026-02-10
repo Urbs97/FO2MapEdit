@@ -1,5 +1,5 @@
-#include "B_Endian.h"
 #include "doctest.h"
+#include "formats/B_Endian.h"
 
 #include <cstring>
 

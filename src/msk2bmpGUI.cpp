@@ -45,7 +45,7 @@ extern "C" const char *__lsan_default_suppressions() {
 #include <GLFW/glfw3.h>
 #include <cstdio>
 
-#include <MiniSDL.h>
+#include <formats/MiniSDL.h>
 
 // TODO: fix this so it compiles for windows
 #ifdef QFO2_WINDOWS
@@ -56,12 +56,12 @@ extern "C" const char *__lsan_default_suppressions() {
 #include "Image2Texture.h"
 #include "Load_Files.h"
 #include "Load_Settings.h"
-#include "platform_io.h"
+#include "platform/platform_io.h"
 
 #include "dat2/dat2_tree_view.h"
-#include "display_FRM_OpenGL.h"
-#include "FRM_Convert.h"
-#include "Palette_Cycle.h"
+#include "rendering/display_FRM_OpenGL.h"
+#include "formats/FRM_Convert.h"
+#include "formats/Palette_Cycle.h"
 #include "Stroke_State.h"
 
 #include "App_State.h"
@@ -71,7 +71,7 @@ extern "C" const char *__lsan_default_suppressions() {
 #include "ui/Show_Preview_Window.h"
 #include "ui/ImGui_Warning.h"
 #include "file_types/File_Type_Registry.h"
-#include "timer_functions.h"
+#include "platform/timer_functions.h"
 
 // (edit_struct and stroke_state are now per-window fields on LF)
 

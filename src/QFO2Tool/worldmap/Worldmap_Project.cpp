@@ -1,11 +1,11 @@
 #include "Worldmap_Project.h"
 
-#include "B_Endian.h"
+#include "../Image2Texture.h"
+#include "../formats/B_Endian.h"
+#include "../rendering/display_FRM_OpenGL.h"
+#include "../ui/ImGui_Warning.h"
 #include "City_Layer.h"
-#include "Image2Texture.h"
 #include "Maps_Txt.h"
-#include "display_FRM_OpenGL.h"
-#include "ui/ImGui_Warning.h"
 
 #include <algorithm>
 #include <cctype>

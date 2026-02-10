@@ -1,15 +1,15 @@
 #include "Save_Files.h"
 
-#include "B_Endian.h"
-#include "City_Layer.h"
-#include "Layer.h"
 #include "Load_Settings.h"
-#include "Maps_Txt.h"
-#include "Worldmap_Project.h"
+#include "formats/B_Endian.h"
 #include "imgui.h"
-#include "platform_io.h"
-#include "town_map_tiles.h"
+#include "platform/platform_io.h"
 #include "ui/ImGui_Warning.h"
+#include "worldmap/City_Layer.h"
+#include "worldmap/Layer.h"
+#include "worldmap/Maps_Txt.h"
+#include "worldmap/Worldmap_Project.h"
+#include "worldmap/town_map_tiles.h"
 
 #include <ImFileDialog.h>
 #include <cctype>

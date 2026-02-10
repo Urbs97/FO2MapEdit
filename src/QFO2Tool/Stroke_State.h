@@ -1,5 +1,5 @@
 #pragma once
-#include "MiniSDL.h"
+#include "formats/MiniSDL.h"
 #include "imgui.h"
 
 #include <cstdint>

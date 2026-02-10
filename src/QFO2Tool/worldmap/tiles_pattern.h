@@ -1,5 +1,5 @@
 #pragma once
-#include "Load_Settings.h"
+#include "../Load_Settings.h"
 #include "town_map_tiles.h"
 
 //  out_pattern is array of

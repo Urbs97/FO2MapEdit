@@ -1,7 +1,7 @@
 #pragma once
 
-#include "MiniSDL.h"
-#include "platform_io.h"
+#include "../formats/MiniSDL.h"
+#include "../platform/platform_io.h"
 
 #include <cstdint>
 

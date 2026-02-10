@@ -6,7 +6,7 @@
 #include "../dat2/dat2_tree_view.h"
 #include "../dat2/dat2_writer.h"
 #include "../file_types/File_Type_Registry.h"
-#include "../platform_io.h"
+#include "../platform/platform_io.h"
 #include "ImGui_Warning.h"
 #include "imgui.h"
 

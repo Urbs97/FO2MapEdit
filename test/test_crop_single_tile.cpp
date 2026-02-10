@@ -1,6 +1,6 @@
 #include "doctest.h"
-#include "timer_functions.h"
-#include "town_map_tiles.h"
+#include "platform/timer_functions.h"
+#include "worldmap/town_map_tiles.h"
 
 #include <cstring>
 

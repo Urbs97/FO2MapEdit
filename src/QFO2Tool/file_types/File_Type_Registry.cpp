@@ -1,6 +1,6 @@
 #include "File_Type_Registry.h"
 
-#include "../platform_io.h"
+#include "../platform/platform_io.h"
 #include "../ui/draw_FRM.h"
 #include "../ui/draw_Image.h"
 #include "../ui/draw_MSK.h"

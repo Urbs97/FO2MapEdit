@@ -1,10 +1,10 @@
 #include "City_Layer.h"
 
-#include "Image2Texture.h"
+#include "../Image2Texture.h"
+#include "../platform/platform_io.h"
+#include "../rendering/display_FRM_OpenGL.h"
 #include "Maps_Txt.h"
-#include "display_FRM_OpenGL.h"
 #include "imgui.h"
-#include "platform_io.h"
 #include "txt_parse_helpers.h"
 
 #include <algorithm>

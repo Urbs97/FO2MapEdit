@@ -1,6 +1,6 @@
 #include "Preview_Image.h"
 
-#include "../display_FRM_OpenGL.h"
+#include "../rendering/display_FRM_OpenGL.h"
 #include "Zoom_Pan.h"
 #include "imgui_internal.h"
 

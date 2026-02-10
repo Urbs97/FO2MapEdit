@@ -1,7 +1,7 @@
-#include "B_Endian.h"
-#include "Proto_Files.h"
 #include "doctest.h"
-#include "town_map_tiles.h"
+#include "formats/B_Endian.h"
+#include "worldmap/Proto_Files.h"
+#include "worldmap/town_map_tiles.h"
 
 #include <cstdio>
 #include <cstring>

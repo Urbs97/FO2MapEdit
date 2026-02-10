@@ -1,10 +1,10 @@
 #include "draw_Image.h"
 
-#include "../City_Layer.h"
 #include "../Edit_Animation.h"
 #include "../Image2Texture.h"
 #include "../Load_Files.h"
-#include "../MSK_Convert.h"
+#include "../formats/MSK_Convert.h"
+#include "../worldmap/City_Layer.h"
 #include "Preview_Image.h"
 #include "draw_common.h"
 #include "imgui.h"
