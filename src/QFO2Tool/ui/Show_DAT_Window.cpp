@@ -7,6 +7,7 @@
 #include "../dat2/dat2_writer.h"
 #include "../file_types/File_Type_Registry.h"
 #include "../platform/platform_io.h"
+#include "../worldmap/txt_parse_helpers.h"
 #include "ImGui_Warning.h"
 #include "imgui.h"
 
@@ -77,7 +78,43 @@ void Show_DAT_Window(variables* My_Variables, LF* F_Prop, int slot_index, int* o
         }
         ImGui::Separator();
 
-        draw_dat2_tree_node(info->tree_root, info);
+        ImGui::InputTextWithHint("##dat_filter", "Search files...", info->search_filter,
+                                 sizeof(info->search_filter));
+
+        if (info->search_filter[0] == '\0') {
+            draw_dat2_tree_node(info->tree_root, info);
+        } else {
+            for (const auto& entry : info->archive.entries()) {
+                if (!str_contains_nocase(entry.filename.c_str(), info->search_filter)) {
+                    continue;
+                }
+                ImGui::TreeNodeEx(entry.filename.c_str(),
+                                  ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+
+                if (ImGui::BeginPopupContextItem()) {
+                    if (dat2_entry_is_previewable(entry.filename.c_str())) {
+                        if (ImGui::Selectable("Preview")) {
+                            info->pending_preview = &entry;
+                        }
+                    }
+                    if (ImGui::Selectable("Export...")) {
+                        info->pending_export = &entry;
+                        const char* basename = strrchr(entry.filename.c_str(), '\\');
+                        basename = (basename != nullptr) ? basename + 1 : entry.filename.c_str();
+                        ifd::FileDialog::Instance().Save("DATExportDialog", "Export File",
+                                                         "All files (*.*){.*}",
+                                                         usr_info.default_save_path);
+                        ifd::FileDialog::Instance().SetFilename(basename);
+                    }
+                    ImGui::EndPopup();
+                }
+
+                char size_buf[32];
+                format_file_size(size_buf, sizeof(size_buf), entry.decompressed_size);
+                ImGui::SameLine();
+                ImGui::TextDisabled("(%s)", size_buf);
+            }
+        }
     }
     ImGui::End();
 
