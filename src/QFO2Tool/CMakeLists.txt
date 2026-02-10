@@ -63,15 +63,10 @@ add_library(FO2MapEditLib
   Maps_Txt.h
   Maps_Txt.cpp
   txt_parse_helpers.h
-  dat2/dat2_io.h
-  dat2/dat2_io.cpp
-  dat2/dat2_archive.h
-  dat2/dat2_archive.cpp
-  dat2/dat2_tree_view.h
-  dat2/dat2_tree_view.cpp
-  dat2/dat2_writer.h
-  dat2/dat2_writer.cpp
 )
+
+add_subdirectory(file_types)
+add_subdirectory(dat2)
 
 #these need to be located after add_library()
 #target (FO2MapEditLib) needs to be declared

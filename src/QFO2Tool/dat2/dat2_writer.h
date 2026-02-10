@@ -9,17 +9,16 @@
 namespace dat2 {
 
 struct Dat2WriteEntry {
-    std::string archive_path;    // backslash-separated path in archive
-    std::vector<uint8_t> data;   // uncompressed file contents
+    std::string archive_path;  // backslash-separated path in archive
+    std::vector<uint8_t> data; // uncompressed file contents
 };
 
 struct Dat2WriteOptions {
-    bool compress = true;        // zlib compress entries
+    bool compress = true; // zlib compress entries
 };
 
 // Write entries to a DAT2 archive on disk.
-Dat2Status write_archive(const char* output_path,
-                         const std::vector<Dat2WriteEntry>& entries,
+Dat2Status write_archive(const char* output_path, const std::vector<Dat2WriteEntry>& entries,
                          const Dat2WriteOptions& options);
 
 // Recursively collect files from a directory into write entries.

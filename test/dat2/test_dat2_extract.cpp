@@ -5,11 +5,9 @@
 #include <cstring>
 
 TEST_CASE("dat2::extract uncompressed roundtrip") {
-    std::vector<uint8_t> original = { 'H', 'e', 'l', 'l', 'o', ',', ' ',
-                                       'W', 'o', 'r', 'l', 'd', '!' };
-    auto [buf, size] = build_test_dat2({
-        { "hello.txt", original, false }
-    });
+    std::vector<uint8_t> original = {'H', 'e', 'l', 'l', 'o', ',', ' ',
+                                     'W', 'o', 'r', 'l', 'd', '!'};
+    auto [buf, size] = build_test_dat2({{"hello.txt", original, false}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 
@@ -28,9 +26,7 @@ TEST_CASE("dat2::extract compressed roundtrip") {
         original[i] = static_cast<uint8_t>(i % 10); // repetitive = compressible
     }
 
-    auto [buf, size] = build_test_dat2({
-        { "data.bin", original, true }
-    });
+    auto [buf, size] = build_test_dat2({{"data.bin", original, true}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 
@@ -50,9 +46,7 @@ TEST_CASE("dat2::extract zlib magic detection not flag") {
         original[i] = static_cast<uint8_t>(i % 5);
     }
 
-    auto [buf, size] = build_test_dat2({
-        { "test.dat", original, true }
-    });
+    auto [buf, size] = build_test_dat2({{"test.dat", original, true}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 
@@ -67,10 +61,8 @@ TEST_CASE("dat2::extract zlib magic detection not flag") {
 }
 
 TEST_CASE("dat2::extract_to uncompressed") {
-    std::vector<uint8_t> original = { 0xDE, 0xAD, 0xBE, 0xEF };
-    auto [buf, size] = build_test_dat2({
-        { "test.bin", original, false }
-    });
+    std::vector<uint8_t> original = {0xDE, 0xAD, 0xBE, 0xEF};
+    auto [buf, size] = build_test_dat2({{"test.bin", original, false}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 
@@ -89,9 +81,7 @@ TEST_CASE("dat2::extract_to compressed") {
         original[i] = static_cast<uint8_t>(i % 7);
     }
 
-    auto [buf, size] = build_test_dat2({
-        { "comp.dat", original, true }
-    });
+    auto [buf, size] = build_test_dat2({{"comp.dat", original, true}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 
@@ -105,10 +95,8 @@ TEST_CASE("dat2::extract_to compressed") {
 }
 
 TEST_CASE("dat2::extract_to buffer too small (uncompressed)") {
-    std::vector<uint8_t> original = { 0x01, 0x02, 0x03, 0x04 };
-    auto [buf, size] = build_test_dat2({
-        { "test.bin", original, false }
-    });
+    std::vector<uint8_t> original = {0x01, 0x02, 0x03, 0x04};
+    auto [buf, size] = build_test_dat2({{"test.bin", original, false}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 
@@ -126,9 +114,7 @@ TEST_CASE("dat2::extract_to buffer too small (compressed)") {
         original[i] = static_cast<uint8_t>(i % 3);
     }
 
-    auto [buf, size] = build_test_dat2({
-        { "comp.dat", original, true }
-    });
+    auto [buf, size] = build_test_dat2({{"comp.dat", original, true}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 
@@ -147,9 +133,7 @@ TEST_CASE("dat2::extract corrupted compressed data") {
         original[i] = static_cast<uint8_t>(i);
     }
 
-    auto [buf, size] = build_test_dat2({
-        { "test.dat", original, true }
-    });
+    auto [buf, size] = build_test_dat2({{"test.dat", original, true}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 
@@ -162,9 +146,7 @@ TEST_CASE("dat2::extract corrupted compressed data") {
     // We need to access the internal buffer via extract — but we already built it
     // Instead, corrupt the raw buffer before parsing... but we already parsed.
     // Let's rebuild with corruption.
-    auto [buf2, size2] = build_test_dat2({
-        { "test.dat", original, true }
-    });
+    auto [buf2, size2] = build_test_dat2({{"test.dat", original, true}});
     // Corrupt compressed data (skip first 2 bytes = zlib header)
     buf2[4] = 0xFF;
     buf2[5] = 0xFF;
@@ -183,9 +165,7 @@ TEST_CASE("dat2::extract corrupted compressed data") {
 
 TEST_CASE("dat2::extract zero-length file") {
     std::vector<uint8_t> empty_data;
-    auto [buf, size] = build_test_dat2({
-        { "empty.txt", empty_data, false }
-    });
+    auto [buf, size] = build_test_dat2({{"empty.txt", empty_data, false}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 
@@ -198,14 +178,14 @@ TEST_CASE("dat2::extract zero-length file") {
 }
 
 TEST_CASE("dat2::extract multiple files selectively") {
-    std::vector<uint8_t> data1 = { 0xAA, 0xBB };
-    std::vector<uint8_t> data2 = { 0xCC, 0xDD, 0xEE };
-    std::vector<uint8_t> data3 = { 0xFF };
+    std::vector<uint8_t> data1 = {0xAA, 0xBB};
+    std::vector<uint8_t> data2 = {0xCC, 0xDD, 0xEE};
+    std::vector<uint8_t> data3 = {0xFF};
 
     auto [buf, size] = build_test_dat2({
-        { "first.bin", data1, false },
-        { "second.bin", data2, false },
-        { "third.bin", data3, false },
+        {"first.bin", data1, false},
+        {"second.bin", data2, false},
+        {"third.bin", data3, false},
     });
 
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
@@ -227,9 +207,7 @@ TEST_CASE("dat2::extract multiple files selectively") {
 }
 
 TEST_CASE("dat2::entry out of bounds") {
-    auto [buf, size] = build_test_dat2({
-        { "test.dat", { 0x01 }, false }
-    });
+    auto [buf, size] = build_test_dat2({{"test.dat", {0x01}, false}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 

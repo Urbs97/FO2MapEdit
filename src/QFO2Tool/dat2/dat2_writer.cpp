@@ -1,4 +1,5 @@
 #include "dat2_writer.h"
+
 #include "dat2_io.h"
 
 #include <algorithm>
@@ -11,17 +12,20 @@
 namespace dat2 {
 
 namespace {
-struct FileCloser { void operator()(FILE* f) const { if (f != nullptr) { std::fclose(f); 
-}} };
+struct FileCloser {
+    void operator()(FILE* f) const {
+        if (f != nullptr) {
+            std::fclose(f);
+        }
+    }
+};
 using FilePtr = std::unique_ptr<FILE, FileCloser>;
 } // anonymous namespace
 
 // ── write_archive ────────────────────────────────────────────────────────
 
-Dat2Status write_archive(const char* output_path,
-                         const std::vector<Dat2WriteEntry>& entries,
-                         const Dat2WriteOptions& options)
-{
+Dat2Status write_archive(const char* output_path, const std::vector<Dat2WriteEntry>& entries,
+                         const Dat2WriteOptions& options) {
     // Phase 1: build data section and collect metadata
     struct EntryMeta {
         std::string filename;
@@ -43,23 +47,20 @@ Dat2Status write_archive(const char* output_path,
         if (options.compress && !entry.data.empty()) {
             uLongf compressed_size = compressBound(static_cast<uLong>(entry.data.size()));
             std::vector<uint8_t> compressed(compressed_size);
-            int ret = compress2(compressed.data(), &compressed_size,
-                                entry.data.data(), static_cast<uLong>(entry.data.size()),
-                                Z_DEFAULT_COMPRESSION);
+            int ret = compress2(compressed.data(), &compressed_size, entry.data.data(),
+                                static_cast<uLong>(entry.data.size()), Z_DEFAULT_COMPRESSION);
             if (ret == Z_OK) {
                 compressed.resize(compressed_size);
                 meta.packed_size = static_cast<uint32_t>(compressed_size);
                 meta.is_compressed = true;
-                data_section.insert(data_section.end(),
-                                    compressed.begin(), compressed.end());
+                data_section.insert(data_section.end(), compressed.begin(), compressed.end());
             } else {
-                return { Dat2Error::COMPRESSION_FAILED };
+                return {Dat2Error::COMPRESSION_FAILED};
             }
         } else {
             meta.packed_size = meta.decompressed_size;
             meta.is_compressed = false;
-            data_section.insert(data_section.end(),
-                                entry.data.begin(), entry.data.end());
+            data_section.insert(data_section.end(), entry.data.begin(), entry.data.end());
         }
 
         metas.push_back(std::move(meta));
@@ -73,8 +74,7 @@ Dat2Status write_archive(const char* output_path,
     std::vector<uint8_t> tree_entries;
     for (const auto& meta : metas) {
         write_le_u32(tree_entries, static_cast<uint32_t>(meta.filename.size()));
-        tree_entries.insert(tree_entries.end(),
-                            meta.filename.begin(), meta.filename.end());
+        tree_entries.insert(tree_entries.end(), meta.filename.begin(), meta.filename.end());
         write_le_u8(tree_entries, meta.is_compressed ? 1 : 0);
         write_le_u32(tree_entries, meta.decompressed_size);
         write_le_u32(tree_entries, meta.packed_size);
@@ -85,9 +85,8 @@ Dat2Status write_archive(const char* output_path,
     uint32_t tree_size = static_cast<uint32_t>(tree_entries.size()) + 4;
 
     // Phase 5: compute total file size
-    uint32_t total_size = static_cast<uint32_t>(
-        data_section.size() + 4 + tree_entries.size() + 4 + 4
-    );
+    uint32_t total_size =
+        static_cast<uint32_t>(data_section.size() + 4 + tree_entries.size() + 4 + 4);
 
     // Phase 6: assemble the complete file
     std::vector<uint8_t> result;
@@ -102,20 +101,19 @@ Dat2Status write_archive(const char* output_path,
     // Phase 7: write to disk
     FilePtr f(std::fopen(output_path, "wb"));
     if (!f) {
-        return { Dat2Error::FILE_WRITE_FAILED };
+        return {Dat2Error::FILE_WRITE_FAILED};
     }
 
     if (std::fwrite(result.data(), 1, result.size(), f.get()) != result.size()) {
-        return { Dat2Error::FILE_WRITE_FAILED };
+        return {Dat2Error::FILE_WRITE_FAILED};
     }
 
-    return { Dat2Error::OK };
+    return {Dat2Error::OK};
 }
 
 // ── collect_from_directory ───────────────────────────────────────────────
 
-Dat2Result<std::vector<Dat2WriteEntry>> collect_from_directory(const char* dir_path)
-{
+Dat2Result<std::vector<Dat2WriteEntry>> collect_from_directory(const char* dir_path) {
     namespace fs = std::filesystem;
 
     std::vector<Dat2WriteEntry> entries;
@@ -160,7 +158,7 @@ Dat2Result<std::vector<Dat2WriteEntry>> collect_from_directory(const char* dir_p
             }
         }
 
-        entries.push_back({ std::move(archive_path), std::move(data) });
+        entries.push_back({std::move(archive_path), std::move(data)});
     }
 
     // Check for iteration error after the loop
@@ -169,18 +167,16 @@ Dat2Result<std::vector<Dat2WriteEntry>> collect_from_directory(const char* dir_p
     }
 
     // Sort entries alphabetically for deterministic output
-    std::sort(entries.begin(), entries.end(),
-              [](const Dat2WriteEntry& a, const Dat2WriteEntry& b) {
-                  return a.archive_path < b.archive_path;
-              });
+    std::sort(entries.begin(), entries.end(), [](const Dat2WriteEntry& a, const Dat2WriteEntry& b) {
+        return a.archive_path < b.archive_path;
+    });
 
     return Dat2Result<std::vector<Dat2WriteEntry>>::success(std::move(entries));
 }
 
 // ── collect_from_archive ─────────────────────────────────────────────────
 
-Dat2Result<std::vector<Dat2WriteEntry>> collect_from_archive(const Dat2Archive& archive)
-{
+Dat2Result<std::vector<Dat2WriteEntry>> collect_from_archive(const Dat2Archive& archive) {
     std::vector<Dat2WriteEntry> entries;
     entries.reserve(archive.file_count());
 
@@ -190,7 +186,7 @@ Dat2Result<std::vector<Dat2WriteEntry>> collect_from_archive(const Dat2Archive& 
             return Dat2Result<std::vector<Dat2WriteEntry>>::fail(extracted.error);
         }
 
-        entries.push_back({ src.filename, std::move(extracted.value) });
+        entries.push_back({src.filename, std::move(extracted.value)});
     }
 
     return Dat2Result<std::vector<Dat2WriteEntry>>::success(std::move(entries));

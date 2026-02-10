@@ -13,10 +13,8 @@ TEST_CASE("dat2::parse empty archive (0 files)") {
 }
 
 TEST_CASE("dat2::parse single uncompressed file") {
-    std::vector<uint8_t> data = { 'H', 'e', 'l', 'l', 'o' };
-    auto [buf, size] = build_test_dat2({
-        { "art\\tiles\\test.frm", data, false }
-    });
+    std::vector<uint8_t> data = {'H', 'e', 'l', 'l', 'o'};
+    auto [buf, size] = build_test_dat2({{"art\\tiles\\test.frm", data, false}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
     CHECK(result.value.file_count() == 1);
@@ -30,14 +28,14 @@ TEST_CASE("dat2::parse single uncompressed file") {
 }
 
 TEST_CASE("dat2::parse multiple files") {
-    std::vector<uint8_t> data1 = { 0x01, 0x02, 0x03 };
-    std::vector<uint8_t> data2 = { 0x04, 0x05, 0x06, 0x07 };
-    std::vector<uint8_t> data3 = { 0x08 };
+    std::vector<uint8_t> data1 = {0x01, 0x02, 0x03};
+    std::vector<uint8_t> data2 = {0x04, 0x05, 0x06, 0x07};
+    std::vector<uint8_t> data3 = {0x08};
 
     auto [buf, size] = build_test_dat2({
-        { "file1.dat", data1, false },
-        { "dir\\file2.dat", data2, false },
-        { "a\\b\\c.txt", data3, false },
+        {"file1.dat", data1, false},
+        {"dir\\file2.dat", data2, false},
+        {"a\\b\\c.txt", data3, false},
     });
 
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
@@ -92,9 +90,7 @@ TEST_CASE("dat2::parse invalid tree_size") {
 TEST_CASE("dat2::parse truncated tree entry") {
     // Build a valid 1-file archive, then reduce num_files field
     // to claim 2 files when only 1 tree entry exists
-    auto [buf, size] = build_test_dat2({
-        { "test.dat", { 0x01 }, false }
-    });
+    auto [buf, size] = build_test_dat2({{"test.dat", {0x01}, false}});
 
     // Find num_files field and set it to 2
     // num_files is right before tree entries, which is right before tree_size + file_size
@@ -108,9 +104,7 @@ TEST_CASE("dat2::parse truncated tree entry") {
 }
 
 TEST_CASE("dat2::find_entry case insensitive") {
-    auto [buf, size] = build_test_dat2({
-        { "Art\\Tiles\\Test.FRM", { 0x01 }, false }
-    });
+    auto [buf, size] = build_test_dat2({{"Art\\Tiles\\Test.FRM", {0x01}, false}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 
@@ -127,9 +121,7 @@ TEST_CASE("dat2::find_entry case insensitive") {
 }
 
 TEST_CASE("dat2::find_entry nullptr path") {
-    auto [buf, size] = build_test_dat2({
-        { "test.dat", { 0x01 }, false }
-    });
+    auto [buf, size] = build_test_dat2({{"test.dat", {0x01}, false}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
     // Empty string should not match
@@ -143,9 +135,7 @@ TEST_CASE("dat2::error string coverage") {
 }
 
 TEST_CASE("dat2::Dat2Archive move semantics") {
-    auto [buf, size] = build_test_dat2({
-        { "test.dat", { 0x01, 0x02 }, false }
-    });
+    auto [buf, size] = build_test_dat2({{"test.dat", {0x01, 0x02}, false}});
     auto result = dat2::Dat2Archive::open_from_buffer(std::move(buf), size);
     REQUIRE(result.ok());
 

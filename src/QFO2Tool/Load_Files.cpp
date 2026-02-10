@@ -14,10 +14,7 @@
 #include "Load_Animation.h"
 #include "Load_Files.h"
 #include "Load_Settings.h"
-#include "MSK_Convert.h"
-#include "Worldmap_Project.h"
-#include "dat2/dat2_tree_view.h"
-#include "display_FRM_OpenGL.h"
+#include "file_types/File_Type_Registry.h"
 #include "platform_io.h"
 
 #include <algorithm>
@@ -132,29 +129,13 @@ bool drag_drop_POPUP(variables* My_Variables, LF* F_Prop, image_paths* images_ar
 // Checks the file extension against known working extensions
 // Returns true if any extension matches, else return false
 bool Supported_Format(const std::filesystem::path& file) {
-    // array of compatible filetype extensions
-    constexpr static NATIVE_STRING_TYPE supported[14][6]{
-#ifdef QFO2_WINDOWS
-        L".FRM", L".MSK", L".PNG", L".JPG", L".JPEG", L".BMP", L".GIF", L".FR0",
-        L".FR1", L".FR2", L".FR3", L".FR4", L".FR5",  L".WMAP"
-#elif defined(QFO2_LINUX)
-        ".FRM", ".MSK", ".PNG", ".BMP", ".JPG", ".JPEG", ".GIF", ".FR0",
-        ".FR1", ".FR2", ".FR3", ".FR4", ".FR5", ".WMAP"
-#endif
-    };
-    int k = sizeof(supported) / (6 * sizeof(NATIVE_STRING_TYPE));
-
-    // actual extension check
-    int i = 0;
-    while (i < k) {
-        // compare extension to determine if file is viewable
-        if (io_strncasecmp(file.extension().c_str(), supported[i], 6) == 0) {
-            return true;
-        }
-        i++;
+    std::string ext_str = file.extension().string();
+    // skip the leading dot
+    const char* ext = ext_str.c_str();
+    if (ext[0] == '.') {
+        ext++;
     }
-
-    return false;
+    return is_supported_format(ext);
 }
 
 std::vector<std::filesystem::path> handle_subdirectory_vec(const std::filesystem::path& directory) {
@@ -621,18 +602,8 @@ bool ImDialog_load_files(LF* F_Prop, image_data* img_data, user_info* usr_info,
     static bool load_file;
     static char load_name[MAX_PATH];
     if (ImGui::Button("Load File")) {
-        const char* ext_filter = nullptr;
-        ext_filter = "FRM/MSK/WMAP/DAT and image files"
-                     "(*.png;"
-                     // "*.apng;"
-                     "*.jpg;*.jpeg;*.frm;*.fr0-5;*.msk;*.wmap;*.dat;)"
-                     "{.fr0,.FR0,.fr1,.FR1,.fr2,.FR2,.fr3,.FR3,.fr4,.FR4,.fr5,.FR5,"
-                     ".png,.jpg,.jpeg,"
-                     ".frm,.FRM,"
-                     ".msk,.MSK,"
-                     ".wmap,.WMAP,"
-                     ".dat,.DAT,"
-                     "}";
+        static char ext_filter[1024];
+        build_dialog_filter(ext_filter, sizeof(ext_filter));
 
         char* folder = usr_info->default_load_path;
         ifd::FileDialog::Instance().Open("FileLoadDialog", "Load File", ext_filter, false, folder);
@@ -673,16 +644,6 @@ bool ImDialog_load_files(LF* F_Prop, image_data* img_data, user_info* usr_info,
     return false;
 }
 
-// Check file extension to make sure it's one of the varieties of FRM
-// TODO: maybe combine with Supported_Format()?
-bool FRx_check(char* ext) {
-    return (io_strncmp(ext, "FRM", 4) == 0) || (io_strncmp(ext, "FR0", 4) == 0) ||
-           (io_strncmp(ext, "FR1", 4) == 0) || (io_strncmp(ext, "FR2", 4) == 0) ||
-           (io_strncmp(ext, "FR3", 4) == 0) || (io_strncmp(ext, "FR4", 4) == 0) ||
-           (io_strncmp(ext, "FR5", 4) == 0);
-}
-
-// TODO: maybe combine with Supported_Format()?
 bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
                      const char* file_name) {
     // TODO: make a function that checks if image has a different palette
@@ -693,114 +654,19 @@ bool File_Type_Check(LF* F_Prop, shader_info* shaders, image_data* img_data,
         return false;
     }
     img_data->display_frame_num = 0;
-    // FRx_check checks extension to make sure it's one of the FRM variants (FRM,
-    // FR0, FR1...FR5)
-    if (FRx_check(F_Prop->extension)) {
-        // The new way to load FRM images using openGL
-        F_Prop->file_open_window = load_FRM_OpenGL(F_Prop->Opened_File, img_data, shaders);
-        if (!F_Prop->file_open_window) {
-            return false;
-        }
-        img_data->type = img_type::FRM;
-    } else if (io_strncmp(F_Prop->extension, "MSK", 4) == 0) { // 0 == match
-        F_Prop->file_open_window = Load_MSK_Tile_SURFACE(F_Prop->Opened_File, img_data);
-        if (!F_Prop->file_open_window) {
-            return false;
-        }
-        bool success = false;
-        img_data->type = img_type::MSK;
-        success =
-            framebuffer_init(&img_data->render_texture, &F_Prop->img_data.framebuffer, 350, 300);
-        if (!success) {
-            // TODO: log to file
-            set_popup_warning("[ERROR] Load_MSK_File_SURFACE\n\n"
-                              "Image framebuffer failed to attach correctly?");
-            printf("Image framebuffer failed to attach correctly?\n");
-            return false;
-        }
-        int msk_idx = find_overlay(img_data->overlay, img_data->overlay_count, LayerType::MSK);
-        if (msk_idx >= 0 && img_data->overlay[msk_idx].srfc != nullptr) {
-            SURFACE_to_texture(img_data->overlay[msk_idx].srfc, img_data->overlay[msk_idx].texture,
-                               350, 300, 1);
-            draw_texture_to_framebuffer(shaders->FO_pal, shaders->render_FRM_shader,
-                                        &shaders->giant_triangle, img_data->framebuffer,
-                                        img_data->overlay[msk_idx].texture, 350, 300);
-        }
-    } else if (io_strncmp(F_Prop->extension, "WMAP", 5) == 0) {
-        F_Prop->file_open_window =
-            load_wmap_project(F_Prop->Opened_File, F_Prop, img_data, shaders);
-        if (!F_Prop->file_open_window) {
-            return false;
-        }
-    } else if (io_strncmp(F_Prop->extension, "DAT", 4) == 0) {
-        F_Prop->file_open_window = load_dat_archive(F_Prop);
-        return F_Prop->file_open_window; // DAT has no image data — skip ANM_dir checks below
+
+    const FileTypeEntry* entry = find_file_type(F_Prop->extension);
+    if (entry == nullptr) {
+        return false;
     }
-    // TODO: add another type for known generic image types?
-    else { // all other more common (generic) image types
-        Surface* temp_surface = nullptr;
-        temp_surface = Load_File_to_RGBA(F_Prop->Opened_File);
-        if (temp_surface == nullptr) {
-            // TODO: log to file
-            set_popup_warning("[ERROR] File_Type_Check()\n\n"
-                              "Unable to load image.");
-            printf("Unable to load image: %s\n", F_Prop->Opened_File);
-            return false;
-        }
 
-        img_data->ANM_dir = (ANM_Dir*)malloc(sizeof(ANM_Dir) * 6);
-        if (img_data->ANM_dir == nullptr) {
-            // TODO: log to file
-            set_popup_warning("[ERROR] File_Type_Check()\n\n"
-                              "Unable to allocate memory for ANM_dir.");
-            printf("Unable to allocate memory for ANM_dir: %d\n", __LINE__);
-            return false;
-        }
-        // initialize allocated memory
-        new (img_data->ANM_dir) ANM_Dir[6];
+    if (!entry->open(F_Prop, shaders, img_data)) {
+        return false;
+    }
 
-        img_data->ANM_dir[0].frame_data = (Surface**)malloc(sizeof(Surface*));
-        if (img_data->ANM_dir[0].frame_data == nullptr) {
-            // TODO: log to file
-            set_popup_warning("[ERROR] File_Type_Check()\n\n"
-                              "Unable to allocate memory for ANM_Frame.");
-            printf("Unable to allocate memory for ANM_Frame: %d\n", __LINE__);
-            free(img_data->ANM_dir);
-            img_data->ANM_dir = nullptr;
-            return false;
-        }
-        Surface* srfc = img_data->ANM_dir[0].frame_data[0] = temp_surface;
-        if (img_data->ANM_dir->frame_data != nullptr) {
-            img_data->width = srfc->w;
-            img_data->height = srfc->h;
-            img_data->ANM_dir[0].num_frames = 1;
-
-            img_data->type = img_type::OTHER;
-
-            img_data->FRM_texture = init_texture(srfc, srfc->w, srfc->h, img_data->type);
-
-            framebuffer_init(&img_data->render_texture, &img_data->framebuffer, srfc->w, srfc->h);
-
-            // assign display direction to same as image slot
-            // so we can see the image on load
-            img_data->display_orient_num = static_cast<int>(Direction::NE);
-            img_data->display_frame_num = 0;
-
-            F_Prop->file_open_window = true;
-        }
-
-        if (img_data->ANM_dir[0].frame_box == nullptr) {
-            img_data->ANM_dir[0].frame_box = (rectangle*)calloc(1, sizeof(rectangle));
-        }
-        if (img_data->ANM_dir[0].frame_box == nullptr) {
-            // TODO: log to file
-            set_popup_warning("[ERROR] File_Type_Check()\n\n"
-                              "Unable to allocate memory for ANM_dir[0].frame_box.");
-            printf("Unable to allocate memory for ANM_dir[0].frame_box: %d\n", __LINE__);
-            free(img_data->ANM_dir);
-            img_data->ANM_dir = nullptr;
-            return false;
-        }
+    // DAT archives have no image data — skip ANM_dir validation
+    if (!(entry->flags & FileTypeFlags::HAS_IMAGE)) {
+        return true;
     }
 
     if (img_data->ANM_dir != nullptr) {

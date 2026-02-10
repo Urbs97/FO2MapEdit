@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,22 +25,15 @@ enum class Dat2Error : uint8_t {
 
 const char* dat2_error_str(Dat2Error err);
 
-template <typename T>
-struct Dat2Result {
+template <typename T> struct Dat2Result {
     Dat2Error error;
     T value;
 
     [[nodiscard]] bool ok() const { return error == Dat2Error::OK; }
 
-    static Dat2Result success(T val)
-    {
-        return { Dat2Error::OK, std::move(val) };
-    }
+    static Dat2Result success(T val) { return {Dat2Error::OK, std::move(val)}; }
 
-    static Dat2Result fail(Dat2Error err)
-    {
-        return { err, T{} };
-    }
+    static Dat2Result fail(Dat2Error err) { return {err, T{}}; }
 };
 
 struct Dat2Status {
@@ -57,7 +50,7 @@ struct Dat2Entry {
 };
 
 class Dat2Archive {
-public:
+  public:
     // Open and parse a DAT2 file from disk.
     static Dat2Result<Dat2Archive> open(const char* path);
 
@@ -85,7 +78,7 @@ public:
     // Extract entry data into a caller-provided buffer.
     Dat2Status extract_to(const Dat2Entry& entry, uint8_t* buf, size_t buf_size) const;
 
-private:
+  private:
     std::unique_ptr<uint8_t[]> m_file_buf;
     size_t m_file_size = 0;
     size_t m_data_end = 0; // end of the data section (start of num_files field)

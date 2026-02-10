@@ -1,5 +1,5 @@
-#include "dat2/dat2_writer.h"
 #include "dat2/dat2_archive.h"
+#include "dat2/dat2_writer.h"
 #include "doctest.h"
 
 #include <cstdio>
@@ -12,8 +12,7 @@
 // Helper: write archive to a temp file, read it back into a buffer, return Dat2Archive.
 static dat2::Dat2Result<dat2::Dat2Archive>
 write_and_reopen(const std::vector<dat2::Dat2WriteEntry>& entries,
-                 const dat2::Dat2WriteOptions& opts)
-{
+                 const dat2::Dat2WriteOptions& opts) {
     namespace fs = std::filesystem;
     fs::path tmp = fs::temp_directory_path() / "test_dat2_writer.dat";
     std::string path = tmp.u8string();
@@ -29,12 +28,10 @@ write_and_reopen(const std::vector<dat2::Dat2WriteEntry>& entries,
 }
 
 TEST_CASE("dat2::write_archive single uncompressed file roundtrip") {
-    std::vector<uint8_t> original = { 'H', 'e', 'l', 'l', 'o' };
-    std::vector<dat2::Dat2WriteEntry> entries = {
-        { "test\\hello.txt", original }
-    };
+    std::vector<uint8_t> original = {'H', 'e', 'l', 'l', 'o'};
+    std::vector<dat2::Dat2WriteEntry> entries = {{"test\\hello.txt", original}};
 
-    auto result = write_and_reopen(entries, { false });
+    auto result = write_and_reopen(entries, {false});
     REQUIRE(result.ok());
     CHECK(result.value.file_count() == 1);
 
@@ -52,11 +49,9 @@ TEST_CASE("dat2::write_archive single compressed file roundtrip") {
         original[i] = static_cast<uint8_t>(i % 10);
     }
 
-    std::vector<dat2::Dat2WriteEntry> entries = {
-        { "data\\numbers.bin", original }
-    };
+    std::vector<dat2::Dat2WriteEntry> entries = {{"data\\numbers.bin", original}};
 
-    auto result = write_and_reopen(entries, { true });
+    auto result = write_and_reopen(entries, {true});
     REQUIRE(result.ok());
     CHECK(result.value.file_count() == 1);
 
@@ -69,17 +64,17 @@ TEST_CASE("dat2::write_archive single compressed file roundtrip") {
 }
 
 TEST_CASE("dat2::write_archive multiple files roundtrip") {
-    std::vector<uint8_t> data1 = { 0xAA, 0xBB, 0xCC };
-    std::vector<uint8_t> data2 = { 0x01, 0x02, 0x03, 0x04, 0x05 };
-    std::vector<uint8_t> data3 = { 0xFF };
+    std::vector<uint8_t> data1 = {0xAA, 0xBB, 0xCC};
+    std::vector<uint8_t> data2 = {0x01, 0x02, 0x03, 0x04, 0x05};
+    std::vector<uint8_t> data3 = {0xFF};
 
     std::vector<dat2::Dat2WriteEntry> entries = {
-        { "dir\\file1.bin", data1 },
-        { "dir\\file2.bin", data2 },
-        { "file3.bin",      data3 },
+        {"dir\\file1.bin", data1},
+        {"dir\\file2.bin", data2},
+        {"file3.bin", data3},
     };
 
-    auto result = write_and_reopen(entries, { false });
+    auto result = write_and_reopen(entries, {false});
     REQUIRE(result.ok());
     CHECK(result.value.file_count() == 3);
 
@@ -95,11 +90,9 @@ TEST_CASE("dat2::write_archive multiple files roundtrip") {
 }
 
 TEST_CASE("dat2::write_archive empty file roundtrip") {
-    std::vector<dat2::Dat2WriteEntry> entries = {
-        { "empty.txt", {} }
-    };
+    std::vector<dat2::Dat2WriteEntry> entries = {{"empty.txt", {}}};
 
-    auto result = write_and_reopen(entries, { false });
+    auto result = write_and_reopen(entries, {false});
     REQUIRE(result.ok());
     CHECK(result.value.file_count() == 1);
 
@@ -114,7 +107,7 @@ TEST_CASE("dat2::write_archive empty file roundtrip") {
 TEST_CASE("dat2::write_archive empty archive") {
     std::vector<dat2::Dat2WriteEntry> entries;
 
-    auto result = write_and_reopen(entries, { false });
+    auto result = write_and_reopen(entries, {false});
     REQUIRE(result.ok());
     CHECK(result.value.file_count() == 0);
 }
@@ -142,7 +135,7 @@ TEST_CASE("dat2::collect_from_directory and write roundtrip") {
     CHECK(collected.value.size() == 2);
 
     // Write and reopen
-    auto result = write_and_reopen(collected.value, { true });
+    auto result = write_and_reopen(collected.value, {true});
     REQUIRE(result.ok());
     CHECK(result.value.file_count() == 2);
 
@@ -165,15 +158,15 @@ TEST_CASE("dat2::collect_from_directory and write roundtrip") {
 
 TEST_CASE("dat2::collect_from_archive roundtrip (repack)") {
     // Build an archive with known data
-    std::vector<uint8_t> data1 = { 0x10, 0x20, 0x30 };
+    std::vector<uint8_t> data1 = {0x10, 0x20, 0x30};
     std::vector<uint8_t> data2(100);
     for (size_t i = 0; i < data2.size(); i++) {
         data2[i] = static_cast<uint8_t>(i % 13);
     }
 
     std::vector<dat2::Dat2WriteEntry> original_entries = {
-        { "art\\file1.frm", data1 },
-        { "data\\file2.dat", data2 },
+        {"art\\file1.frm", data1},
+        {"data\\file2.dat", data2},
     };
 
     // Write original archive
@@ -181,7 +174,7 @@ TEST_CASE("dat2::collect_from_archive roundtrip (repack)") {
     fs::path tmp1 = fs::temp_directory_path() / "test_dat2_repack_src.dat";
     fs::path tmp2 = fs::temp_directory_path() / "test_dat2_repack_dst.dat";
 
-    auto ws1 = dat2::write_archive(tmp1.c_str(), original_entries, { true });
+    auto ws1 = dat2::write_archive(tmp1.c_str(), original_entries, {true});
     REQUIRE(ws1.ok());
 
     // Open it
@@ -194,7 +187,7 @@ TEST_CASE("dat2::collect_from_archive roundtrip (repack)") {
     CHECK(collected.value.size() == 2);
 
     // Write repacked archive
-    auto ws2 = dat2::write_archive(tmp2.c_str(), collected.value, { true });
+    auto ws2 = dat2::write_archive(tmp2.c_str(), collected.value, {true});
     REQUIRE(ws2.ok());
 
     // Reopen repacked and verify
@@ -220,11 +213,9 @@ TEST_CASE("dat2::collect_from_directory fails on nonexistent path") {
 }
 
 TEST_CASE("dat2::write_archive fails on invalid output path") {
-    std::vector<dat2::Dat2WriteEntry> entries = {
-        { "test.txt", { 0x41 } }
-    };
+    std::vector<dat2::Dat2WriteEntry> entries = {{"test.txt", {0x41}}};
 
-    auto status = dat2::write_archive("/nonexistent/dir/output.dat", entries, { false });
+    auto status = dat2::write_archive("/nonexistent/dir/output.dat", entries, {false});
     CHECK_FALSE(status.ok());
     CHECK(status.error == dat2::Dat2Error::FILE_WRITE_FAILED);
 }

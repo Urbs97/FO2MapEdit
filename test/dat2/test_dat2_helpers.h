@@ -1,26 +1,25 @@
 #pragma once
 
-#include <cstdint>
+#include "dat2/dat2_io.h"
+
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <string>
 #include <vector>
 #include <zlib.h>
 
-#include "dat2/dat2_io.h"
-
 struct TestFileEntry {
-    std::string filename;       // backslash-separated path
-    std::vector<uint8_t> data;  // uncompressed file contents
-    bool compress = false;      // whether to zlib-compress in the DAT2
+    std::string filename;      // backslash-separated path
+    std::vector<uint8_t> data; // uncompressed file contents
+    bool compress = false;     // whether to zlib-compress in the DAT2
 };
 
 // Build a synthetic DAT2 archive in memory from the given entries.
 // Returns a pair of (buffer, size).
 inline std::pair<std::unique_ptr<uint8_t[]>, size_t>
-build_test_dat2(const std::vector<TestFileEntry>& files)
-{
+build_test_dat2(const std::vector<TestFileEntry>& files) {
     // Phase 1: build data section and collect metadata
     struct EntryMeta {
         std::string filename;
@@ -43,27 +42,23 @@ build_test_dat2(const std::vector<TestFileEntry>& files)
             // Compress with zlib
             uLongf compressed_size = compressBound(static_cast<uLong>(file.data.size()));
             std::vector<uint8_t> compressed(compressed_size);
-            int ret = compress2(compressed.data(), &compressed_size,
-                                file.data.data(), static_cast<uLong>(file.data.size()),
-                                Z_DEFAULT_COMPRESSION);
+            int ret = compress2(compressed.data(), &compressed_size, file.data.data(),
+                                static_cast<uLong>(file.data.size()), Z_DEFAULT_COMPRESSION);
             if (ret == Z_OK) {
                 compressed.resize(compressed_size);
                 meta.packed_size = static_cast<uint32_t>(compressed_size);
                 meta.is_compressed = true;
-                data_section.insert(data_section.end(),
-                                    compressed.begin(), compressed.end());
+                data_section.insert(data_section.end(), compressed.begin(), compressed.end());
             } else {
                 // Fallback to uncompressed
                 meta.packed_size = meta.decompressed_size;
                 meta.is_compressed = false;
-                data_section.insert(data_section.end(),
-                                    file.data.begin(), file.data.end());
+                data_section.insert(data_section.end(), file.data.begin(), file.data.end());
             }
         } else {
             meta.packed_size = meta.decompressed_size;
             meta.is_compressed = false;
-            data_section.insert(data_section.end(),
-                                file.data.begin(), file.data.end());
+            data_section.insert(data_section.end(), file.data.begin(), file.data.end());
         }
 
         metas.push_back(std::move(meta));
@@ -79,8 +74,7 @@ build_test_dat2(const std::vector<TestFileEntry>& files)
         // filename_len (u32)
         dat2::write_le_u32(tree_entries, static_cast<uint32_t>(meta.filename.size()));
         // filename bytes
-        tree_entries.insert(tree_entries.end(),
-                            meta.filename.begin(), meta.filename.end());
+        tree_entries.insert(tree_entries.end(), meta.filename.begin(), meta.filename.end());
         // is_compressed (u8)
         tree_entries.push_back(meta.is_compressed ? 1 : 0);
         // decompressed_size (u32)
@@ -96,9 +90,8 @@ build_test_dat2(const std::vector<TestFileEntry>& files)
 
     // Phase 5: compute total file size
     // data_section + num_files(4) + tree_entries + tree_size(4) + file_size(4)
-    uint32_t total_size = static_cast<uint32_t>(
-        data_section.size() + 4 + tree_entries.size() + 4 + 4
-    );
+    uint32_t total_size =
+        static_cast<uint32_t>(data_section.size() + 4 + tree_entries.size() + 4 + 4);
 
     // Phase 6: assemble the complete file
     std::vector<uint8_t> result;
@@ -117,5 +110,5 @@ build_test_dat2(const std::vector<TestFileEntry>& files)
 
     auto buf = std::make_unique<uint8_t[]>(result.size());
     std::memcpy(buf.get(), result.data(), result.size());
-    return { std::move(buf), result.size() };
+    return {std::move(buf), result.size()};
 }
