@@ -3,10 +3,10 @@
 
 #include "Edit_Image.h"
 
+#include "../Load_Files.h"
+#include "../display_FRM_OpenGL.h"
 #include "ImGui_Warning.h"
-#include "Load_Files.h"
 #include "Zoom_Pan.h"
-#include "display_FRM_OpenGL.h"
 #include "imgui_internal.h"
 
 #include <algorithm>

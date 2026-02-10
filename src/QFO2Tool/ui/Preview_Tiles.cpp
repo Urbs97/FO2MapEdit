@@ -1,15 +1,15 @@
 #include "Preview_Tiles.h"
 
-#include "Edit_TILES_LST.h"
+#include "../Edit_TILES_LST.h"
+#include "../Proto_Files.h"
+#include "../Save_Files.h"
+#include "../display_FRM_OpenGL.h"
+#include "../load_FRM_OpenGL.h"
+#include "../tiles_pattern.h"
 #include "ImGui_Warning.h"
-#include "Proto_Files.h"
-#include "Save_Files.h"
 #include "Zoom_Pan.h"
-#include "display_FRM_OpenGL.h"
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "load_FRM_OpenGL.h"
-#include "tiles_pattern.h"
 
 void draw_red_squares(image_data* img_data, bool show_squares);
 void draw_red_tiles(image_data* img_data, bool show_squares);

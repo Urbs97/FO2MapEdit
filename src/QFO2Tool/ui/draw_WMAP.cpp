@@ -1,11 +1,11 @@
 #include "draw_WMAP.h"
 
 #include "../City_Layer.h"
-#include "../Edit_Image.h"
 #include "../Image2Texture.h"
 #include "../Load_Files.h"
-#include "../Preview_Image.h"
 #include "../display_FRM_OpenGL.h"
+#include "Edit_Image.h"
+#include "Preview_Image.h"
 #include "draw_common.h"
 #include "imgui.h"
 

@@ -167,12 +167,12 @@ XCOPY "$(ProjectDir)\..\SDL2_image-2.6.3\lib\x64\SDL2_image.dll" "$(TargetDir)" 
     <ClInclude Include="src\QFO2Tool\B_Endian.h" />
     <ClInclude Include="src\QFO2Tool\display_FRM_OpenGL.h" />
     <ClInclude Include="src\QFO2Tool\Edit_Animation.h" />
-    <ClInclude Include="src\QFO2Tool\Edit_Image.h" />
+    <ClInclude Include="src\QFO2Tool\ui\Edit_Image.h" />
     <ClInclude Include="src\QFO2Tool\Edit_TILES_LST.h" />
     <ClInclude Include="src\QFO2Tool\FRM_Convert.h" />
     <ClInclude Include="src\QFO2Tool\Image2Texture.h" />
-    <ClInclude Include="src\QFO2Tool\Image_Render.h" />
-    <ClInclude Include="src\QFO2Tool\ImGui_Warning.h" />
+    <ClInclude Include="src\QFO2Tool\ui\Image_Render.h" />
+    <ClInclude Include="src\QFO2Tool\ui\ImGui_Warning.h" />
     <ClInclude Include="src\QFO2Tool\Load_Animation.h" />
     <ClInclude Include="src\QFO2Tool\Load_Files.h" />
     <ClInclude Include="src\QFO2Tool\load_FRM_OpenGL.h" />
@@ -181,15 +181,15 @@ XCOPY "$(ProjectDir)\..\SDL2_image-2.6.3\lib\x64\SDL2_image.dll" "$(TargetDir)" 
     <ClInclude Include="src\QFO2Tool\MSK_Convert.h" />
     <ClInclude Include="src\QFO2Tool\Palette_Cycle.h" />
     <ClInclude Include="src\QFO2Tool\platform_io.h" />
-    <ClInclude Include="src\QFO2Tool\Preview_Image.h" />
-    <ClInclude Include="src\QFO2Tool\Preview_Tiles.h" />
+    <ClInclude Include="src\QFO2Tool\ui\Preview_Image.h" />
+    <ClInclude Include="src\QFO2Tool\ui\Preview_Tiles.h" />
     <ClInclude Include="src\QFO2Tool\Proto_Files.h" />
     <ClInclude Include="src\QFO2Tool\Save_Files.h" />
     <ClInclude Include="src\QFO2Tool\shader_class.h" />
     <ClInclude Include="src\QFO2Tool\tiles_pattern.h" />
     <ClInclude Include="src\QFO2Tool\timer_functions.h" />
     <ClInclude Include="src\QFO2Tool\town_map_tiles.h" />
-    <ClInclude Include="src\QFO2Tool\Zoom_Pan.h" />
+    <ClInclude Include="src\QFO2Tool\ui\Zoom_Pan.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\dependencies\GLAD\src\glad.c" />
@@ -235,12 +235,12 @@ XCOPY "$(ProjectDir)\..\SDL2_image-2.6.3\lib\x64\SDL2_image.dll" "$(TargetDir)" 
     <ClCompile Include="src\QFO2Tool\B_Endian.cpp" />
     <ClCompile Include="src\QFO2Tool\display_FRM_OpenGL.cpp" />
     <ClCompile Include="src\QFO2Tool\Edit_Animation.cpp" />
-    <ClCompile Include="src\QFO2Tool\Edit_Image.cpp" />
+    <ClCompile Include="src\QFO2Tool\ui\Edit_Image.cpp" />
     <ClCompile Include="src\QFO2Tool\Edit_TILES_LST.cpp" />
     <ClCompile Include="src\QFO2Tool\FRM_Convert.cpp" />
     <ClCompile Include="src\QFO2Tool\Image2Texture.cpp" />
-    <ClCompile Include="src\QFO2Tool\Image_Render.cpp" />
-    <ClCompile Include="src\QFO2Tool\ImGui_Warning.cpp" />
+    <ClCompile Include="src\QFO2Tool\ui\Image_Render.cpp" />
+    <ClCompile Include="src\QFO2Tool\ui\ImGui_Warning.cpp" />
     <ClCompile Include="src\QFO2Tool\Load_Animation.cpp" />
     <ClCompile Include="src\QFO2Tool\Load_Files.cpp" />
     <ClCompile Include="src\QFO2Tool\load_FRM_OpenGL.cpp" />
@@ -249,15 +249,15 @@ XCOPY "$(ProjectDir)\..\SDL2_image-2.6.3\lib\x64\SDL2_image.dll" "$(TargetDir)" 
     <ClCompile Include="src\QFO2Tool\MSK_Convert.cpp" />
     <ClCompile Include="src\QFO2Tool\Palette_Cycle.cpp" />
     <ClCompile Include="src\QFO2Tool\platform_io.cpp" />
-    <ClCompile Include="src\QFO2Tool\Preview_Image.cpp" />
-    <ClCompile Include="src\QFO2Tool\Preview_Tiles.cpp" />
+    <ClCompile Include="src\QFO2Tool\ui\Preview_Image.cpp" />
+    <ClCompile Include="src\QFO2Tool\ui\Preview_Tiles.cpp" />
     <ClCompile Include="src\QFO2Tool\Proto_Files.cpp" />
     <ClCompile Include="src\QFO2Tool\Save_Files.cpp" />
     <ClCompile Include="src\QFO2Tool\shader_class.cpp" />
     <ClCompile Include="src\QFO2Tool\tiles_pattern.cpp" />
     <ClCompile Include="src\QFO2Tool\timer_functions.cpp" />
     <ClCompile Include="src\QFO2Tool\town_map_tiles.cpp" />
-    <ClCompile Include="src\QFO2Tool\Zoom_Pan.cpp" />
+    <ClCompile Include="src\QFO2Tool\ui\Zoom_Pan.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

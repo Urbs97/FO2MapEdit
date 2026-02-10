@@ -1,14 +1,6 @@
 add_library(FO2MapEditLib
   App_State.h
   App_State.cpp
-  Show_Palette_Window.h
-  Show_Palette_Window.cpp
-  Show_DAT_Window.h
-  Show_DAT_Window.cpp
-  Show_Preview_Window.h
-  Show_Preview_Window.cpp
-  Show_Main_Menu.h
-  Show_Main_Menu.cpp
   town_map_tiles.h
   town_map_tiles.cpp
   B_Endian.h
@@ -17,16 +9,10 @@ add_library(FO2MapEditLib
   display_FRM_OpenGL.cpp
   Edit_Animation.cpp
   Edit_Animation.h
-  Edit_Image.cpp
-  Edit_Image.h
   FRM_Convert.cpp
   FRM_Convert.h
-  Image_Render.cpp
-  Image_Render.h
   Image2Texture.cpp
   Image2Texture.h
-  ImGui_Warning.cpp
-  ImGui_Warning.h
   Load_Animation.cpp
   Load_Animation.h
   Load_Files.cpp
@@ -41,17 +27,11 @@ add_library(FO2MapEditLib
   MSK_Convert.h
   Palette_Cycle.cpp
   Palette_Cycle.h
-  Preview_Image.cpp
-  Preview_Image.h
-  Preview_Tiles.cpp
-  Preview_Tiles.h
   Save_Files.cpp
   Save_Files.h
   stb_impl.c
   shader_class.cpp
   shader_class.h
-  Zoom_Pan.cpp
-  Zoom_Pan.h
   Stroke_State.h
   Stroke_State.cpp
   platform_io.h
@@ -77,6 +57,7 @@ add_library(FO2MapEditLib
 
 add_subdirectory(file_types)
 add_subdirectory(dat2)
+add_subdirectory(ui)
 
 #these need to be located after add_library()
 #target (FO2MapEditLib) needs to be declared

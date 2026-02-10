@@ -1,19 +1,19 @@
 #include "File_Type_Registry.h"
 
 #include "../platform_io.h"
-#include "draw_FRM.h"
-#include "draw_Image.h"
-#include "draw_MSK.h"
-#include "draw_WMAP.h"
+#include "../ui/draw_FRM.h"
+#include "../ui/draw_Image.h"
+#include "../ui/draw_MSK.h"
+#include "../ui/draw_WMAP.h"
+#include "../ui/save_FRM.h"
+#include "../ui/save_MSK.h"
+#include "../ui/save_TILE.h"
+#include "../ui/save_WMAP.h"
 #include "open_DAT.h"
 #include "open_FRM.h"
 #include "open_Image.h"
 #include "open_MSK.h"
 #include "open_WMAP.h"
-#include "save_FRM.h"
-#include "save_MSK.h"
-#include "save_TILE.h"
-#include "save_WMAP.h"
 
 #include <cstdio>
 #include <cstring>

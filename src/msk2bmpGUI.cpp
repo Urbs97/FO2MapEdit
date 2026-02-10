@@ -65,11 +65,11 @@ extern "C" const char *__lsan_default_suppressions() {
 #include "Stroke_State.h"
 
 #include "App_State.h"
-#include "Show_DAT_Window.h"
-#include "Show_Main_Menu.h"
-#include "Show_Palette_Window.h"
-#include "Show_Preview_Window.h"
-#include "ImGui_Warning.h"
+#include "ui/Show_DAT_Window.h"
+#include "ui/Show_Main_Menu.h"
+#include "ui/Show_Palette_Window.h"
+#include "ui/Show_Preview_Window.h"
+#include "ui/ImGui_Warning.h"
 #include "file_types/File_Type_Registry.h"
 #include "timer_functions.h"
 

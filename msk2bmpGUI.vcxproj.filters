@@ -57,7 +57,7 @@
     <ClCompile Include="src\QFO2Tool\Edit_Animation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\QFO2Tool\Edit_Image.cpp">
+    <ClCompile Include="src\QFO2Tool\ui\Edit_Image.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\QFO2Tool\Edit_TILES_LST.cpp">
@@ -69,7 +69,7 @@
     <ClCompile Include="src\QFO2Tool\Image2Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\QFO2Tool\Image_Render.cpp">
+    <ClCompile Include="src\QFO2Tool\ui\Image_Render.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\QFO2Tool\Load_Animation.cpp">
@@ -93,10 +93,10 @@
     <ClCompile Include="src\QFO2Tool\platform_io.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\QFO2Tool\Preview_Image.cpp">
+    <ClCompile Include="src\QFO2Tool\ui\Preview_Image.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\QFO2Tool\Preview_Tiles.cpp">
+    <ClCompile Include="src\QFO2Tool\ui\Preview_Tiles.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\QFO2Tool\Proto_Files.cpp">
@@ -117,7 +117,7 @@
     <ClCompile Include="src\QFO2Tool\town_map_tiles.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\QFO2Tool\Zoom_Pan.cpp">
+    <ClCompile Include="src\QFO2Tool\ui\Zoom_Pan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\dependencies\imgui-1.90.8-docking\backends\imgui_impl_glfw.cpp">
@@ -219,7 +219,7 @@
     <ClCompile Include="src\dependencies\GLFW\glfw-3.4\src\null_init.c">
       <Filter>Source Files\glfw</Filter>
     </ClCompile>
-    <ClCompile Include="src\QFO2Tool\ImGui_Warning.cpp">
+    <ClCompile Include="src\QFO2Tool\ui\ImGui_Warning.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\dependencies\ImFileDialog\ImFileDialog.cpp">
@@ -257,7 +257,7 @@
     <ClInclude Include="src\QFO2Tool\Edit_Animation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\QFO2Tool\Edit_Image.h">
+    <ClInclude Include="src\QFO2Tool\ui\Edit_Image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\QFO2Tool\Edit_TILES_LST.h">
@@ -269,7 +269,7 @@
     <ClInclude Include="src\QFO2Tool\Image2Texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\QFO2Tool\Image_Render.h">
+    <ClInclude Include="src\QFO2Tool\ui\Image_Render.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\QFO2Tool\Load_Animation.h">
@@ -293,10 +293,10 @@
     <ClInclude Include="src\QFO2Tool\platform_io.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\QFO2Tool\Preview_Image.h">
+    <ClInclude Include="src\QFO2Tool\ui\Preview_Image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\QFO2Tool\Preview_Tiles.h">
+    <ClInclude Include="src\QFO2Tool\ui\Preview_Tiles.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\QFO2Tool\Proto_Files.h">
@@ -317,7 +317,7 @@
     <ClInclude Include="src\QFO2Tool\town_map_tiles.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\QFO2Tool\Zoom_Pan.h">
+    <ClInclude Include="src\QFO2Tool\ui\Zoom_Pan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\dependencies\stb\stb_image.h">
@@ -380,7 +380,7 @@
     <ClInclude Include="src\dependencies\GLFW\glfw-3.4\src\null_platform.h">
       <Filter>Header Files\glfw</Filter>
     </ClInclude>
-    <ClInclude Include="src\QFO2Tool\ImGui_Warning.h">
+    <ClInclude Include="src\QFO2Tool\ui\ImGui_Warning.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\dependencies\ImFileDialog\ImFileDialog.h">

@@ -1,7 +1,7 @@
 #pragma once
 // #include <SDL.h>
-#include "Image2Texture.h"
-#include "Stroke_State.h"
+#include "../Image2Texture.h"
+#include "../Stroke_State.h"
 
 void Edit_Image(variables* My_Variables, ImVec2 img_pos, image_data* edit_data,
                 image_data* img_data, ANM_Dir* edit_struct, int active_layer, bool Palette_Update,

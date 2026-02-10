@@ -1,6 +1,6 @@
 #pragma once
 
-#include "load_FRM_OpenGL.h"
+#include "../load_FRM_OpenGL.h"
 
 // ImVec2 top_corner(image_data* img_data);
 ImVec2 top_corner(ImVec2 offset);

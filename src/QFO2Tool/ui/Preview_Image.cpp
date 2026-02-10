@@ -1,7 +1,7 @@
 #include "Preview_Image.h"
 
+#include "../display_FRM_OpenGL.h"
 #include "Zoom_Pan.h"
-#include "display_FRM_OpenGL.h"
 #include "imgui_internal.h"
 
 void preview_FRM_SURFACE(variables* My_Variables, struct image_data* img_data, bool show_stats) {

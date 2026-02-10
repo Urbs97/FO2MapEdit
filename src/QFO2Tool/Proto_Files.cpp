@@ -37,10 +37,10 @@ of file flags: 0                    //unkown? flags_ext: 0                //unko
 
 #include "B_Endian.h"
 #include "Edit_TILES_LST.h"
-#include "ImGui_Warning.h"
 #include "Load_Settings.h"
 #include "platform_io.h"
 #include "tiles_pattern.h"
+#include "ui/ImGui_Warning.h"
 
 #include <cstdint>
 #include <cstdio>

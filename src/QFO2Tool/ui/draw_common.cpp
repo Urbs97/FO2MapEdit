@@ -1,10 +1,10 @@
 #include "draw_common.h"
 
-#include "../Edit_Image.h"
 #include "../Image2Texture.h"
 #include "../Load_Files.h"
 #include "../Save_Files.h"
 #include "../display_FRM_OpenGL.h"
+#include "Edit_Image.h"
 #include "imgui.h"
 
 // "Export as PNG" button + popup — used by FRM and MSK

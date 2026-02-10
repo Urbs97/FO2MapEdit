@@ -5,7 +5,7 @@
 #include "../Image2Texture.h"
 #include "../Load_Files.h"
 #include "../MSK_Convert.h"
-#include "../Preview_Image.h"
+#include "Preview_Image.h"
 #include "draw_common.h"
 #include "imgui.h"
 

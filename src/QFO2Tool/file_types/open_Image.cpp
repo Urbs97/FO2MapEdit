@@ -1,10 +1,10 @@
 #include "open_Image.h"
 
-#include "../ImGui_Warning.h"
 #include "../Image2Texture.h"
 #include "../Load_Files.h"
 #include "../MiniSDL.h"
 #include "../load_FRM_OpenGL.h"
+#include "../ui/ImGui_Warning.h"
 
 #include <cstdio>
 #include <cstdlib>

@@ -1,8 +1,8 @@
 #include "Edit_Animation.h"
 
 #include "FRM_Convert.h"
-#include "ImGui_Warning.h"
 #include "Image2Texture.h"
+#include "ui/ImGui_Warning.h"
 
 #include <algorithm>
 #include <climits>

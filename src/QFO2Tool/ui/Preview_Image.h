@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Image2Texture.h"
-#include "Load_Files.h"
+#include "../Image2Texture.h"
+#include "../Load_Files.h"
 
 void Preview_MSK_Image(variables* My_Variables, struct image_data* img_data, bool show_stats);
 void Preview_Image(variables* My_Variables, struct image_data* img_data, bool show_stats);

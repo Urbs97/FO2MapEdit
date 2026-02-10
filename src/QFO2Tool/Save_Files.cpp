@@ -2,7 +2,6 @@
 
 #include "B_Endian.h"
 #include "City_Layer.h"
-#include "ImGui_Warning.h"
 #include "Layer.h"
 #include "Load_Settings.h"
 #include "Maps_Txt.h"
@@ -10,6 +9,7 @@
 #include "imgui.h"
 #include "platform_io.h"
 #include "town_map_tiles.h"
+#include "ui/ImGui_Warning.h"
 
 #include <ImFileDialog.h>
 #include <cctype>

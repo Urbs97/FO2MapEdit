@@ -1,14 +1,14 @@
 #include "Show_DAT_Window.h"
 
-#include "App_State.h"
+#include "../App_State.h"
+#include "../Image2Texture.h"
+#include "../Save_Files.h"
+#include "../dat2/dat2_tree_view.h"
+#include "../dat2/dat2_writer.h"
+#include "../file_types/File_Type_Registry.h"
+#include "../platform_io.h"
 #include "ImGui_Warning.h"
-#include "Image2Texture.h"
-#include "Save_Files.h"
-#include "dat2/dat2_tree_view.h"
-#include "dat2/dat2_writer.h"
-#include "file_types/File_Type_Registry.h"
 #include "imgui.h"
-#include "platform_io.h"
 
 #include <ImFileDialog.h>
 #include <filesystem>

@@ -1,9 +1,9 @@
 #include "Show_Palette_Window.h"
 
-#include "City_Layer.h"
+#include "../City_Layer.h"
+#include "../Image2Texture.h"
+#include "../Maps_Txt.h"
 #include "Edit_Image.h"
-#include "Image2Texture.h"
-#include "Maps_Txt.h"
 #include "imgui.h"
 
 #include <cmath>

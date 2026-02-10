@@ -64,6 +64,7 @@ add_subdirectory(src/QFO2Tool                     SYSTEM)
 target_include_directories(
   ${EXECUTABLE_NAME}
   PUBLIC src/QFO2Tool
+  PUBLIC src/QFO2Tool/ui
 )
 
 #this creates a new "library" for the linker (.dll/.so)
