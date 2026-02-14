@@ -663,6 +663,8 @@ int main(int argc, char **argv) {
     Clear_img_data(&i.edit_data);
     free(i.wmap);
     i.wmap = nullptr;
+    free(i.ssl_text);
+    i.ssl_text = nullptr;
     delete i.dat;
     i.dat = nullptr;
   }
