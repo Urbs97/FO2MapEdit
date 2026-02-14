@@ -10,11 +10,23 @@
 #include "../worldmap/txt_parse_helpers.h"
 #include "ImGui_Warning.h"
 #include "imgui.h"
+#include "../file_types/int2ssl_wrapper.h"
 
 #include <ImFileDialog.h>
+#include <cstring>
 #include <filesystem>
 
 // ── DAT archive window ──────────────────────────────────────────────────
+
+static bool is_int_file(const char* filename) {
+    const char* dot = strrchr(filename, '.');
+    if (!dot) return false;
+#ifdef QFO2_WINDOWS
+    return (_stricmp(dot, ".int") == 0);
+#else
+    return (strcasecmp(dot, ".int") == 0);
+#endif
+}
 
 static void draw_dat2_tree_node(const Dat2TreeNode& node, dat_info* info) {
     for (const auto& child : node.children) {
@@ -36,12 +48,32 @@ static void draw_dat2_tree_node(const Dat2TreeNode& node, dat_info* info) {
                         info->pending_preview = child.entry;
                     }
                 }
-                if (ImGui::Selectable("Export...")) {
-                    info->pending_export = child.entry;
-                    ifd::FileDialog::Instance().Save("DATExportDialog", "Export File",
-                                                     "All files (*.*){.*}",
-                                                     usr_info.default_save_path);
-                    ifd::FileDialog::Instance().SetFilename(child.name.c_str());
+                if (is_int_file(child.name.c_str())) {
+                    if (ImGui::Selectable("Export Raw...")) {
+                        info->pending_export = child.entry;
+                        ifd::FileDialog::Instance().Save("DATExportDialog", "Export File",
+                                                         "All files (*.*){.*}",
+                                                         usr_info.default_save_path);
+                        ifd::FileDialog::Instance().SetFilename(child.name.c_str());
+                    }
+                    if (ImGui::Selectable("Export as .SSL...")) {
+                        info->pending_export_ssl = child.entry;
+                        std::string ssl_name = child.name;
+                        size_t dot_pos = ssl_name.rfind('.');
+                        if (dot_pos != std::string::npos) ssl_name.replace(dot_pos, std::string::npos, ".ssl");
+                        ifd::FileDialog::Instance().Save("DATExportSSLDialog", "Export as SSL",
+                                                         "SSL script (*.ssl){.ssl},All files (*.*){.*}",
+                                                         usr_info.default_save_path);
+                        ifd::FileDialog::Instance().SetFilename(ssl_name.c_str());
+                    }
+                } else {
+                    if (ImGui::Selectable("Export...")) {
+                        info->pending_export = child.entry;
+                        ifd::FileDialog::Instance().Save("DATExportDialog", "Export File",
+                                                         "All files (*.*){.*}",
+                                                         usr_info.default_save_path);
+                        ifd::FileDialog::Instance().SetFilename(child.name.c_str());
+                    }
                 }
                 ImGui::EndPopup();
             }
@@ -97,14 +129,34 @@ void Show_DAT_Window(variables* My_Variables, LF* F_Prop, int slot_index, int* o
                             info->pending_preview = &entry;
                         }
                     }
-                    if (ImGui::Selectable("Export...")) {
-                        info->pending_export = &entry;
-                        const char* basename = strrchr(entry.filename.c_str(), '\\');
-                        basename = (basename != nullptr) ? basename + 1 : entry.filename.c_str();
-                        ifd::FileDialog::Instance().Save("DATExportDialog", "Export File",
-                                                         "All files (*.*){.*}",
-                                                         usr_info.default_save_path);
-                        ifd::FileDialog::Instance().SetFilename(basename);
+                    const char* basename = strrchr(entry.filename.c_str(), '\\');
+                    basename = (basename != nullptr) ? basename + 1 : entry.filename.c_str();
+                    if (is_int_file(basename)) {
+                        if (ImGui::Selectable("Export Raw...")) {
+                            info->pending_export = &entry;
+                            ifd::FileDialog::Instance().Save("DATExportDialog", "Export File",
+                                                             "All files (*.*){.*}",
+                                                             usr_info.default_save_path);
+                            ifd::FileDialog::Instance().SetFilename(basename);
+                        }
+                        if (ImGui::Selectable("Export as .SSL...")) {
+                            info->pending_export_ssl = &entry;
+                            std::string ssl_name = basename;
+                            size_t dot_pos = ssl_name.rfind('.');
+                            if (dot_pos != std::string::npos) ssl_name.replace(dot_pos, std::string::npos, ".ssl");
+                            ifd::FileDialog::Instance().Save("DATExportSSLDialog", "Export as SSL",
+                                                             "SSL script (*.ssl){.ssl},All files (*.*){.*}",
+                                                             usr_info.default_save_path);
+                            ifd::FileDialog::Instance().SetFilename(ssl_name.c_str());
+                        }
+                    } else {
+                        if (ImGui::Selectable("Export...")) {
+                            info->pending_export = &entry;
+                            ifd::FileDialog::Instance().Save("DATExportDialog", "Export File",
+                                                             "All files (*.*){.*}",
+                                                             usr_info.default_save_path);
+                            ifd::FileDialog::Instance().SetFilename(basename);
+                        }
                     }
                     ImGui::EndPopup();
                 }
@@ -183,6 +235,57 @@ void Show_DAT_Window(variables* My_Variables, LF* F_Prop, int slot_index, int* o
             }
         }
         info->pending_export = nullptr;
+        ifd::FileDialog::Instance().Close();
+    }
+
+    // handle SSL export save dialog
+    if (ifd::FileDialog::Instance().IsDone("DATExportSSLDialog")) {
+        if (ifd::FileDialog::Instance().HasResult() && info->pending_export_ssl != nullptr) {
+            std::string save_path = ifd::FileDialog::Instance().GetResult().u8string();
+            auto result = info->archive.extract(*info->pending_export_ssl);
+            if (result.ok()) {
+                // write INT bytes to a temp file (decompiler needs a file path)
+                std::filesystem::path tmp_int = std::filesystem::temp_directory_path() / "dat2_export_tmp.int";
+                FILE* tmp_f = fopen(tmp_int.u8string().c_str(), "wb");
+                if (tmp_f != nullptr) {
+                    fwrite(result.value.data(), 1, result.value.size(), tmp_f);
+                    fclose(tmp_f);
+
+                    std::string ssl_text;
+                    bool ok = decompile_int_to_ssl(tmp_int.u8string().c_str(), ssl_text);
+                    std::filesystem::remove(tmp_int);
+
+                    if (ok) {
+                        FILE* out = fopen(save_path.c_str(), "w");
+                        if (out != nullptr) {
+                            fwrite(ssl_text.data(), 1, ssl_text.size(), out);
+                            fclose(out);
+                        } else {
+                            set_popup_warning("[ERROR] Export as SSL\n\n"
+                                              "Failed to write SSL file.");
+                        }
+                    } else {
+                        char msg[1024];
+                        snprintf(msg, sizeof(msg),
+                                 "[ERROR] Export as SSL\n\n"
+                                 "Decompilation failed:\n%s",
+                                 ssl_text.c_str());
+                        set_popup_warning(msg);
+                    }
+                } else {
+                    set_popup_warning("[ERROR] Export as SSL\n\n"
+                                      "Failed to write temp file for decompilation.");
+                }
+            } else {
+                char msg[512];
+                snprintf(msg, sizeof(msg),
+                         "[ERROR] Export as SSL\n\n"
+                         "Failed to extract file:\n%s",
+                         dat2::dat2_error_str(result.error));
+                set_popup_warning(msg);
+            }
+        }
+        info->pending_export_ssl = nullptr;
         ifd::FileDialog::Instance().Close();
     }
 
